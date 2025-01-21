@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+    <script src="https://kit.fontawesome.com/843c900ca9.js" crossorigin="anonymous"></script>
 </head>
 <body class="bg-gray-200 font-mono">
     <!-- Header -->
@@ -59,28 +60,32 @@
             <!-- Top Stats -->
             <div class="grid grid-cols-4 gap-4 mb-8">
             <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
-            <box-icon name='upload' class="mr-2"></box-icon>
-            <div class="text-center flex-1">
+            <div class="relative">
+                <box-icon name='user' type="solid" color="red" class="absolute left-0"></box-icon>
+                <box-icon name='user' type="solid" color="red" class="absolute left-4 top-[-10px]"></box-icon>
+                <box-icon name='user' type="solid" color="red" class="absolute left-8"></box-icon>
+            </div>
+            <div class="text-center flex-1 ml-12">
             <div class="text-red-700 text-2xl font-bold mt-2">200</div>
             <div class="text-gray-500 text-sm mt-1">Total Users</div>
             </div>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
-            <box-icon name='upload' class="mr-2"></box-icon>
+            <box-icon name='upload' color="red" class="mr-2" size="md"></box-icon>
             <div class="text-center flex-1">
             <div class="text-red-700 text-2xl font-bold mt-2">460</div>
             <div class="text-gray-500 text-sm mt-1">Total Posts</div>
             </div>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
-            <box-icon name='upload' class="mr-2"></box-icon>
+            <box-icon name='message-rounded-detail' type='solid' color='red' class="mr-2" size="md"></box-icon>
             <div class="text-center flex-1">
             <div class="text-red-700 text-2xl font-bold mt-2">46</div>
             <div class="text-gray-500 text-sm mt-1">Total Comments</div>
             </div>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
-            <box-icon name='upload' class="mr-2"></box-icon>
+                <box-icon type='solid' name='videos' color='red' size="md"></box-icon>
             <div class="text-center flex-1">
             <div class="text-red-700 text-2xl font-bold mt-2">230</div>
             <div class="text-gray-500 text-sm mt-1">Total Reels</div>
