@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RaceConnect Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+</head>
+<body class="bg-gray-200 font-mono">
+    <!-- Header -->
+    <div class="bg-red-700 text-white p-4 font-bold text-5xl">
+        Race Connect
+    </div>
+
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="w-1/5 bg-white text-gray-700 h-screen shadow-md rounded-xl">
+            <div class="text-red-700 px-14 font-bold text-3xl mt-14">
+                <div class="flex items-center">
+                    <div>Admin View</div>
+                </div>
+            </div>
+            <ul class="mt-8 space-y-2">
+                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
+                    <box-icon type='solid' name='dashboard' color='red'></box-icon>
+                    <span><a href="index.html">Dashboard</a></span>
+                </li>
+                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
+                    <box-icon name='user' type='solid' color='red'></box-icon>
+                    <span>User</span>
+                </li>
+                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
+                    <box-icon name='pin' type='solid' color='red'></box-icon>
+                    <span><a href="index_posts.html">Posts</a></span>
+                </li>
+                <li class="py-2 px-4 bg-red-700 text-white cursor-pointer flex items-center space-x-2">
+                    <box-icon name='bell' type='solid' color='white'></box-icon>
+                    <span><a href="index_notifs.html">Notifications</a></span>
+                </li>
+                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
+                    <box-icon type='solid' name='videos' color='red'></box-icon>
+                    <span><a href="index_reels.html">Reels</a></span>
+                </li>
+                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
+                    <box-icon name='store' type='solid' color='red'></box-icon>
+                    <span><a href="index_marketplace.html">Marketplace</a></span>
+                </li>
+                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
+                    <box-icon type='solid' name='megaphone' color='red'></box-icon>
+                    <span><a href="index_announcements.html">Announcements</a></span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-6">
+            <!-- Top Stats -->
+            <div class="grid grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
+            <box-icon name='upload' class="mr-2"></box-icon>
+            <div class="text-center flex-1">
+            <div class="text-red-700 text-2xl font-bold mt-2">200</div>
+            <div class="text-gray-500 text-sm mt-1">Total Users</div>
+            </div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
+            <box-icon name='upload' class="mr-2"></box-icon>
+            <div class="text-center flex-1">
+            <div class="text-red-700 text-2xl font-bold mt-2">460</div>
+            <div class="text-gray-500 text-sm mt-1">Total Posts</div>
+            </div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
+            <box-icon name='upload' class="mr-2"></box-icon>
+            <div class="text-center flex-1">
+            <div class="text-red-700 text-2xl font-bold mt-2">46</div>
+            <div class="text-gray-500 text-sm mt-1">Total Comments</div>
+            </div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
+            <box-icon name='upload' class="mr-2"></box-icon>
+            <div class="text-center flex-1">
+            <div class="text-red-700 text-2xl font-bold mt-2">230</div>
+            <div class="text-gray-500 text-sm mt-1">Total Reels</div>
+            </div>
+            </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="text-xl font-bold mb-4">Total Breakdown</div>
+                <div class="flex">
+                    <div class="w-3/4">
+                        <canvas id="chart"></canvas>
+                    </div>
+                    <div class="w-1/4 pl-4">
+                        <div class="text-gray-500 font-semibold">Highest:</div>
+                        <div class="text-red-700 text-lg font-bold">Open Wheel Racing</div>
+                        <div class="text-gray-500 text-lg font-bold">170</div>
+
+                        <div class="mt-4 text-gray-500 font-semibold">Lowest:</div>
+                        <div class="text-red-700 text-lg font-bold">Rally Racing</div>
+                        <div class="text-gray-500 text-lg font-bold">30</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('chart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(220, 38, 38, 0.8)');
+        gradient.addColorStop(1, 'rgba(220, 38, 38, 0.2)');
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Open Wheel Racing', 'Endurance Racing', 'GT Racing', 'Rally Racing'],
+                datasets: [{
+                    label: 'Participants',
+                    data: [170, 160, 90, 30],
+                    backgroundColor: gradient,
+                    borderRadius: {
+                        topLeft: 30,
+                        topRight: 30
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+
+    
+</body>
+</html>
