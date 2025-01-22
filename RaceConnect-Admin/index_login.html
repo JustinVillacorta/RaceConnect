@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RaceConnect Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <!-- Header -->
+    <div class="bg-red-700 text-white p-4 font-bold text-5xl flex justify-between items-center w-full">
+        <div class="flex items-center">
+            Race Connect
+        </div>
+    </div>
+
+    <!-- Login Form -->
+    <div class="flex justify-center items-center mt-24">
+        <div class="bg-white p-8 rounded-xl shadow-xl w-full max-w-md">
+            <h2 class="text-4xl font-bold text-gray-700 text-center mb-6 text-red-600">Log In</h2>
+            <form action="#" method="POST" class="space-y-4">
+                <div class="relative">
+                    <label for="email" class="block text-gray-700 font-semibold">Email</label>
+                    <div class="relative">
+                        <box-icon type='solid' name='envelope' color="red" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></box-icon>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            required 
+                            class="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring focus:ring-red-200 focus:outline-none">
+                    </div>
+                </div>
+                <div class="relative">
+                    <label for="password" class="block text-gray-700 font-semibold">Password</label>
+                    <div class="relative">
+                        <box-icon type='solid' name='lock' color="red" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></box-icon>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            required 
+                            class="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring focus:ring-red-200 focus:outline-none">
+                        <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                            <box-icon id="eye-icon" color="red" name='show' type='solid'></box-icon>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center relative cursor-pointer">
+                        <input type="checkbox" class="hidden peer">
+                        <span class="w-6 h-6 bg-gray-400 rounded-md peer-checked:bg-red-600 peer-checked:border-transparent peer-checked:after:content-[''] peer-checked:after:absolute peer-checked:after:left-2 peer-checked:after:top-0.5 peer-checked:after:w-2 peer-checked:after:h-4 peer-checked:after:border-white peer-checked:after:border-r-2 peer-checked:after:border-b-2 peer-checked:after:rotate-45"></span>
+                        <span class="ml-2 text-gray-600">Remember me</span>
+                    </label>
+                    <a href="#" class="text-red-700 text-sm font-semibold">Forgot Password?</a>
+                </div>
+                <button 
+                    type="submit" 
+                    class="w-full bg-red-700 text-white font-bold p-3 rounded-lg hover:bg-red-800 transition">
+                    Log In
+                </button>
+            </form>
+            <script>
+                function togglePassword() {
+                    const passwordInput = document.getElementById('password');
+                    const eyeIcon = document.getElementById('eye-icon');
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        eyeIcon.setAttribute('name', 'hide');
+                    } else {
+                        passwordInput.type = 'password';
+                        eyeIcon.setAttribute('name', 'show');
+                    }
+                }
+            </script>
+            <p class="text-center text-gray-600 mt-4">Don't have an account? <a href="#" class="text-red-700 font-semibold">Sign Up</a></p>
+        </div>
+    </div>
+</body>
+</html>

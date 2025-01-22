@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-behavior: smooth;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,144 +7,129 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+    <script src="https://kit.fontawesome.com/843c900ca9.js" crossorigin="anonymous"></script>
 </head>
 <body class="bg-gray-200 font-mono">
     <!-- Header -->
-    <div class="bg-red-700 text-white p-4 font-bold text-5xl">
-        Race Connect
-    </div>
-
-    <div class="flex">
-        <!-- Sidebar -->
-        <div class="w-1/5 bg-white text-gray-700 h-screen shadow-md rounded-xl">
-            <div class="text-red-700 px-14 font-bold text-3xl mt-14">
-                <div class="flex items-center">
-                    <div>Admin View</div>
-                </div>
-            </div>
-            <ul class="mt-8 space-y-2">
-                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
-                    <box-icon type='solid' name='dashboard' color='red'></box-icon>
-                    <span><a href="index.html">Dashboard</a></span>
-                </li>
-                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
-                    <box-icon name='user' type='solid' color='red'></box-icon>
-                    <span>User</span>
-                </li>
-                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
-                    <box-icon name='pin' type='solid' color='red'></box-icon>
-                    <span><a href="index_posts.html">Posts</a></span>
-                </li>
-                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
-                    <box-icon name='bell' type='solid' color='red'></box-icon>
-                    <span><a href="index_notifs.html">Notifications</a></span>
-                </li>
-                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
-                    <box-icon type='solid' name='videos' color='red'></box-icon>
-                    <span><a href="index_reels.html">Reels</a></span>
-                </li>
-                <li class="py-2 px-4 hover:bg-gray-200 cursor-pointer flex items-center space-x-2">
-                    <box-icon name='store' type='solid' color='red'></box-icon>
-                    <span><a href="index_marketplace.html">Marketplace</a></span>
-                </li>
-                <li class="py-2 px-4 bg-red-700 text-white cursor-pointer flex items-center space-x-2">
-                    <box-icon type='solid' name='megaphone' color='white'></box-icon>
-                    <span><a href="index_announcements.html">Announcements</a></span>
-                </li>
-            </ul>
+    <div class="bg-red-700 text-white p-4 font-bold text-5xl flex justify-between items-center w-full">
+        <div class="flex items-center">
+            Race Connect
         </div>
-
-        <!-- Main Content -->
-        <div class="flex-1 p-6">
-            <!-- Top Stats -->
-            <div class="grid grid-cols-4 gap-4 mb-8">
-            <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
-            <box-icon name='upload' class="mr-2"></box-icon>
-            <div class="text-center flex-1">
-            <div class="text-red-700 text-2xl font-bold mt-2">200</div>
-            <div class="text-gray-500 text-sm mt-1">Total Users</div>
-            </div>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
-            <box-icon name='upload' class="mr-2"></box-icon>
-            <div class="text-center flex-1">
-            <div class="text-red-700 text-2xl font-bold mt-2">460</div>
-            <div class="text-gray-500 text-sm mt-1">Total Posts</div>
-            </div>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
-            <box-icon name='upload' class="mr-2"></box-icon>
-            <div class="text-center flex-1">
-            <div class="text-red-700 text-2xl font-bold mt-2">46</div>
-            <div class="text-gray-500 text-sm mt-1">Total Comments</div>
-            </div>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow-md flex items-center justify-between">
-            <box-icon name='upload' class="mr-2"></box-icon>
-            <div class="text-center flex-1">
-            <div class="text-red-700 text-2xl font-bold mt-2">230</div>
-            <div class="text-gray-500 text-sm mt-1">Total Reels</div>
-            </div>
-            </div>
-            </div>
-
-            <!-- Chart Section -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <div class="text-xl font-bold mb-4">Total Breakdown</div>
-                <div class="flex">
-                    <div class="w-3/4">
-                        <canvas id="chart"></canvas>
-                    </div>
-                    <div class="w-1/4 pl-4">
-                        <div class="text-gray-500 font-semibold">Highest:</div>
-                        <div class="text-red-700 text-lg font-bold">Open Wheel Racing</div>
-                        <div class="text-gray-500 text-lg font-bold">170</div>
-
-                        <div class="mt-4 text-gray-500 font-semibold">Lowest:</div>
-                        <div class="text-red-700 text-lg font-bold">Rally Racing</div>
-                        <div class="text-gray-500 text-lg font-bold">30</div>
-                    </div>
+        <div class="flex items-center">
+            <!-- Mobile Header -->
+            <button id="menuButton" aria-label="Toggle menu" class="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-red-700 mr-4 md:hidden">
+                <box-icon name='menu' type='solid' color="white" size="md"></box-icon>
+            </button>
+            <div class="relative">
+                <box-icon type='solid' name='user-circle' color="white" size="md" class="cursor-pointer text-3xl hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-red-800 transition duration-500 ease-in-out rounded-full" id="userIcon"></box-icon>                <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg py-2 z-10 border border-gray-200">
+                    <a href="#" class="block px-4 py-2 text-gray-800 text-sm hover:bg-red-500 transition duration-500 ease-in-out hover:text-white">Change Password</a>
+                    <a href="#" class="block px-4 py-2 text-gray-800 text-sm hover:bg-red-500 transition duration-500 ease-in-out hover:text-white">Edit Profile</a>
+                    <a href="#" class="block px-4 py-2 text-gray-800 text-sm hover:bg-red-500 transition duration-500 ease-in-out hover:text-white">Logout</a>
                 </div>
             </div>
         </div>
     </div>
 
+    
     <script>
-        const ctx = document.getElementById('chart').getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(220, 38, 38, 0.8)');
-        gradient.addColorStop(1, 'rgba(220, 38, 38, 0.2)');
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Open Wheel Racing', 'Endurance Racing', 'GT Racing', 'Rally Racing'],
-                datasets: [{
-                    label: 'Participants',
-                    data: [170, 160, 90, 30],
-                    backgroundColor: gradient,
-                    borderRadius: {
-                        topLeft: 30,
-                        topRight: 30
-                    }
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
+        document.getElementById('userIcon').addEventListener('click', function() {
+            const dropdownMenu = document.getElementById('dropdownMenu');
+            dropdownMenu.classList.toggle('hidden');
         });
     </script>
+    
 
+    <div class="flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="top-0 left-0 w-64 h-full bg-white shadow-lg transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out z-20">
+        <!-- Logo Section -->
+        <div class="px-6 py-8 md:py-14">
+            <div class="flex items-center space-x-6">
+                <box-icon name='car' type='solid' color="red" class="w-8 h-8"></box-icon>
+                <span class="text-red-700 font-extrabold text-2xl">Admin View</span>
+            </div>
+        </div>
+
+    <!-- Navigation Menu -->
+    <nav class="px-4 bg-white text-gray-700 h-screen shadow-md rounded-xl">
+        <ul class="space-y-2">
+            <li>
+                <a href="index.html" class="flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-500 ease-in-out group transition-colors">
+                    <box-icon type='solid' name='dashboard' color='red'></box-icon>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="index_user.html" class="flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-500 ease-in-out group transition-colors">
+                    <box-icon name='user' type='solid' color='rgb(185 28 28)'></box-icon>
+                    <span>User</span>
+                </a>
+            </li>
+            <li>
+                <a href="index_posts.html" class="flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-500 ease-in-out group transition-colors">
+                    <box-icon name='pin' type='solid' color='rgb(185 28 28)'></box-icon>
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="index_notifs.html" class="flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-500 ease-in-out group transition-colors">
+                    <box-icon name='bell' type='solid' color='rgb(185 28 28)'></box-icon>
+                    <span>Notifications</span>
+                </a>
+            </li>
+            <li>
+                <a href="index_reels.html" class="flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-500 ease-in-out group transition-colors">
+                    <box-icon type='solid' name='videos' color='rgb(185 28 28)'></box-icon>
+                    <span>Reels</span>
+                </a>
+            </li>
+            <li>
+                <a href="index_marketplace.html" class="flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-500 ease-in-out group transition-colors">
+                    <box-icon name='store' type='solid' color='rgb(185 28 28)'></box-icon>
+                    <span>Marketplace</span>
+                </a>
+            </li>
+            <li>
+                <a href="#top" class="flex items-center space-x-3 px-4 py-3 bg-red-700 text-white rounded-lg group transition-colors">
+                    <box-icon type='solid' name='megaphone' color='white'></box-icon>
+                    <span>Announcements</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    </aside>
+        <!-- Overlay for mobile -->
+        <div id="overlay" class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden md:hidden z-10" aria-hidden="true"></div>
+
+        <script>
+            const menuButton = document.getElementById('menuButton');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+
+            menuButton.addEventListener('click', () => {
+                sidebar.classList.toggle('-translate-x-full');
+                overlay.classList.toggle('hidden');
+                document.body.classList.toggle('overflow-hidden');
+            });
+
+            overlay.addEventListener('click', () => {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            });
+
+            // Close sidebar on escape key press
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    sidebar.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                }
+            });
+        </script>
+
+        <!-- Main Content -->
+        
     
 </body>
 </html>
