@@ -11,6 +11,7 @@ class NotificationsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             NotficationScreen()
+            MainScreen()
         }
     }
 }

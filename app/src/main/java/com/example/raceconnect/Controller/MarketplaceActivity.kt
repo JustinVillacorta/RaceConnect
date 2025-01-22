@@ -12,6 +12,7 @@ class MarketplaceActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MarketplaceScreen()
+            MainScreen()
         }
     }
 }

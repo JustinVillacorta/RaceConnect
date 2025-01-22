@@ -11,6 +11,7 @@ class ReelsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             ReelsScreen()
+            MainScreen()
         }
     }
 }

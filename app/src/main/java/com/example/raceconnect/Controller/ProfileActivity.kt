@@ -11,6 +11,7 @@ class ProfileActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             ProfileScreen()
+            MainScreen()
         }
     }
 }
