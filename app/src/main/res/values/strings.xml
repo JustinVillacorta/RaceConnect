@@ -1,4 +1,15 @@
 <resources>
     <string name="app_name">RaceConnect</string>
     <string name="title_activity_login">Login</string>
+    <string name="title_activity_race_connect_news_feed">RaceConnect_NewsFeed</string>
+    <string name="title_activity_news_feed">NewsFeedActivity</string>
+    <string name="title_activity_reel">ReelActivity</string>
+    <string name="title_activity_marketplace">MarketplaceActivity</string>
+    <string name="title_activity_profile">ProfileActivity</string>
+    <string name="title_activity_authentication">AuthenticationActivity</string>
+    <string name="NewsFeed">Reels</string>
+    <string name="reels">Reels</string>
+    <string name="marketplace">Marketplace</string>
+    <string name="notifications">Notifications</string>
+    <string name="profile">Profile</string>
 </resources>
