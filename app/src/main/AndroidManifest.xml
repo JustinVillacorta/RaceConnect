@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <application
+
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -34,9 +35,8 @@
             android:label="@string/title_activity_news_feed"
             android:theme="@style/Theme.RaceConnect" />
         <activity
-            android:name=".AuthenticationActivity"
+            android:name=".Controller.AuthenticationActivity"
             android:exported="true"
-            android:label="Authentication"
             android:theme="@style/Theme.RaceConnect">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
