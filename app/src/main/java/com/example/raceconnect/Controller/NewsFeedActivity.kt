@@ -2,6 +2,8 @@ package com.example.raceconnect
 
 
 import NewsFeedScreen
+import NotificationsScreen
+import ProfileScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,7 +40,7 @@ fun MainScreen() {
             composable(TopNavTab.NewsFeed.route) { NewsFeedScreen() }
             composable(TopNavTab.Reels.route) { ReelsScreen() }
             composable(TopNavTab.Marketplace.route) { MarketplaceScreen() }
-            composable(TopNavTab.Notifications.route) { NotficationScreen() }
+            composable(TopNavTab.Notifications.route) { NotificationsScreen() }
             composable(TopNavTab.Profile.route) { ProfileScreen() }
         }
     }
