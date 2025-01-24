@@ -58,71 +58,89 @@ fun PostCard(post: Post, onLike: () -> Unit, onComment: () -> Unit, onShare: () 
             .padding(16.dp)
             .fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-        ) {
-            // Post Title
-            Text(
-                text = post.title,
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            // Images in LazyRow
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(post.images.size) { imageIndex ->
-                    Image(
-                        painter = painterResource(id = post.images[imageIndex]),
-                        contentDescription = "Post Image",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(150.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                    )
+        BoxWithConstraints {
+            if (maxWidth < 600.dp) {
+                // Small Screen Layout
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    PostContent(post, onLike, onComment, onShare)
                 }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Like, Comment, Share Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onLike) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = "Like",
-                        tint = Color.Red
-                    )
+            } else {
+                // Large Screen Layout
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    PostContent(post, onLike, onComment, onShare)
                 }
-                Text(text = "${post.likeCount} Likes")
-
-                IconButton(onClick = onComment) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.baseline_mode_comment_24),
-                        contentDescription = "Comment",
-                        tint = Color.Gray
-                    )
-                }
-                Text(text = "${post.commentCount} Comments")
-
-                IconButton(onClick = onShare) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Share",
-                        tint = Color.Gray
-                    )
-                }
-                Text(text = "Share")
             }
         }
     }
 }
 
+@Composable
+fun PostContent(post: Post, onLike: () -> Unit, onComment: () -> Unit, onShare: () -> Unit) {
+    Column {
+        // Post Title
+        Text(
+            text = post.title,
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        // Images in LazyRow
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(post.images.size) { imageIndex ->
+                Image(
+                    painter = painterResource(id = post.images[imageIndex]),
+                    contentDescription = "Post Image",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(150.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Like, Comment, Share Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onLike) {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = "Like",
+                    tint = Color.Red
+                )
+            }
+            Text(text = "${post.likeCount} Likes")
+
+            IconButton(onClick = onComment) {
+                Icon(
+                    painter = painterResource(id = R.drawable.baseline_mode_comment_24),
+                    contentDescription = "Comment",
+                    tint = Color.Gray
+                )
+            }
+            Text(text = "${post.commentCount} Comments")
+
+            IconButton(onClick = onShare) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Share",
+                    tint = Color.Gray
+                )
+            }
+            Text(text = "Share")
+        }
+    }
+}
 
