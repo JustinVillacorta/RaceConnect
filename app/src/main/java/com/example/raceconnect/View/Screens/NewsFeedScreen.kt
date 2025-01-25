@@ -22,32 +22,52 @@ import com.example.raceconnect.R
 fun NewsFeedScreen() {
     val posts = remember {
         mutableStateListOf(
-            Post("Post 1", listOf(R.drawable.img, R.drawable.img, R.drawable.img), 10, 5),
-            Post("Post 2", listOf(R.drawable.img, R.drawable.img), 20, 8),
-            Post("Post 3", listOf(R.drawable.img, R.drawable.img, R.drawable.img, R.drawable.img    ), 15, 2)
+            Post(
+                title = "Juniffer Lawrence",
+                description = "My new car is here! :))",
+                images = listOf(
+                    R.drawable.img,
+                    R.drawable.img,
+                    R.drawable.img
+                ),// Replace with actual image resources
+                likeCount = 100,
+                commentCount = 27,
+                shareCount = 18
+            ),
+            Post(
+                title = "Dana Wheat",
+                description = "Green Lambo Urus <333",
+                images = listOf(R.drawable.img), // Replace with actual image resources
+                likeCount = 107,
+                commentCount = 27,
+                shareCount = 18
+            )
         )
     }
 
-    Scaffold(
-        content = { paddingValues ->
-            LazyColumn(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize()
-            ) {
-                items(posts.size) { index ->
-                    PostCard(post = posts[index], onLike = {
-                        posts[index] = posts[index].copy(likeCount = posts[index].likeCount + 1)
-                    }, onComment = {
-                        // Handle comment action here
-                    }, onShare = {
-                        // Handle share action here
-                    })
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(posts.size) { index ->
+            PostCard(
+                post = posts[index],
+                onLike = {
+                    posts[index] = posts[index].copy(likeCount = posts[index].likeCount + 1)
+                },
+                onComment = {
+                    // Handle comment action
+                },
+                onShare = {
+                    // Handle share action
                 }
-            }
+            )
         }
-    )
+    }
 }
+
 
 @Composable
 fun PostCard(post: Post, onLike: () -> Unit, onComment: () -> Unit, onShare: () -> Unit) {
@@ -55,92 +75,120 @@ fun PostCard(post: Post, onLike: () -> Unit, onComment: () -> Unit, onShare: () 
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(4.dp),
         modifier = Modifier
-            .padding(16.dp)
             .fillMaxWidth()
+            .padding(8.dp)
     ) {
-        BoxWithConstraints {
-            if (maxWidth < 600.dp) {
-                // Small Screen Layout
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    PostContent(post, onLike, onComment, onShare)
-                }
-            } else {
-                // Large Screen Layout
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    PostContent(post, onLike, onComment, onShare)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun PostContent(post: Post, onLike: () -> Unit, onComment: () -> Unit, onShare: () -> Unit) {
-    Column {
-        // Post Title
-        Text(
-            text = post.title,
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        // Images in LazyRow
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(post.images.size) { imageIndex ->
+        Column(modifier = Modifier.padding(16.dp)) {
+            // User Info Row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Image(
-                    painter = painterResource(id = post.images[imageIndex]),
-                    contentDescription = "Post Image",
-                    contentScale = ContentScale.Crop,
+                    painter = painterResource(id = R.drawable.baseline_account_circle_24), // Replace with user's profile picture
+                    contentDescription = "User Profile Picture",
                     modifier = Modifier
-                        .size(150.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(20.dp))
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = post.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                    Text(
+                        text = "7h", // Replace with the actual timestamp
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = { /* Handle more options */ }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More Options")
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        // Like, Comment, Share Row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onLike) {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = "Like",
-                    tint = Color.Red
-                )
+            // Post Description
+            Text(
+                text = post.description ?: "",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Slidable Images in LazyRow
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(post.images.size) { imageIndex ->
+                    Image(
+                        painter = painterResource(id = post.images[imageIndex]),
+                        contentDescription = "Post Image",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .aspectRatio(1.5f)
+                            .clip(RoundedCornerShape(8.dp))
+                    )
+                }
             }
-            Text(text = "${post.likeCount} Likes")
 
-            IconButton(onClick = onComment) {
-                Icon(
-                    painter = painterResource(id = R.drawable.baseline_mode_comment_24),
-                    contentDescription = "Comment",
-                    tint = Color.Gray
-                )
-            }
-            Text(text = "${post.commentCount} Comments")
+            Spacer(modifier = Modifier.height(8.dp))
 
-            IconButton(onClick = onShare) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Share",
-                    tint = Color.Gray
-                )
+            // Action Bar
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Like
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onLike) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = "Like",
+                            tint = Color.Red
+                        )
+                    }
+                    Text(text = "${post.likeCount}", style = MaterialTheme.typography.bodySmall)
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Comment
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onComment) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_mode_comment_24),
+                            contentDescription = "Comment",
+                            tint = Color.Gray
+                        )
+                    }
+                    Text(text = "${post.commentCount}", style = MaterialTheme.typography.bodySmall)
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Share
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onShare) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = Color.Gray
+                        )
+                    }
+                    Text(text = "${post.shareCount}", style = MaterialTheme.typography.bodySmall)
+                }
             }
-            Text(text = "Share")
         }
     }
 }
-
