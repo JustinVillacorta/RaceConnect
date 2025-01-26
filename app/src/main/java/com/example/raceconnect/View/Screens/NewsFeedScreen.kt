@@ -13,36 +13,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.raceconnect.Model.Post
 import com.example.raceconnect.R
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.raceconnect.ViewModel.NewsFeedViewModel
 
 
 @Composable
-fun NewsFeedScreen() {
-    val posts = remember {
-        mutableStateListOf(
-            Post(
-                title = "Juniffer Lawrence",
-                description = "My new car is here! :))",
-                images = listOf(R.drawable.baseline_account_circle_24, R.drawable.baseline_account_circle_24),
-                likeCount = 100,
-                commentCount = 27,
-                shareCount = 18
-            ),
-            Post(
-                title = "Dana Wheat",
-                description = "Green Lambo Urus <333",
-                images = listOf(R.drawable.img),
-                likeCount = 107,
-                commentCount = 35,
-                shareCount = 12
-            )
-        )
-    }
+fun NewsFeedScreen(viewModel: NewsFeedViewModel = viewModel()) {
+    val posts = viewModel.posts // Get posts from ViewModel
 
     var showCreatePostScreen by remember { mutableStateOf(false) }
 
@@ -50,7 +33,7 @@ fun NewsFeedScreen() {
         CreatePostScreen(
             onClose = { showCreatePostScreen = false },
             onPost = { postText ->
-                posts.add(
+                viewModel.addPost(
                     Post(
                         title = "You",
                         description = postText,
@@ -82,7 +65,7 @@ fun NewsFeedScreen() {
                 PostCard(
                     post = posts[index],
                     onLike = {
-                        posts[index] = posts[index].copy(likeCount = posts[index].likeCount + 1)
+                        viewModel.likePost(index) // Update likes in ViewModel
                     },
                     onComment = { /* Handle comment action */ },
                     onShare = { /* Handle share action */ }
@@ -91,7 +74,6 @@ fun NewsFeedScreen() {
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPostSection(onAddPostClick: () -> Unit) {
