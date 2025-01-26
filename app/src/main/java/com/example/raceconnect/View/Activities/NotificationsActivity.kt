@@ -1,4 +1,4 @@
-package com.example.raceconnect
+package com.example.raceconnect.View.Activities
 
 import NotificationsScreen
 import android.os.Bundle

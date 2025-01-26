@@ -13,7 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.ui.MarketplaceScreen
 import com.example.raceconnect.ui.ReelsScreen
 import com.example.raceconnect.ui.TopNavBar
-import com.example.raceconnect.ui.TopNavTab
+import com.example.raceconnect.View.Activities.TopNavTab
 
 @Composable
 fun MainScreen() {

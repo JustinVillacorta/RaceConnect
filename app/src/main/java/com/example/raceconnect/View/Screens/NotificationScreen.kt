@@ -28,7 +28,7 @@ fun NotificationsScreen() {
     val notifications = listOf(
         Notification(
             profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
-            userName = "Trish Alexa",
+            userName = "testing",
             action = "liked your post.",
             timestamp = "2h"
         ),

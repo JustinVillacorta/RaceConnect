@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
 import com.example.raceconnect.R
+import com.example.raceconnect.View.Activities.TopNavTab
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,7 +35,7 @@ fun TopNavBar(navController: NavController, title: String = "RaceConnect") {
         TopAppBar(
             title = {
                 Text(
-                    text = title,
+                    text = "RaceConnect",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onPrimary
                 )

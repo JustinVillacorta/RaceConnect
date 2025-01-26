@@ -1,17 +1,18 @@
-package com.example.raceconnect
+package com.example.raceconnect.View.Activities
 
-import ProfileScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.example.raceconnect.View.Screens.MainScreen
 
+import com.example.raceconnect.ui.MarketplaceScreen
 
-class ProfileActivity : ComponentActivity() {
+
+class MarketplaceActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ProfileScreen()
+            MarketplaceScreen()
             MainScreen()
         }
     }

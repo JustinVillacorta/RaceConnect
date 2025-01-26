@@ -1,4 +1,4 @@
-package com.example.raceconnect
+package com.example.raceconnect.View.Activities
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
