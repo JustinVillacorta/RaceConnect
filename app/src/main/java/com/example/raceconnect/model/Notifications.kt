@@ -1,4 +1,4 @@
-package com.example.raceconnect.Model
+package com.example.raceconnect.model
 
 data class Notification(
     val profilePic: Int, // Resource ID for profile picture

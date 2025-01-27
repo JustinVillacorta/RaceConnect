@@ -1,8 +1,9 @@
-package com.example.raceconnect.View.Screens
+package com.example.raceconnect.view.Screens
 
 import NewsFeedScreen
 import NotificationsScreen
 import ProfileScreen
+import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -13,7 +14,9 @@ import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.ui.MarketplaceScreen
 import com.example.raceconnect.ui.ReelsScreen
 import com.example.raceconnect.ui.TopNavBar
-import com.example.raceconnect.View.Activities.TopNavTab
+import com.example.raceconnect.view.Activities.TopNavTab
+import com.example.raceconnect.ui.MarketplaceNavHost
+
 
 @Composable
 fun MainScreen() {
@@ -29,9 +32,12 @@ fun MainScreen() {
         ) {
             composable(TopNavTab.NewsFeed.route) { NewsFeedScreen() }
             composable(TopNavTab.Reels.route) { ReelsScreen() }
-            composable(TopNavTab.Marketplace.route) { MarketplaceScreen() }
+            composable(TopNavTab.Marketplace.route) { MarketplaceNavHost() }
             composable(TopNavTab.Notifications.route) { NotificationsScreen() }
             composable(TopNavTab.Profile.route) { ProfileScreen() }
         }
     }
 }
+
+
+

@@ -1,4 +1,4 @@
-package com.example.raceconnect.View.Screens
+package com.example.raceconnect.view.Screens
 
 import android.content.Intent
 import android.widget.Toast
@@ -7,8 +7,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.raceconnect.View.Activities.NewsFeedActivity
-import com.example.raceconnect.ViewModel.AuthenticationViewModel
+import com.example.raceconnect.view.Activities.NewsFeedActivity
+import com.example.raceconnect.viewmodel.AuthenticationViewModel
 import com.example.raceconnect.ui.LoginScreen
 import com.example.raceconnect.ui.SignupScreen
 import androidx.lifecycle.viewmodel.compose.viewModel

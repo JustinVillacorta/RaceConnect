@@ -1,11 +1,9 @@
-package com.example.raceconnect.ViewModel
+package com.example.raceconnect.viewmodel
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
-import com.example.raceconnect.Model.Post
+import com.example.raceconnect.model.Post
 import com.example.raceconnect.R
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 
 class NewsFeedViewModel : ViewModel() {
     // State to store the list of posts

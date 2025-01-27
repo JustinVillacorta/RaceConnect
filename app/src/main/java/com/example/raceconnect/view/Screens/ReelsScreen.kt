@@ -1,8 +1,6 @@
 package com.example.raceconnect.ui
 
-import android.media.browse.MediaBrowser
 import android.net.Uri
-import android.os.Looper.prepare
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,7 +22,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import com.example.raceconnect.Model.Reels
+import com.example.raceconnect.model.Reels
 
 import com.example.raceconnect.R
 

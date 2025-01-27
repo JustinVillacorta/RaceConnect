@@ -1,17 +1,17 @@
-package com.example.raceconnect.View.Activities
+package com.example.raceconnect.view.Activities
 
-import ProfileScreen
+import NotificationsScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.example.raceconnect.View.Screens.MainScreen
+import com.example.raceconnect.view.Screens.MainScreen
 
 
-class ProfileActivity : ComponentActivity() {
+class NotificationsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ProfileScreen()
+            NotificationsScreen()
             MainScreen()
         }
     }

@@ -14,28 +14,28 @@
         android:theme="@style/Theme.RaceConnect"
         tools:targetApi="31">
         <activity
-            android:name=".View.Activities.ProfileActivity"
+            android:name=".view.Activities.ProfileActivity"
             android:exported="false"
             android:label="@string/title_activity_profile"
             android:theme="@style/Theme.RaceConnect" />
         <activity
-            android:name=".View.Activities.MarketplaceActivity"
+            android:name=".view.Activities.MarketplaceActivity"
             android:exported="false"
             android:label="@string/title_activity_marketplace"
             android:theme="@style/Theme.RaceConnect" />
 
         <activity
-            android:name=".View.Activities.ReelsActivity"
+            android:name=".view.Activities.ReelsActivity"
             android:exported="false"
             android:label="@string/title_activity_reel"
             android:theme="@style/Theme.RaceConnect" />
         <activity
-            android:name=".View.Activities.NewsFeedActivity"
+            android:name=".view.Activities.NewsFeedActivity"
             android:exported="false"
             android:label="@string/title_activity_news_feed"
             android:theme="@style/Theme.RaceConnect" />
         <activity
-            android:name=".View.Activities.AuthenticationActivity"
+            android:name=".view.Activities.AuthenticationActivity"
             android:exported="true"
             android:theme="@style/Theme.RaceConnect">
             <intent-filter>

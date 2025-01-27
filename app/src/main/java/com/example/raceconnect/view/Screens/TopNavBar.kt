@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
 import com.example.raceconnect.R
-import com.example.raceconnect.View.Activities.TopNavTab
+import com.example.raceconnect.view.Activities.TopNavTab
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

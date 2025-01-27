@@ -1,4 +1,4 @@
-package com.example.raceconnect.ViewModel
+package com.example.raceconnect.viewmodel
 
 import androidx.lifecycle.ViewModel
 

@@ -1,4 +1,4 @@
-package com.example.raceconnect.Model
+package com.example.raceconnect.model
 
 data class Post(
     val title: String, // User's name or identifier
