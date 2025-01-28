@@ -3,6 +3,8 @@ package com.example.raceconnect.view.Screens
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,20 +20,23 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
     val navController = rememberNavController()
     val context = LocalContext.current
 
+    // Observe the ViewModel's state
+    val isLoading by viewModel.isLoading
+    val errorMessage by viewModel.errorMessage
+    val loggedInUser by viewModel.loggedInUser
+
+    // Handle navigation to NewsFeedActivity on successful login/signup
+    loggedInUser?.let { user ->
+        context.startActivity(Intent(context, NewsFeedActivity::class.java))
+    }
+
     NavHost(navController, startDestination = "login") {
+        // Login screen
         composable("login") {
             LoginScreen(
-                onLoginClick = { email, password ->
-                    if (viewModel.validateLogin(email, password)) {
-                        // Navigate to NewsFeedActivity
-                        context.startActivity(Intent(context, NewsFeedActivity::class.java))
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "Invalid login credentials. Please try again.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                viewModel = viewModel,
+                onLoginSuccess = { user ->
+                    viewModel.loggedInUser.value = user // Save the user in ViewModel state
                 },
                 onSignupNavigate = {
                     navController.navigate("signup")
@@ -39,23 +44,30 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
             )
         }
 
-        composable("signup") {
-            SignupScreen(
-                onSignupClick = { email, password ->
-                    if (viewModel.validateSignup(email, password)) {
-                        context.startActivity(Intent(context, NewsFeedActivity::class.java))
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "Invalid signup details. Password must be at least 6 characters long.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                },
-                onBackNavigate = {
-                    navController.navigate("login")
-                }
-            )
-        }
+        // Signup screen
+        //composable("signup") {
+          //  SignupScreen(
+            //    onSignupClick = { email, password ->
+                 //   if (viewModel.validateSignup(email, password)) {
+                        // Simulate signup success (replace with actual logic if needed)
+                     //   viewModel.login(email, password)
+                  //  } else {
+                    //    Toast.makeText(
+                       //     context,
+                        //    "Invalid signup details. Password must be at least 6 characters long.",
+                        //    Toast.LENGTH_SHORT
+                       // ).show()
+                  //  }
+               // },
+               // onBackNavigate = {
+               //     navController.navigate("login")
+              // }
+           // )
+       // }
+    }
+
+    // Display error messages via Toast
+    errorMessage?.let { message ->
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 }

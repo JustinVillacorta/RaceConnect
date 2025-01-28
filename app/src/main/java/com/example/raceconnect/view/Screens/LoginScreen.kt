@@ -7,12 +7,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.raceconnect.model.User
+import com.example.raceconnect.viewmodel.AuthenticationViewModel
 
 @Composable
-fun LoginScreen(onLoginClick: (String, String) -> Unit, onSignupNavigate: () -> Unit) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+fun LoginScreen(
+    viewModel: AuthenticationViewModel,
+    onLoginSuccess: (User) -> Unit,
+    onSignupNavigate: () -> Unit
+) {
+    val isLoading by viewModel.isLoading
+    val errorMessage by viewModel.errorMessage
+    val loggedInUser by viewModel.loggedInUser
 
+    // Handle successful login
+    loggedInUser?.let { user ->
+        LaunchedEffect(user) {
+            onLoginSuccess(user) // Trigger navigation on success
+        }
+    }
+
+    // UI layout
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -23,6 +38,9 @@ fun LoginScreen(onLoginClick: (String, String) -> Unit, onSignupNavigate: () -> 
         Text("Login", style = MaterialTheme.typography.headlineMedium)
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        var email by remember { mutableStateOf("") }
+        var password by remember { mutableStateOf("") }
 
         OutlinedTextField(
             value = email,
@@ -43,11 +61,20 @@ fun LoginScreen(onLoginClick: (String, String) -> Unit, onSignupNavigate: () -> 
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = { onLoginClick(email, password) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Login")
+        if (isLoading) {
+            CircularProgressIndicator()
+        } else {
+            Button(
+                onClick = { viewModel.login(email, password) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Login")
+            }
+        }
+
+        errorMessage?.let {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(it, color = MaterialTheme.colorScheme.error)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
