@@ -9,7 +9,7 @@ data class LoginRequest(
 data class LoginResponse(
     val success: Boolean,
     val message: String,
-    val data: User? = null // Includes user details if successful
+    val data: User? // Includes user details if successful
 )
 
 

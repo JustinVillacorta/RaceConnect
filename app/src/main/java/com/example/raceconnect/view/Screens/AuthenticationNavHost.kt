@@ -1,9 +1,10 @@
 package com.example.raceconnect.view.Screens
 
 import android.content.Intent
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
@@ -20,23 +21,25 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
     val navController = rememberNavController()
     val context = LocalContext.current
 
-    // Observe the ViewModel's state
-    val isLoading by viewModel.isLoading
-    val errorMessage by viewModel.errorMessage
+    // Observe ViewModel's state
     val loggedInUser by viewModel.loggedInUser
+    val errorMessage by viewModel.errorMessage
 
-    // Handle navigation to NewsFeedActivity on successful login/signup
-    loggedInUser?.let { user ->
-        context.startActivity(Intent(context, NewsFeedActivity::class.java))
+    // Navigate to NewsFeedActivity when loggedInUser is updated
+    LaunchedEffect(loggedInUser) {
+        loggedInUser?.let { user ->
+            Log.d("AuthenticationNavHost", "Navigating to NewsFeedActivity with user: ${user.username}")
+            val intent = Intent(context, NewsFeedActivity::class.java)
+            context.startActivity(intent)
+        }
     }
 
     NavHost(navController, startDestination = "login") {
         // Login screen
         composable("login") {
             LoginScreen(
-                viewModel = viewModel,
-                onLoginSuccess = { user ->
-                    viewModel.loggedInUser.value = user // Save the user in ViewModel state
+                onLoginClick = { email, password ->
+                    viewModel.validateLogin(email, password) // Call login API
                 },
                 onSignupNavigate = {
                     navController.navigate("signup")
@@ -45,28 +48,23 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
         }
 
         // Signup screen
-        //composable("signup") {
-          //  SignupScreen(
-            //    onSignupClick = { email, password ->
-                 //   if (viewModel.validateSignup(email, password)) {
-                        // Simulate signup success (replace with actual logic if needed)
-                     //   viewModel.login(email, password)
-                  //  } else {
-                    //    Toast.makeText(
-                       //     context,
-                        //    "Invalid signup details. Password must be at least 6 characters long.",
-                        //    Toast.LENGTH_SHORT
-                       // ).show()
-                  //  }
-               // },
-               // onBackNavigate = {
-               //     navController.navigate("login")
-              // }
-           // )
-       // }
+        composable("signup") {
+            SignupScreen(
+                onSignupClick = { email, password ->
+                    Toast.makeText(
+                        context,
+                        "Signup not implemented. Please use login.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onBackNavigate = {
+                    navController.navigate("login")
+                }
+            )
+        }
     }
 
-    // Display error messages via Toast
+    // Display error messages
     errorMessage?.let { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
