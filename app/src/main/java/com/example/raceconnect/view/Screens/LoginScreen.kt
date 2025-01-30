@@ -9,8 +9,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun LoginScreen(onLoginClick: (String, String) -> Unit, onSignupNavigate: () -> Unit) {
-    var email by remember { mutableStateOf("") }
+fun LoginScreen(
+    onLoginClick: (String, String) -> Unit,
+    onSignupNavigate: () -> Unit
+) {
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     Column(
@@ -25,9 +28,9 @@ fun LoginScreen(onLoginClick: (String, String) -> Unit, onSignupNavigate: () -> 
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("Username") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -44,7 +47,7 @@ fun LoginScreen(onLoginClick: (String, String) -> Unit, onSignupNavigate: () -> 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { onLoginClick(email, password) },
+            onClick = { onLoginClick(username, password) },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Login")

@@ -21,25 +21,28 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
     val navController = rememberNavController()
     val context = LocalContext.current
 
-    // Observe ViewModel's state
+    // Observe login state
     val loggedInUser by viewModel.loggedInUser
     val errorMessage by viewModel.errorMessage
 
-    // Navigate to NewsFeedActivity when loggedInUser is updated
+    // Redirect to NewsFeedActivity on successful login
     LaunchedEffect(loggedInUser) {
+        Log.d("AuthenticationNavHost", "LaunchedEffect triggered with loggedInUser: $loggedInUser")
         loggedInUser?.let { user ->
             Log.d("AuthenticationNavHost", "Navigating to NewsFeedActivity with user: ${user.username}")
-            val intent = Intent(context, NewsFeedActivity::class.java)
+            val intent = Intent(context, NewsFeedActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
             context.startActivity(intent)
         }
     }
 
     NavHost(navController, startDestination = "login") {
-        // Login screen
         composable("login") {
             LoginScreen(
-                onLoginClick = { email, password ->
-                    viewModel.validateLogin(email, password) // Call login API
+                onLoginClick = { username, password ->
+                    Log.d("AuthenticationNavHost", "Login clicked with username: $username")
+                    viewModel.validateLogin(username, password)
                 },
                 onSignupNavigate = {
                     navController.navigate("signup")
@@ -47,15 +50,10 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
             )
         }
 
-        // Signup screen
         composable("signup") {
             SignupScreen(
                 onSignupClick = { email, password ->
-                    Toast.makeText(
-                        context,
-                        "Signup not implemented. Please use login.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(context, "Signup not implemented. Please use login.", Toast.LENGTH_SHORT).show()
                 },
                 onBackNavigate = {
                     navController.navigate("login")
@@ -64,7 +62,6 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
         }
     }
 
-    // Display error messages
     errorMessage?.let { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
