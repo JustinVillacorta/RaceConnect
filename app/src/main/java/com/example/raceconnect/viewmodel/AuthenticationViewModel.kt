@@ -24,13 +24,14 @@ class AuthenticationViewModel : ViewModel() {
                 val loginRequest = LoginRequest(username, password)
                 val response: LoginResponse = RetrofitInstance.api.login(loginRequest)
 
-                if (response.success || response.message == "Login successful") {
+                if (response.token != null && response.user != null) {
                     loggedInUser.value = response.user
                     Log.d("AuthenticationViewModel", "Login successful: ${loggedInUser.value}")
                 } else {
                     errorMessage.value = response.message ?: "Login failed"
                     Log.d("AuthenticationViewModel", "Login failed: ${response.message}")
                 }
+
 
             } catch (e: Exception) {
                 errorMessage.value = e.message ?: "An unexpected error occurred"
