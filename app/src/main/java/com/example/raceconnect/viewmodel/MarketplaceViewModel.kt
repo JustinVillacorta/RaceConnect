@@ -1,3 +1,4 @@
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
@@ -30,12 +31,22 @@ class MarketplaceViewModel : ViewModel() {
     fun addMarketplaceItem(item: MarketplaceDataClassItem) {
         viewModelScope.launch {
             try {
+                Log.d("Marketplace", "Sending request to add item: $item")
+
                 val response = RetrofitInstance.api.createMarketplaceItem(item)
+
                 if (response.isSuccessful && response.body() != null) {
-                    _items.value = _items.value + response.body()!!
+                    val newItem = response.body()!!
+                    Log.d("Marketplace", "Item added successfully: ${newItem.message}")
+
+                    // Fetch updated marketplace items from the backend
+                    fetchMarketplaceItems()
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                    Log.e("Marketplace", "Failed to add item: $errorBody")
                 }
             } catch (e: Exception) {
-                println("Error posting marketplace item: ${e.message}")
+                Log.e("Marketplace", "Error posting marketplace item", e)
             }
         }
     }

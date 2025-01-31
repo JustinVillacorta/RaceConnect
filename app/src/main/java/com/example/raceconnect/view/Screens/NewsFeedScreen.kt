@@ -1,8 +1,10 @@
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -13,46 +15,47 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import androidx.compose.runtime.collectAsState
+
+import android.util.Log
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 @Composable
 fun NewsFeedScreen(viewModel: NewsFeedViewModel = viewModel()) {
-    val posts by remember { derivedStateOf { viewModel.posts } }
+    val posts by viewModel.posts.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+
     var showCreatePostScreen by remember { mutableStateOf(false) }
 
     if (showCreatePostScreen) {
         CreatePostScreen(
-            onClose = { showCreatePostScreen = false },
-            onPost = { postText ->
-                viewModel.addPost(
-                    NewsFeedDataClassItem(
-                        id = 0, // Backend will generate ID
-                        user_id = 1, // Example user
-                        title = "You",
-                        content = postText,
-                        img_url = "",
-                        like_count = 0,
-                        comment_count = 0,
-                        repost_count = 0,
-                        type = "text",
-                        created_at = "",
-                        updated_at = ""
-                    )
-                )
-                showCreatePostScreen = false
-            }
+            viewModel = viewModel,
+            onClose = { showCreatePostScreen = false }
         )
     } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        SwipeRefresh(
+            state = rememberSwipeRefreshState(isRefreshing),
+            onRefresh = { viewModel.refreshPosts() }
         ) {
-            item { AddPostSection { showCreatePostScreen = true } }
-            items(posts.size) { index ->
-                PostCard(post = posts[index])
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    AddPostSection { showCreatePostScreen = true }
+                }
+
+                items(posts, key = { it.id }) { post ->
+                    PostCard(post = post)
+                }
             }
         }
     }
 }
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,7 +102,7 @@ fun AddPostSection(onAddPostClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreatePostScreen(onClose: () -> Unit, onPost: (String) -> Unit) {
+fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
     var postText by remember { mutableStateOf("") }
 
     Scaffold(
@@ -108,13 +111,13 @@ fun CreatePostScreen(onClose: () -> Unit, onPost: (String) -> Unit) {
                 title = { Text("Create post") },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     Button(onClick = {
                         if (postText.isNotEmpty()) {
-                            onPost(postText) // Trigger ViewModel function
+                            viewModel.addPost(postText) // Call ViewModel to handle post creation
                             onClose()
                         }
                     }) {
@@ -150,11 +153,20 @@ fun PostCard(post: NewsFeedDataClassItem) {
     Card(
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        modifier = Modifier.fillMaxWidth().padding(8.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = post.title, style = MaterialTheme.typography.bodyMedium)
-            Text(text = post.content, style = MaterialTheme.typography.bodySmall)
+            // Safeguard against null values
+            Text(
+                text = post.title ?: "Untitled Post",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = post.content ?: "No content available.",
+                style = MaterialTheme.typography.bodySmall
+            )
             Spacer(modifier = Modifier.height(8.dp))
         }
     }

@@ -5,6 +5,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
@@ -21,9 +22,9 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
     val navController = rememberNavController()
     val context = LocalContext.current
 
-    // Observe login state
-    val loggedInUser by viewModel.loggedInUser
-    val errorMessage by viewModel.errorMessage
+    // Observe login state and error message using collectAsState
+    val loggedInUser by viewModel.loggedInUser.collectAsState(initial = null)
+    val errorMessage by viewModel.errorMessage.collectAsState(initial = null)
 
     // Redirect to NewsFeedActivity on successful login
     LaunchedEffect(loggedInUser) {

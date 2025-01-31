@@ -5,45 +5,34 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.raceconnect.R
+import com.example.raceconnect.viewmodel.AuthenticationViewModel
 
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(viewModel: AuthenticationViewModel = viewModel()) {
+    val user by viewModel.loggedInUser.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Top Navigation Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-
-        }
-
         // Profile Section
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(id = R.drawable.baseline_account_circle_24), // Replace with actual drawable
+                painter = painterResource(id = R.drawable.baseline_account_circle_24), // Placeholder image
                 contentDescription = "Profile Picture",
                 modifier = Modifier
                     .size(100.dp)
@@ -51,9 +40,13 @@ fun ProfileScreen() {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Justin Vilacorta",
+                text = user?.username ?: "Guest",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = user?.email ?: "Not logged in",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
             )
         }
 
@@ -88,13 +81,6 @@ fun ProfileScreen() {
             item {
                 ProfileOptionItem(
                     iconResId = R.drawable.baseline_settings_24,
-                    text = "Reposts",
-                    onClick = { /* Handle Reposts Click */ }
-                )
-            }
-            item {
-                ProfileOptionItem(
-                    iconResId = R.drawable.baseline_settings_24,
                     text = "Settings",
                     onClick = { /* Handle Settings Click */ }
                 )
@@ -114,7 +100,7 @@ fun ProfileScreen() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { /* Handle Logout */ }
+                .clickable { viewModel.logout() }
                 .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -127,8 +113,7 @@ fun ProfileScreen() {
             Text(
                 text = "Log out",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.Red,
-                fontWeight = FontWeight.Bold
+                color = Color.Red
             )
         }
     }

@@ -1,15 +1,15 @@
 package com.example.raceconnect.model
 
 data class NewsFeedDataClassItem(
-    val comment_count: Int,
-    val content: String,
-    val created_at: String,
-    val id: Int,
-    val img_url: String,
-    val like_count: Int,
-    val repost_count: Int,
-    val title: String,
-    val type: String,
-    val updated_at: String,
-    val user_id: Int
+    val id: Int = 0,
+    val user_id: Int = 0,
+    val title: String? = null,
+    val content: String? = null,
+    val img_url: String? = null,
+    val like_count: Int = 0,
+    val comment_count: Int = 0,
+    val repost_count: Int = 0,
+    val type: String? = null,
+    val created_at: String? = null,
+    val updated_at: String? = null
 )

@@ -13,3 +13,6 @@ data class MarketplaceDataClassItem(
     val title: String,
     val updated_at: String
 )
+data class itemPostResponse(
+    val message: String
+    )

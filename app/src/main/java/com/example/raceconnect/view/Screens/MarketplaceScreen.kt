@@ -1,27 +1,19 @@
 package com.example.raceconnect.ui
 
 import MarketplaceViewModel
-import android.annotation.SuppressLint
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.raceconnect.model.MarkeplaceItem
 import com.example.raceconnect.model.MarketplaceDataClassItem
 
 
@@ -91,7 +83,7 @@ fun CreateMarketplaceItemScreen(onClose: () -> Unit, onPost: (MarketplaceDataCla
                             onPost(
                                 MarketplaceDataClassItem(
                                     id = 0,
-                                    seller_id = 1,
+                                    seller_id = 10,
                                     title = title,
                                     description = description,
                                     price = price,
@@ -121,7 +113,6 @@ fun CreateMarketplaceItemScreen(onClose: () -> Unit, onPost: (MarketplaceDataCla
                 OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price") })
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Category") })
                 OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") })
-                OutlinedTextField(value = imageUrl, onValueChange = { imageUrl = it }, label = { Text("Image URL") })
             }
         }
     )
