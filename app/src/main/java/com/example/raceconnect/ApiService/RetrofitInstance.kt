@@ -4,7 +4,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitInstance {
-    private const val BASE_URL = "http://192.168.5.53/RaceConnect/index.php/"
+    private const val BASE_URL = "http://192.168.75.13/RaceConnect/index.php/"
 
     val api: ApiService by lazy {
         Retrofit.Builder()

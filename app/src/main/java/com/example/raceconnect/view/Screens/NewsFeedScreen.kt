@@ -1,31 +1,22 @@
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.example.raceconnect.model.Post
-import com.example.raceconnect.R
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.raceconnect.viewmodel.NewsFeedViewModel
-
+import com.example.raceconnect.model.NewsFeedDataClassItem
 
 @Composable
 fun NewsFeedScreen(viewModel: NewsFeedViewModel = viewModel()) {
-    val posts = viewModel.posts // Get posts from ViewModel
-
+    val posts by remember { derivedStateOf { viewModel.posts } }
     var showCreatePostScreen by remember { mutableStateOf(false) }
 
     if (showCreatePostScreen) {
@@ -33,13 +24,18 @@ fun NewsFeedScreen(viewModel: NewsFeedViewModel = viewModel()) {
             onClose = { showCreatePostScreen = false },
             onPost = { postText ->
                 viewModel.addPost(
-                    Post(
+                    NewsFeedDataClassItem(
+                        id = 0, // Backend will generate ID
+                        user_id = 1, // Example user
                         title = "You",
-                        description = postText,
-                        images = emptyList(),
-                        likeCount = 0,
-                        commentCount = 0,
-                        shareCount = 0
+                        content = postText,
+                        img_url = "",
+                        like_count = 0,
+                        comment_count = 0,
+                        repost_count = 0,
+                        type = "text",
+                        created_at = "",
+                        updated_at = ""
                     )
                 )
                 showCreatePostScreen = false
@@ -47,32 +43,18 @@ fun NewsFeedScreen(viewModel: NewsFeedViewModel = viewModel()) {
         )
     } else {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
+            modifier = Modifier.fillMaxSize().padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // AddPostSection as the first item
-            item {
-                AddPostSection(
-                    onAddPostClick = { showCreatePostScreen = true }
-                )
-            }
-
-            // Render posts
+            item { AddPostSection { showCreatePostScreen = true } }
             items(posts.size) { index ->
-                PostCard(
-                    post = posts[index],
-                    onLike = {
-                        viewModel.likePost(index) // Update likes in ViewModel
-                    },
-                    onComment = { /* Handle comment action */ },
-                    onShare = { /* Handle share action */ }
-                )
+                PostCard(post = posts[index])
             }
         }
     }
 }
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPostSection(onAddPostClick: () -> Unit) {
@@ -83,36 +65,37 @@ fun AddPostSection(onAddPostClick: () -> Unit) {
             .clickable(onClick = onAddPostClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Profile Picture
-        Image(
-            painter = painterResource(id = R.drawable.baseline_account_circle_24), // Replace with your drawable
+        // Profile Picture (Placeholder Image)
+        Icon(
+            imageVector = Icons.Default.AccountCircle,
             contentDescription = "Profile Picture",
             modifier = Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(20.dp))
+                .padding(4.dp)
         )
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Text Input Placeholder
+        // Disabled Text Field for Placeholder
         OutlinedTextField(
             value = "",
             onValueChange = {},
-            placeholder = { Text(text = "What's new today?") },
-            enabled = false, // Disable the text field, make it clickable as a whole
+            placeholder = { Text("What's new today?") },
+            enabled = false, // Disable it to make it act like a button
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
             shape = RoundedCornerShape(20.dp),
             colors = TextFieldDefaults.outlinedTextFieldColors(
                 unfocusedBorderColor = Color.LightGray,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
                 disabledBorderColor = Color.LightGray,
                 disabledTextColor = Color.Transparent
             )
         )
     }
 }
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,7 +114,7 @@ fun CreatePostScreen(onClose: () -> Unit, onPost: (String) -> Unit) {
                 actions = {
                     Button(onClick = {
                         if (postText.isNotEmpty()) {
-                            onPost(postText)
+                            onPost(postText) // Trigger ViewModel function
                             onClose()
                         }
                     }) {
@@ -147,207 +130,36 @@ fun CreatePostScreen(onClose: () -> Unit, onPost: (String) -> Unit) {
                     .padding(innerPadding)
                     .padding(16.dp)
             ) {
-                // User Info
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.baseline_account_circle_24), // Replace with your drawable
-                        contentDescription = "User Profile Picture",
-                        modifier = Modifier
-                            .size(50.dp)
-                            .clip(RoundedCornerShape(25.dp))
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = "Your Name",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            text = "Public", // Replace with post privacy if needed
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
-                        )
-                    }
-                }
-
-                // Input Field
                 OutlinedTextField(
                     value = postText,
                     onValueChange = { postText = it },
                     placeholder = { Text("What's on your mind?") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        unfocusedBorderColor = Color.LightGray,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary
-                    )
+                    modifier = Modifier.fillMaxWidth()
                 )
-
-                // Options List (Photo/Video, Tag People, etc.)
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PostOptionItem(icon = painterResource(id = R.drawable.baseline_ondemand_video_24), label = "Photo/Video") {
-                        // Handle photo/video selection
-                    }
-
-                }
             }
         }
     )
 }
 
-@Composable
-fun PostOptionItem(icon: Painter, label: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            painter = icon,
-            contentDescription = label,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
 
 
 
 
 @Composable
-fun PostCard(post: Post, onLike: () -> Unit, onComment: () -> Unit, onShare: () -> Unit) {
+fun PostCard(post: NewsFeedDataClassItem) {
     Card(
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
+        modifier = Modifier.fillMaxWidth().padding(8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // User Info Row
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.baseline_account_circle_24), // Replace with user's profile picture
-                    contentDescription = "User Profile Picture",
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = post.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(bottom = 2.dp)
-                    )
-                    Text(
-                        text = "7h", // Replace with the actual timestamp
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                IconButton(onClick = { /* Handle more options */ }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More Options")
-                }
-            }
-
+            Text(text = post.title, style = MaterialTheme.typography.bodyMedium)
+            Text(text = post.content, style = MaterialTheme.typography.bodySmall)
             Spacer(modifier = Modifier.height(8.dp))
-
-            // Post Description
-            Text(
-                text = post.description ?: "",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Slidable Images in LazyRow
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(post.images.size) { imageIndex ->
-                    Image(
-                        painter = painterResource(id = post.images[imageIndex]),
-                        contentDescription = "Post Image",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .aspectRatio(1.5f)
-                            .clip(RoundedCornerShape(8.dp))
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Action Bar
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Like
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onLike) {
-                        Icon(
-                            imageVector = Icons.Default.Favorite,
-                            contentDescription = "Like",
-                            tint = Color.Red
-                        )
-                    }
-                    Text(text = "${post.likeCount}", style = MaterialTheme.typography.bodySmall)
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Comment
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onComment) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.baseline_mode_comment_24),
-                            contentDescription = "Comment",
-                            tint = Color.Gray
-                        )
-                    }
-                    Text(text = "${post.commentCount}", style = MaterialTheme.typography.bodySmall)
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Share
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onShare) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Share",
-                            tint = Color.Gray
-                        )
-                    }
-                    Text(text = "${post.shareCount}", style = MaterialTheme.typography.bodySmall)
-                }
-            }
         }
     }
 }
+
+
+
+
