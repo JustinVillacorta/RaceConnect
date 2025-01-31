@@ -15,7 +15,7 @@ import com.example.raceconnect.ui.MarketplaceScreen
 import com.example.raceconnect.ui.ReelsScreen
 import com.example.raceconnect.ui.TopNavBar
 import com.example.raceconnect.view.Activities.TopNavTab
-import com.example.raceconnect.ui.MarketplaceNavHost
+
 
 
 @Composable
@@ -32,7 +32,7 @@ fun MainScreen() {
         ) {
             composable(TopNavTab.NewsFeed.route) { NewsFeedScreen() }
             composable(TopNavTab.Reels.route) { ReelsScreen() }
-            composable(TopNavTab.Marketplace.route) { MarketplaceNavHost() }
+            composable(TopNavTab.Marketplace.route) { MarketplaceScreen() }
             composable(TopNavTab.Notifications.route) { NotificationsScreen() }
             composable(TopNavTab.Profile.route) { ProfileScreen() }
         }

@@ -5,9 +5,10 @@ package com.example.raceconnect.network
 
 import com.example.raceconnect.model.LoginRequest
 import com.example.raceconnect.model.LoginResponse
+import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.NewsFeedDataClass
 import com.example.raceconnect.model.NewsFeedDataClassItem
-import com.example.raceconnect.model.Post
+
 
 import com.example.raceconnect.model.users
 import retrofit2.Response
@@ -23,8 +24,15 @@ interface ApiService {
     @GET("posts")
     suspend fun getAllPosts(): List<NewsFeedDataClassItem>
 
-    @POST("posts")
+    @POST("posts/id")
     suspend fun createPost(@Body post: NewsFeedDataClassItem): Response<NewsFeedDataClassItem>
+
+
+    @GET("marketplace-items")
+    suspend fun getAllMarketplaceItems(): List<MarketplaceDataClassItem>
+
+    @POST("marketplace-items")
+    suspend fun createMarketplaceItem(@Body item: MarketplaceDataClassItem): Response<MarketplaceDataClassItem>
 
 }
 
