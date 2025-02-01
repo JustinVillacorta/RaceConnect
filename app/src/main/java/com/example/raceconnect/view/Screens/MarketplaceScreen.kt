@@ -15,53 +15,73 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.raceconnect.model.MarketplaceDataClassItem
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 
 // Marketplace screen displaying "Current's Best" and "More for You" sections
 @Composable
 fun MarketplaceScreen(viewModel: MarketplaceViewModel = viewModel()) {
     val items by viewModel.items.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+
     var showCreateListing by remember { mutableStateOf(false) }
 
     if (showCreateListing) {
         CreateMarketplaceItemScreen(
             onClose = { showCreateListing = false },
-            onPost = { newItem ->
-                viewModel.addMarketplaceItem(newItem)
+            onPost = { title, price, description, category, imageUrl ->
+                viewModel.addMarketplaceItem(
+                    title = title,
+                    price = price,
+                    description = description,
+                    category = category,
+                    imageUrl = imageUrl,
+                    sellerId = 10 // Replace with dynamic seller ID
+                )
                 showCreateListing = false
             }
         )
     } else {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Marketplace", style = MaterialTheme.typography.headlineMedium)
-                IconButton(onClick = { showCreateListing = true }) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add Item")
+        SwipeRefresh(
+            state = rememberSwipeRefreshState(isRefreshing),
+            onRefresh = { viewModel.refreshMarketplaceItems() }
+        ) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Marketplace", style = MaterialTheme.typography.headlineMedium)
+                    IconButton(onClick = { showCreateListing = true }) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = "Add Item")
+                    }
                 }
-            }
 
-            // Marketplace Grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(items) { item ->
-                    MarketplaceItemCard(item = item)
+                // Marketplace Grid
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(items, key = { it.id }) { item ->
+                        MarketplaceItemCard(item = item)
+                    }
                 }
             }
         }
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateMarketplaceItemScreen(onClose: () -> Unit, onPost: (MarketplaceDataClassItem) -> Unit) {
+fun CreateMarketplaceItemScreen(
+    onClose: () -> Unit,
+    onPost: (title: String, price: String, description: String, category: String, imageUrl: String) -> Unit
+) {
     var title by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -80,21 +100,7 @@ fun CreateMarketplaceItemScreen(onClose: () -> Unit, onPost: (MarketplaceDataCla
                 actions = {
                     Button(onClick = {
                         if (title.isNotEmpty() && price.isNotEmpty()) {
-                            onPost(
-                                MarketplaceDataClassItem(
-                                    id = 0,
-                                    seller_id = 10,
-                                    title = title,
-                                    description = description,
-                                    price = price,
-                                    category = category,
-                                    image_url = imageUrl,
-                                    favorite_count = 0,
-                                    status = "available",
-                                    created_at = "",
-                                    updated_at = ""
-                                )
-                            )
+                            onPost(title, price, description, category, imageUrl)
                         }
                     }) {
                         Text("Publish")
@@ -113,6 +119,7 @@ fun CreateMarketplaceItemScreen(onClose: () -> Unit, onPost: (MarketplaceDataCla
                 OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price") })
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Category") })
                 OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") })
+                //OutlinedTextField(value = imageUrl, onValueChange = { imageUrl = it }, label = { Text("Image URL") })
             }
         }
     )
