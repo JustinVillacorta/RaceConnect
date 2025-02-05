@@ -24,7 +24,6 @@ import com.example.raceconnect.view.Activities.TopNavTab
 fun TopNavBar(navController: NavController, title: String = "RaceConnect") {
     val items = listOf(
         TopNavTab.NewsFeed,
-        TopNavTab.Reels,
         TopNavTab.Marketplace,
         TopNavTab.Notifications,
         TopNavTab.Profile
