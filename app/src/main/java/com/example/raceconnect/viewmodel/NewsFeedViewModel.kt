@@ -76,6 +76,9 @@ class NewsFeedViewModel(application: Application) : AndroidViewModel(application
                     updated_at = ""
                 )
 
+                // Log the request data
+                Log.d("NewsFeedViewModel", "Sending POST request with data: $newPost")
+
                 val response = RetrofitInstance.api.createPost(newPost)
                 if (response.isSuccessful && response.body() != null) {
                     val addedPost = response.body()!!

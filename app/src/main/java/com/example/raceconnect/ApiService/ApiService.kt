@@ -17,14 +17,14 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface ApiService {
-    @POST("users?action=login")
+    @POST("login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
 
     @GET("posts")
     suspend fun getAllPosts(): List<NewsFeedDataClassItem>
 
-    @POST("posts/id")
+    @POST("posts")
     suspend fun createPost(@Body post: NewsFeedDataClassItem): Response<NewsFeedDataClassItem>
 
 
