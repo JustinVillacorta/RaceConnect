@@ -49,6 +49,7 @@ import com.example.raceconnect.view.Screens.NewsFeedScreens.PostCard
 import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +73,7 @@ fun NewsFeedScreen(
             sheetState = sheetState,
             onDismissRequest = { showBottomSheet = false }
         ) {
-            CommentScreen(postId = selectedPostId ?: -1)
+            CommentScreen(postId = selectedPostId ?: -1, navController = navController)
         }
     }
 
@@ -144,7 +145,7 @@ fun NewsFeedAppNavigation() {
         }
         composable("comments/{postId}") { backStackEntry ->
             val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
-            CommentScreen(postId = postId)
+            CommentScreen(postId = postId, navController = navController)
         }
         composable("profile") {
                 ProfileViewScreen(navController)
@@ -229,7 +230,7 @@ fun PreviewPostCard() {
 @Preview(showBackground = true)
 @Composable
 fun PreviewCommentScreen() {
-    CommentScreen(postId = 1)
+    CommentScreen(postId = 1, navController = NavController(LocalContext.current))
 }
 
 @Preview(showBackground = true)
@@ -242,7 +243,7 @@ fun PreviewCommentItem() {
         likes = 3,
         icon = Icons.Default.Favorite
     )
-    CommentItem(comment = mockComment)
+   CommentScreen(postId = 1, navController = NavController(LocalContext.current))
 }
 
 

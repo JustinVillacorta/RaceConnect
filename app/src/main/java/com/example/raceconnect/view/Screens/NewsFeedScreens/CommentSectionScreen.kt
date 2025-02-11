@@ -1,6 +1,7 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,12 +34,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.example.raceconnect.model.Comment
 
 @Composable
-fun CommentScreen(postId: Int) {
+fun CommentScreen(postId: Int, navController: NavController) {
     var commentText by remember { mutableStateOf("") }
     val comments = remember {
         mutableStateListOf(
@@ -59,7 +63,7 @@ fun CommentScreen(postId: Int) {
             modifier = Modifier.weight(1f)
         ) {
             items(comments) { comment ->
-                CommentItem(comment)
+                CommentItem(comment, navController)
             }
         }
 
@@ -88,7 +92,9 @@ fun CommentScreen(postId: Int) {
                     imageVector = Icons.Default.Send,
                     contentDescription = "Send",
                     tint = MaterialTheme.colorScheme.primary
+
                 )
+
             }
         }
     }
@@ -96,7 +102,7 @@ fun CommentScreen(postId: Int) {
 
 
 @Composable
-fun CommentItem(comment: Comment) {
+fun CommentItem(comment: Comment, navController: NavController) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -109,6 +115,9 @@ fun CommentItem(comment: Comment) {
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(Color.Gray)
+                .clickable {
+                    navController.navigate("profile")
+                }
         )
 
         Spacer(modifier = Modifier.width(8.dp))
@@ -150,4 +159,11 @@ fun CommentItem(comment: Comment) {
             )
         }
     }
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewCommentScreen() {
+    CommentScreen(postId = 1, navController = NavController(LocalContext.current))
 }

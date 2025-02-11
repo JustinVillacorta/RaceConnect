@@ -51,6 +51,9 @@ fun PostCard(post: NewsFeedDataClassItem, navController: NavController, onCommen
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(Color.Gray)
+                        .clickable {
+                            navController.navigate("profile")
+                        }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
