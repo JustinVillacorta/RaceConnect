@@ -4,6 +4,7 @@ import ProfileScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.Screens.MainScreen
 
 
@@ -12,7 +13,8 @@ class ProfileActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             ProfileScreen()
-            MainScreen()
+            val userPreferences = UserPreferences(this)
+            MainScreen(userPreferences = userPreferences)
         }
     }
 }

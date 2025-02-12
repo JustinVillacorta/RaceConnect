@@ -1,3 +1,4 @@
+
 @file:Suppress("DEPRECATION")
 
 import androidx.compose.foundation.background
@@ -13,13 +14,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -42,7 +48,6 @@ import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.model.Comment
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.view.Screens.NewsFeedScreens.AddPostSection
-import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentItem
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.PostCard
@@ -50,24 +55,27 @@ import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewsFeedScreen(
     navController: NavController,
-    viewModel: NewsFeedViewModel = viewModel()
+    userPreferences: UserPreferences
 ) {
+    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val posts by viewModel.posts.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     var showCreatePostScreen by remember { mutableStateOf(false) }
 
-    // Bottom sheet state for comment section
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    // Show comment section when bottom sheet is triggered
     if (showBottomSheet) {
         ModalBottomSheet(
             sheetState = sheetState,
@@ -83,34 +91,37 @@ fun NewsFeedScreen(
             onClose = { showCreatePostScreen = false }
         )
     } else {
-        SwipeRefresh(
-            state = rememberSwipeRefreshState(isRefreshing),
-            onRefresh = { viewModel.refreshPosts() }
-        ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                item {
-                    AddPostSection(navController = navController, onAddPostClick = { showCreatePostScreen = true })
-                }
 
-                items(posts, key = { it.id }) { post ->
-                    PostCard(
-                        post = post,
-                        navController = navController,
-                        onCommentClick = {
-                            selectedPostId = post.id
-                            showBottomSheet = true
-                        }
-                    )
+            SwipeRefresh(
+                state = rememberSwipeRefreshState(isRefreshing),
+                onRefresh = { viewModel.refreshPosts() }
+            ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        AddPostSection(navController = navController, onAddPostClick = { showCreatePostScreen = true })
+                    }
+
+                    items(posts, key = { it.id }) { post ->
+                        PostCard(
+                            post = post,
+                            navController = navController,
+                            onCommentClick = {
+                                selectedPostId = post.id
+                                showBottomSheet = true
+                            }
+                        )
+                    }
                 }
             }
         }
     }
-}
+
+
 
 @Composable
 fun ActionButton(icon: ImageVector, text: String) {
@@ -135,23 +146,34 @@ fun ActionButton(icon: ImageVector, text: String) {
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewsFeedAppNavigation() {
+fun NewsFeedAppNavigation(userPreferences: UserPreferences) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "newsFeed") {
-        composable("newsFeed") {
-            NewsFeedScreen(navController)
-        }
-        composable("comments/{postId}") { backStackEntry ->
-            val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
-            CommentScreen(postId = postId, navController = navController)
-        }
-        composable("profile") {
-                ProfileViewScreen(navController)
+        NavHost(
+            navController = navController,
+            startDestination = "newsFeed",
+        ) {
+            composable("newsFeed") {
+                NewsFeedScreen(navController, userPreferences)
+            }
+            composable("comments/{postId}") { backStackEntry ->
+                val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
+                CommentScreen(postId = postId, navController = navController)
+            }
+            composable("profile") {
+                ProfileViewScreen(navController, context = LocalContext.current)
+            }
+            composable("createPost") {
+                CreatePostScreen(viewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))) {
+                    navController.popBackStack() // Close CreatePostScreen and return to the previous screen
+                }
             }
         }
     }
+
+
 
 
 
@@ -194,7 +216,7 @@ fun NewsFeedScreenPreview(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
-               AddPostSection(navController = navController, onAddPostClick = onCreatePost)
+                AddPostSection(navController = navController, onAddPostClick = onCreatePost)
             }
 
             items(posts, key = { it.id }) { post ->
@@ -243,7 +265,7 @@ fun PreviewCommentItem() {
         likes = 3,
         icon = Icons.Default.Favorite
     )
-   CommentScreen(postId = 1, navController = NavController(LocalContext.current))
+    CommentScreen(postId = 1, navController = NavController(LocalContext.current))
 }
 
 
@@ -253,4 +275,3 @@ fun PreviewCommentItem() {
 fun PreviewActionButton() {
     ActionButton(icon = Icons.Default.Image, text = "Photos")
 }
-

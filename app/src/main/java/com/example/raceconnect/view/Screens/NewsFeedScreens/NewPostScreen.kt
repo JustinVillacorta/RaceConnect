@@ -1,7 +1,7 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
     import ActionButton
-    import NewsFeedViewModel
+    import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
     import androidx.compose.foundation.background
     import androidx.compose.foundation.border
     import androidx.compose.foundation.clickable

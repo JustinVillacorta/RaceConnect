@@ -1,8 +1,10 @@
+package com.example.raceconnect.viewmodel.NewsFeed
+
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.compose.runtime.mutableStateListOf
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.network.RetrofitInstance
@@ -14,9 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
-class NewsFeedViewModel(application: Application) : AndroidViewModel(application) {
-    private val userPreferences = UserPreferences(application)
-
+class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewModel() {
     private val _posts = MutableStateFlow<List<NewsFeedDataClassItem>>(emptyList())
     val posts: StateFlow<List<NewsFeedDataClassItem>> = _posts
 
@@ -32,15 +32,7 @@ class NewsFeedViewModel(application: Application) : AndroidViewModel(application
             try {
                 _isRefreshing.value = true
                 val response = RetrofitInstance.api.getAllPosts()
-
-                val validPosts = response.map { post ->
-                    post.copy(
-                        title = post.title ?: "Untitled Post",
-                        content = post.content ?: "No content available.",
-                        img_url = post.img_url ?: ""
-                    )
-                }
-                _posts.value = validPosts
+                _posts.value = response
             } catch (e: HttpException) {
                 Log.e("NewsFeedViewModel", "Error fetching posts: ${e.message}")
             } finally {
@@ -55,39 +47,30 @@ class NewsFeedViewModel(application: Application) : AndroidViewModel(application
 
     fun addPost(content: String) {
         viewModelScope.launch {
+            val userId = userPreferences.user.first()?.id
+            if (userId == null) {
+                Log.e("NewsFeedViewModel", "User ID is null. Cannot create post.")
+                return@launch
+            }
+
+            val newPost = NewsFeedDataClassItem(
+                id = 0,
+                user_id = userId,
+                title = "You",
+                content = content,
+                img_url = "",
+                like_count = 0,
+                comment_count = 0,
+                repost_count = 0,
+                type = "text",
+                created_at = "",
+                updated_at = ""
+            )
+
             try {
-                val userId = userPreferences.user.first()?.id
-                if (userId == null) {
-                    Log.e("NewsFeedViewModel", "User ID is null. Cannot create post.")
-                    return@launch
-                }
-
-                val newPost = NewsFeedDataClassItem(
-                    id = 0,
-                    user_id = userId,
-                    title = "You",
-                    content = content,
-                    img_url = "",
-                    like_count = 0,
-                    comment_count = 0,
-                    repost_count = 0,
-                    type = "text",
-                    created_at = "",
-                    updated_at = ""
-                )
-
-                // Log the request data
-                Log.d("NewsFeedViewModel", "Sending POST request with data: $newPost")
-
                 val response = RetrofitInstance.api.createPost(newPost)
                 if (response.isSuccessful && response.body() != null) {
-                    val addedPost = response.body()!!
-
-                    // Update the list with the newly added post
-                    _posts.update { currentPosts -> currentPosts + addedPost }
-                    Log.d("NewsFeedViewModel", "Post added successfully: $addedPost")
-
-                    // Fetch the latest posts from the backend to ensure consistency
+                    _posts.update { currentPosts -> currentPosts + response.body()!! }
                     fetchPosts()
                 } else {
                     Log.e("NewsFeedViewModel", "Failed to add post: ${response.errorBody()?.string()}")

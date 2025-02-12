@@ -1,29 +1,38 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
-            import androidx.compose.foundation.Image
-            import androidx.compose.foundation.background
-            import androidx.compose.foundation.layout.*
-            import androidx.compose.foundation.lazy.LazyColumn
-            import androidx.compose.foundation.shape.CircleShape
-            import androidx.compose.foundation.shape.RoundedCornerShape
-            import androidx.compose.material.icons.Icons
-            import androidx.compose.material.icons.filled.*
-            import androidx.compose.material3.*
-            import androidx.compose.runtime.*
-            import androidx.compose.ui.*
-            import androidx.compose.ui.draw.clip
-            import androidx.compose.ui.graphics.Color
-            import androidx.compose.ui.graphics.vector.ImageVector
-            import androidx.compose.ui.layout.ContentScale
-            import androidx.compose.ui.res.painterResource
-            import androidx.compose.ui.text.font.FontWeight
-            import androidx.compose.ui.unit.dp
-            import androidx.navigation.NavController
-            import com.example.raceconnect.R
+import android.content.Context
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.example.raceconnect.R
+import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.users
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileViewScreen(navController: NavController) {
+fun ProfileViewScreen(navController: NavController, context: Context) {
+    val userPreferences = remember { UserPreferences(context) }
+    val user by userPreferences.user.collectAsState(initial = null)
+
     Scaffold(
         content = { padding ->
             Column(
@@ -32,7 +41,7 @@ fun ProfileViewScreen(navController: NavController) {
                     .padding(padding)
                     .padding(horizontal = 16.dp)
             ) {
-                ProfileHeaderSection()
+                ProfileHeaderSection(user)
                 Spacer(modifier = Modifier.height(16.dp))
                 ProfileTabsWithContent()
             }
@@ -41,7 +50,7 @@ fun ProfileViewScreen(navController: NavController) {
 }
 
 @Composable
-fun ProfileHeaderSection() {
+fun ProfileHeaderSection(user: users?) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -61,13 +70,13 @@ fun ProfileHeaderSection() {
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Junnifer Lawrence",
+            text = user?.username ?: "Guest User",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "I'm just a woman",
+            text = user?.email ?: "No email available",
             style = MaterialTheme.typography.bodyLarge,
             color = Color.Gray
         )
@@ -202,13 +211,3 @@ fun VideosSection() {
         Text("Videos Section")
     }
 }
-
-//@Composable
-//fun ProfileViewScreen() {
-//    Box(
-//        modifier = Modifier.fillMaxSize(),
-//        contentAlignment = Alignment.Center
-//    ) {
-//        Text(text = "Profile View", style = MaterialTheme.typography.headlineLarge)
-//    }
-//}

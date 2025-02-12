@@ -1,6 +1,5 @@
 package com.example.raceconnect.view.Screens
 
-
 import NewsFeedAppNavigation
 import NewsFeedScreen
 import NotificationsScreen
@@ -16,11 +15,10 @@ import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.ui.MarketplaceScreen
 import com.example.raceconnect.ui.TopNavBar
 import com.example.raceconnect.view.Activities.TopNavTab
-
-
+import com.example.raceconnect.datastore.UserPreferences
 
 @Composable
-fun MainScreen() {
+fun MainScreen(userPreferences: UserPreferences) {
     val navController = rememberNavController()
 
     Scaffold(
@@ -31,13 +29,11 @@ fun MainScreen() {
             startDestination = TopNavTab.NewsFeed.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(TopNavTab.NewsFeed.route) { NewsFeedAppNavigation() }
-            composable(TopNavTab.Marketplace.route) { MarketplaceScreen() }
+
+          composable(TopNavTab.NewsFeed.route) { NewsFeedAppNavigation(userPreferences = userPreferences) }
+            composable(TopNavTab.Marketplace.route) { MarketplaceScreen(userPreferences = userPreferences) }
             composable(TopNavTab.Notifications.route) { NotificationsScreen() }
             composable(TopNavTab.Profile.route) { ProfileScreen() }
         }
     }
 }
-
-
-

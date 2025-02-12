@@ -1,22 +1,37 @@
+package com.example.raceconnect.viewmodel.Marketplace
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.MarketplaceDataClassItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.network.RetrofitInstance
 
-class MarketplaceViewModel : ViewModel() {
+class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewModel() {
+
     private val _items = MutableStateFlow<List<MarketplaceDataClassItem>>(emptyList())
     val items: StateFlow<List<MarketplaceDataClassItem>> = _items
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing
 
+    private val _currentUserId = MutableStateFlow<Int?>(null)
+    val currentUserId: StateFlow<Int?> = _currentUserId
+
     init {
+        fetchCurrentUser()
         fetchMarketplaceItems()
+    }
+
+    // Fetch user data from DataStore
+    private fun fetchCurrentUser() {
+        viewModelScope.launch {
+            _currentUserId.value = userPreferences.user.first()?.id
+        }
     }
 
     private fun fetchMarketplaceItems() {
@@ -42,13 +57,18 @@ class MarketplaceViewModel : ViewModel() {
         price: String,
         description: String,
         category: String,
-        imageUrl: String,
-        sellerId: Int
+        imageUrl: String
     ) {
         viewModelScope.launch {
+            val sellerId = _currentUserId.value
+            if (sellerId == null) {
+                println("Error: No user logged in, cannot add marketplace item.")
+                return@launch
+            }
+
             try {
                 val newItem = MarketplaceDataClassItem(
-                    id = 0, // Let the backend assign the ID
+                    id = 0, // Let backend assign ID
                     seller_id = sellerId,
                     title = title,
                     description = description,
@@ -64,7 +84,7 @@ class MarketplaceViewModel : ViewModel() {
                 val response = RetrofitInstance.api.createMarketplaceItem(newItem)
 
                 if (response.isSuccessful && response.body() != null) {
-                    fetchMarketplaceItems() // Refresh items after successful addition
+                    fetchMarketplaceItems() // Refresh after successful addition
                     println("Item added successfully: ${response.body()}")
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
