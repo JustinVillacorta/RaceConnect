@@ -1,15 +1,9 @@
-
 @file:Suppress("DEPRECATION")
 
+import android.annotation.SuppressLint
+import android.app.Application
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,26 +12,14 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,28 +27,23 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Comment
 import com.example.raceconnect.model.NewsFeedDataClassItem
-import com.example.raceconnect.view.Screens.NewsFeedScreens.AddPostSection
-import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
-import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
-import com.example.raceconnect.view.Screens.NewsFeedScreens.PostCard
-import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.view.Screens.NewsFeedScreens.*
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewsFeedScreen(
     navController: NavController,
+    application: Application,  // ✅ Pass Application
     userPreferences: UserPreferences
 ) {
-    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
+    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(application, userPreferences))
     val posts by viewModel.posts.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
 
@@ -91,37 +68,34 @@ fun NewsFeedScreen(
             onClose = { showCreatePostScreen = false }
         )
     } else {
-
-            SwipeRefresh(
-                state = rememberSwipeRefreshState(isRefreshing),
-                onRefresh = { viewModel.refreshPosts() }
+        SwipeRefresh(
+            state = rememberSwipeRefreshState(isRefreshing),
+            onRefresh = { viewModel.refreshPosts() }
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item {
-                        AddPostSection(navController = navController, onAddPostClick = { showCreatePostScreen = true })
-                    }
+                item {
+                    AddPostSection(navController = navController, onAddPostClick = { showCreatePostScreen = true })
+                }
 
-                    items(posts, key = { it.id }) { post ->
-                        PostCard(
-                            post = post,
-                            navController = navController,
-                            onCommentClick = {
-                                selectedPostId = post.id
-                                showBottomSheet = true
-                            }
-                        )
-                    }
+                items(posts, key = { it.id }) { post ->
+                    PostCard(
+                        post = post,
+                        navController = navController,
+                        onCommentClick = {
+                            selectedPostId = post.id
+                            showBottomSheet = true
+                        }
+                    )
                 }
             }
         }
     }
-
-
+}
 
 @Composable
 fun ActionButton(icon: ImageVector, text: String) {
@@ -145,46 +119,48 @@ fun ActionButton(icon: ImageVector, text: String) {
     }
 }
 
-
+@SuppressLint("SuspiciousIndentation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewsFeedAppNavigation(userPreferences: UserPreferences) {
+fun NewsFeedAppNavigation(application: Application, userPreferences: UserPreferences) {
     val navController = rememberNavController()
 
-        NavHost(
-            navController = navController,
-            startDestination = "newsFeed",
-        ) {
-            composable("newsFeed") {
-                NewsFeedScreen(navController, userPreferences)
-            }
-            composable("comments/{postId}") { backStackEntry ->
-                val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
-                CommentScreen(postId = postId, navController = navController)
-            }
-            composable("profile") {
-                ProfileViewScreen(navController, context = LocalContext.current)
-            }
-            composable("createPost") {
-                CreatePostScreen(viewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))) {
-                    navController.popBackStack() // Close CreatePostScreen and return to the previous screen
-                }
+    NavHost(
+        navController = navController,
+        startDestination = "newsFeed",
+    ) {
+        composable("newsFeed") {
+            NewsFeedScreen(navController, application, userPreferences)
+        }
+        composable("comments/{postId}") { backStackEntry ->
+            val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
+            CommentScreen(postId = postId, navController = navController)
+        }
+        composable("profile") {
+            ProfileViewScreen(navController, context = LocalContext.current)
+        }
+        composable("createPost") {
+            CreatePostScreen(viewModel = viewModel(factory = NewsFeedViewModelFactory(application, userPreferences))) {
+                navController.popBackStack() // Close CreatePostScreen and return to the previous screen
             }
         }
     }
-
-
-
-
-
-
+}
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewNewsFeedScreen() {
     val mockPosts = listOf(
-        NewsFeedDataClassItem(id = 1, content = "Hello from preview!"),
-        NewsFeedDataClassItem(id = 2, content = "Another preview post!")
+        NewsFeedDataClassItem(id = 1,
+            user_id = 123,
+            title = "Mock Title",
+            content = "This is a mock post content.",
+            img_url = "https://example.com/image.jpg"),
+        NewsFeedDataClassItem(id = 1,
+            user_id = 123,
+            title = "Mock Title",
+            content = "This is a mock post content.",
+            img_url = "https://example.com/image.jpg")
     )
     val navController = rememberNavController()
 
@@ -230,17 +206,17 @@ fun NewsFeedScreenPreview(
     }
 }
 
-//@Preview(showBackground = true)
-//@Composable
-//fun PreviewAddPostSection() {
-//    AddPostSection(onAddPostClick = {})
-//}
-
 @Preview(showBackground = true)
 @Composable
 fun PreviewPostCard() {
     val navController = rememberNavController()
-    val mockPost = NewsFeedDataClassItem(id = 1, content = "This is a mock post content.")
+   val mockPost = NewsFeedDataClassItem(
+       id = 1,
+       user_id = 123,
+       title = "Mock Title",
+       content = "This is a mock post content.",
+       img_url = "https://example.com/image.jpg"
+   )
 
     PostCard(
         post = mockPost,
@@ -267,8 +243,6 @@ fun PreviewCommentItem() {
     )
     CommentScreen(postId = 1, navController = NavController(LocalContext.current))
 }
-
-
 
 @Preview(showBackground = true)
 @Composable

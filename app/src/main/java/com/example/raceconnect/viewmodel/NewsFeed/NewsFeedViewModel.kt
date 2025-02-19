@@ -1,9 +1,9 @@
 package com.example.raceconnect.viewmodel.NewsFeed
 
 import android.app.Application
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
@@ -11,12 +11,15 @@ import com.example.raceconnect.network.RetrofitInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import java.io.File
 
-class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewModel() {
+class NewsFeedViewModel(application: Application, private val userPreferences: UserPreferences) : AndroidViewModel(application) {
     private val _posts = MutableStateFlow<List<NewsFeedDataClassItem>>(emptyList())
     val posts: StateFlow<List<NewsFeedDataClassItem>> = _posts
 
@@ -45,39 +48,92 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         fetchPosts()
     }
 
-    fun addPost(content: String) {
+    fun addPost(content: String, imageUri: Uri?) {
         viewModelScope.launch {
             val userId = userPreferences.user.first()?.id
             if (userId == null) {
-                Log.e("NewsFeedViewModel", "User ID is null. Cannot create post.")
+                Log.e("NewsFeedViewModel", "❌ User ID is null. Cannot create post.")
                 return@launch
             }
 
-            val newPost = NewsFeedDataClassItem(
-                id = 0,
-                user_id = userId,
-                title = "You",
-                content = content,
-                img_url = "",
-                like_count = 0,
-                comment_count = 0,
-                repost_count = 0,
-                type = "text",
-                created_at = "",
-                updated_at = ""
-            )
-
             try {
+                var imageUrl: String? = null
+
+                // ✅ Step 1: Upload image first (if provided)
+                if (imageUri != null) {
+                    imageUrl = uploadImageToServer(imageUri)
+                    if (imageUrl == null) {
+                        Log.e("NewsFeedViewModel", "❌ Image upload failed, skipping post creation")
+                        return@launch
+                    }
+                }
+
+                // ✅ Step 2: Create post with the image URL in the first request
+                val newPost = NewsFeedDataClassItem(
+                    id = 0,
+                    user_id = userId,
+                    title = "You",
+                    content = content,
+                    img_url = imageUrl, // ✅ Attach image URL in the same request
+                    category = "Formula 1",
+                    privacy = "Public",
+                    type = if (imageUri != null) "image" else "text",
+                    post_type = "normal",
+                    like_count = 0,
+                    comment_count = 0,
+                    repost_count = 0,
+                    created_at = "",
+                    updated_at = ""
+                )
+
                 val response = RetrofitInstance.api.createPost(newPost)
+
                 if (response.isSuccessful && response.body() != null) {
-                    _posts.update { currentPosts -> currentPosts + response.body()!! }
+                    val createdPost = response.body()!!
+                    Log.d("NewsFeedViewModel", "✅ Post created successfully: ID = ${createdPost.id}")
+
+                    _posts.update { currentPosts -> currentPosts + createdPost }
                     fetchPosts()
                 } else {
-                    Log.e("NewsFeedViewModel", "Failed to add post: ${response.errorBody()?.string()}")
+                    Log.e("NewsFeedViewModel", "❌ Failed to create post: ${response.errorBody()?.string()}")
                 }
             } catch (e: Exception) {
-                Log.e("NewsFeedViewModel", "Error adding post", e)
+                Log.e("NewsFeedViewModel", "❌ Error adding post", e)
             }
+        }
+    }
+
+    private suspend fun uploadImageToServer(imageUri: Uri): String? {
+        return try {
+            val contentResolver = getApplication<Application>().contentResolver
+            val inputStream = contentResolver.openInputStream(imageUri)
+
+            if (inputStream == null) {
+                Log.e("NewsFeedViewModel", "❌ Failed to open image file: $imageUri")
+                return null
+            }
+
+            // ✅ Convert image to temporary file
+            val tempFile = File.createTempFile("upload_", ".jpg", getApplication<Application>().cacheDir)
+            tempFile.outputStream().use { outputStream -> inputStream.copyTo(outputStream) }
+
+            // ✅ Create RequestBody for image
+            val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), tempFile)
+            val imagePart = MultipartBody.Part.createFormData("image", tempFile.name, requestFile)
+
+            // ✅ Send API request
+            val response = RetrofitInstance.api.uploadPostImage(imagePart)
+
+            if (response.isSuccessful && response.body()?.success == true) {
+                Log.d("NewsFeedViewModel", "✅ Image uploaded successfully: ${response.body()?.imageUrl}")
+                response.body()?.imageUrl
+            } else {
+                Log.e("NewsFeedViewModel", "❌ Image upload failed: ${response.errorBody()?.string()}")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("NewsFeedViewModel", "❌ Error uploading image", e)
+            null
         }
     }
 }

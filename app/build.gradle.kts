@@ -40,6 +40,13 @@ android {
 }
 
 dependencies {
+
+    implementation("io.coil-kt:coil-compose:2.3.0")
+
+    //picasso
+    implementation("com.squareup.picasso:picasso:2.8")
+
+
     // retrofit
     implementation(libs.retrofit)
     implementation(libs.converter.gson)

@@ -3,6 +3,7 @@ package com.example.raceconnect.network
 
 
 
+import com.example.raceconnect.model.ImageUploadResponse
 import com.example.raceconnect.model.LoginRequest
 import com.example.raceconnect.model.LoginResponse
 import com.example.raceconnect.model.MarketplaceDataClassItem
@@ -10,12 +11,17 @@ import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.itemPostRequest
 import com.example.raceconnect.model.itemPostResponse
 import com.example.raceconnect.model.users
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 
 
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 
 interface ApiService {
@@ -32,6 +38,20 @@ interface ApiService {
 
     @POST("posts")
     suspend fun createPost(@Body post: NewsFeedDataClassItem): Response<NewsFeedDataClassItem>
+
+    @Multipart
+    @POST("upload-post-image") // ✅ Ensure this matches the backend route
+    suspend fun uploadPostImage(
+        @Part image: MultipartBody.Part // ✅ Only upload the image first
+    ): Response<ImageUploadResponse>
+
+
+    @PUT("posts/{postId}") // ✅ Ensure this matches your backend route
+    suspend fun updatePost(
+        @Path("postId") postId: Int, // ✅ Send Post ID in URL
+        @Body updateData: Map<String, String> // ✅ Send data as JSON
+    ): Response<Unit> // ✅ Expect empty success response
+
 
 
     @GET("marketplace-items")

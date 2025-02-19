@@ -1,6 +1,10 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
     import ActionButton
+    import android.net.Uri
+    import androidx.activity.compose.rememberLauncherForActivityResult
+    import androidx.activity.result.contract.ActivityResultContracts
+    import androidx.compose.foundation.Image
     import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
     import androidx.compose.foundation.background
     import androidx.compose.foundation.border
@@ -21,8 +25,9 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
     import androidx.compose.ui.text.font.FontWeight
     import androidx.compose.ui.unit.dp
     import androidx.navigation.NavController
+    import coil.compose.rememberAsyncImagePainter
 
-    @Composable
+@Composable
     fun AddPostSection(navController: NavController, onAddPostClick: () -> Unit) {
         Row(
             modifier = Modifier
@@ -65,80 +70,101 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
-        var postText by remember { mutableStateOf("") }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
+    var postText by remember { mutableStateOf("") }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text("Create post", fontWeight = FontWeight.Bold)
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onClose) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    actions = {
-                        Button(
-                            onClick = {
-                                if (postText.isNotEmpty()) {
-                                    viewModel.addPost(postText)
-                                    onClose()
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF696666))
-                        ) {
-                            Text("Publish", color = Color.White)
-                        }
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        selectedImageUri = uri
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text("Create post", fontWeight = FontWeight.Bold)
+                },
+                navigationIcon = {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                )
-            },
-            content = { innerPadding ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(horizontal = 16.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 16.dp)
+                },
+                actions = {
+                    Button(
+                        onClick = {
+                            if (postText.isNotEmpty()) {
+                                viewModel.addPost(postText, selectedImageUri)
+                                onClose()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF696666))
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Profile Picture",
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(Color.Gray)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "testing",
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                        )
-                    }
-                    OutlinedTextField(
-                        value = postText,
-                        onValueChange = { postText = it },
-                        placeholder = { Text("What's new today?") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    )
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ActionButton(icon = Icons.Default.Image, text = "Photos")
-                        ActionButton(icon = Icons.Default.Videocam, text = "Reels")
+                        Text("Publish", color = Color.White)
                     }
                 }
+            )
+        },
+        content = { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "Profile Picture",
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(Color.Gray)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Anonymous",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+
+                // Post Content Input
+                OutlinedTextField(
+                    value = postText,
+                    onValueChange = { postText = it },
+                    placeholder = { Text("What's new today?") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                )
+
+                // Image Preview Section
+                if (selectedImageUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(selectedImageUri),
+                        contentDescription = "Selected Image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .padding(top = 8.dp)
+                    )
+                }
+
+                // Image Picker Button
+                Button(
+                    onClick = { launcher.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Image, contentDescription = "Pick Image")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Select Image")
+                }
             }
-        )
-    }
+        }
+    )
+}

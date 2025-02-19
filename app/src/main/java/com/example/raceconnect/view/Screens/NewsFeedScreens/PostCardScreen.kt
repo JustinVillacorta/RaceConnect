@@ -1,5 +1,6 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
+import android.widget.ImageView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,8 +32,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.squareup.picasso.Callback
+import com.squareup.picasso.Picasso
 
 @Composable
 fun PostCard(post: NewsFeedDataClassItem, navController: NavController, onCommentClick: () -> Unit) {
@@ -78,9 +82,27 @@ fun PostCard(post: NewsFeedDataClassItem, navController: NavController, onCommen
                 style = MaterialTheme.typography.bodyMedium
             )
 
+            // Image Display (if available)
+            if (!post.img_url.isNullOrEmpty()) {
+                AndroidView(factory = { context ->
+                    ImageView(context).apply {
+                        Picasso.get()
+                            .load(post.img_url)
+                            .into(this, object : Callback {
+                                override fun onSuccess() {}
+                                override fun onError(e: Exception?) {
+                                    e?.printStackTrace()
+                                }
+                            })
+                    }
+                }, modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp))
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Reaction Bar (including comment icon to trigger bottom sheet)
+            // Reaction Bar
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Start,
@@ -88,7 +110,7 @@ fun PostCard(post: NewsFeedDataClassItem, navController: NavController, onCommen
             ) {
                 ReactionIcon(icon = Icons.Default.Favorite)
                 Spacer(modifier = Modifier.width(12.dp))
-                ReactionIcon(icon = Icons.Default.ChatBubble, onClick = onCommentClick) // Opens bottom sheet
+                ReactionIcon(icon = Icons.Default.ChatBubble, onClick = onCommentClick)
                 Spacer(modifier = Modifier.width(12.dp))
                 ReactionIcon(icon = Icons.Default.Repeat)
             }
