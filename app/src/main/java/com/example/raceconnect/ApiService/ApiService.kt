@@ -6,8 +6,12 @@ package com.example.raceconnect.network
 import com.example.raceconnect.model.ImageUploadResponse
 import com.example.raceconnect.model.LoginRequest
 import com.example.raceconnect.model.LoginResponse
+import com.example.raceconnect.model.LogoutRequest
+import com.example.raceconnect.model.LogoutResponse
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.model.SignupRequest
+import com.example.raceconnect.model.SignupResponse
 import com.example.raceconnect.model.itemPostRequest
 import com.example.raceconnect.model.itemPostResponse
 import com.example.raceconnect.model.users
@@ -18,6 +22,7 @@ import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -29,8 +34,20 @@ interface ApiService {
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
 
+    @POST("logout")
+    suspend fun logout(@Header("Authorization") authToken: String): Response<LogoutResponse>
+
+
+
+    @POST("users")
+    suspend fun signup(@Body request: SignupRequest): SignupResponse
+
+
     @GET("users/{id}")
     suspend fun getUser(@Path("id") id: Int): users
+
+
+
 
 
     @GET("posts")
@@ -40,9 +57,11 @@ interface ApiService {
     suspend fun createPost(@Body post: NewsFeedDataClassItem): Response<NewsFeedDataClassItem>
 
     @Multipart
-    @POST("upload-post-image") // ✅ Ensure this matches the backend route
+    @POST("posts") // ✅ Ensure this matches the backend route
     suspend fun uploadPostImage(
-        @Part image: MultipartBody.Part // ✅ Only upload the image first
+        @Part image: MultipartBody.Part, // ✅ Only upload the image first
+        @Part("user_id") userId: RequestBody,
+    @Part("content") content: RequestBody
     ): Response<ImageUploadResponse>
 
 

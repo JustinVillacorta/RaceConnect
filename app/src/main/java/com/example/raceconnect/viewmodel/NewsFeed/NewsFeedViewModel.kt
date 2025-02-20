@@ -8,15 +8,17 @@ import androidx.lifecycle.viewModelScope
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.network.RetrofitInstance
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import retrofit2.HttpException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import retrofit2.HttpException
 import java.io.File
 
 class NewsFeedViewModel(application: Application, private val userPreferences: UserPreferences) : AndroidViewModel(application) {
@@ -61,7 +63,7 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
 
                 // ✅ Step 1: Upload image first (if provided)
                 if (imageUri != null) {
-                    imageUrl = uploadImageToServer(imageUri)
+                    imageUrl = uploadImageToServer(imageUri, userId, content)
                     if (imageUrl == null) {
                         Log.e("NewsFeedViewModel", "❌ Image upload failed, skipping post creation")
                         return@launch
@@ -103,7 +105,7 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
         }
     }
 
-    private suspend fun uploadImageToServer(imageUri: Uri): String? {
+    private suspend fun uploadImageToServer(imageUri: Uri, userId: Int, content: String): String? {
         return try {
             val contentResolver = getApplication<Application>().contentResolver
             val inputStream = contentResolver.openInputStream(imageUri)
@@ -114,15 +116,21 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
             }
 
             // ✅ Convert image to temporary file
-            val tempFile = File.createTempFile("upload_", ".jpg", getApplication<Application>().cacheDir)
+            val tempFile = withContext(Dispatchers.IO) {
+                File.createTempFile("upload_", ".jpg", getApplication<Application>().cacheDir)
+            }
             tempFile.outputStream().use { outputStream -> inputStream.copyTo(outputStream) }
 
             // ✅ Create RequestBody for image
             val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), tempFile)
             val imagePart = MultipartBody.Part.createFormData("image", tempFile.name, requestFile)
 
-            // ✅ Send API request
-            val response = RetrofitInstance.api.uploadPostImage(imagePart)
+            // ✅ Create RequestBody for additional fields (Fix applied here)
+            val userIdPart = RequestBody.create("text/plain".toMediaTypeOrNull(), userId.toString())
+            val contentPart = RequestBody.create("text/plain".toMediaTypeOrNull(), content)
+
+            // ✅ Send API request with additional data
+            val response = RetrofitInstance.api.uploadPostImage(imagePart, userIdPart, contentPart)
 
             if (response.isSuccessful && response.body()?.success == true) {
                 Log.d("NewsFeedViewModel", "✅ Image uploaded successfully: ${response.body()?.imageUrl}")

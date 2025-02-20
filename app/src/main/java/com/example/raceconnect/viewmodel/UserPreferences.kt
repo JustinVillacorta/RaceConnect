@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.raceconnect.model.users
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 // Extension property for DataStore
@@ -43,8 +44,15 @@ class UserPreferences(private val context: Context) {
 
     // Clear user data (Logout)
     suspend fun clearUser() {
-        context.dataStore.edit { it.clear() }
+        context.dataStore.edit { preferences ->
+            preferences.clear()
+        }
     }
+
+    suspend fun getToken(): String? {
+        return token.first()
+    }
+
 }
 
 

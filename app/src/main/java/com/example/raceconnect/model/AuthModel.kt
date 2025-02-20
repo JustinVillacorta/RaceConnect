@@ -27,4 +27,23 @@ data class LoginResponse(
     val user: users?,
     val token: String?
 )
+// sign up
+data class SignupRequest(
+    val username: String,
+    val email: String,
+    val password: String
+)
 
+
+data class SignupResponse(
+    val token: String?,
+    val user: users?,
+    val message: String?
+)
+
+
+
+//logout
+
+data class LogoutRequest(val token: String)
+data class LogoutResponse(val message: String)

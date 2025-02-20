@@ -30,7 +30,10 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
     LaunchedEffect(loggedInUser) {
         Log.d("AuthenticationNavHost", "LaunchedEffect triggered with loggedInUser: $loggedInUser")
         loggedInUser?.let { user ->
-            Log.d("AuthenticationNavHost", "Navigating to NewsFeedActivity with user: ${user.username}")
+            Log.d(
+                "AuthenticationNavHost",
+                "Navigating to NewsFeedActivity with user: ${user.username}"
+            )
             val intent = Intent(context, NewsFeedActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
@@ -53,17 +56,21 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
 
         composable("signup") {
             SignupScreen(
-                onSignupClick = { email, password ->
-                    Toast.makeText(context, "Signup not implemented. Please use login.", Toast.LENGTH_SHORT).show()
+                onSignupClick = { username, email, password ->
+                    Log.d(
+                        "AuthenticationNavHost",
+                        "Signup clicked with username: $username, email: $email"
+                    )
+                    viewModel.signUp(username, email, password)
                 },
                 onBackNavigate = {
                     navController.navigate("login")
                 }
             )
         }
-    }
 
-    errorMessage?.let { message ->
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        errorMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
     }
 }
