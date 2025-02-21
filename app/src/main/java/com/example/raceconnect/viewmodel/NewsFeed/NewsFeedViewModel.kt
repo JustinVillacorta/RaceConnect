@@ -5,14 +5,12 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.*
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.network.RetrofitInstance
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -22,32 +20,35 @@ import retrofit2.HttpException
 import java.io.File
 
 class NewsFeedViewModel(application: Application, private val userPreferences: UserPreferences) : AndroidViewModel(application) {
-    private val _posts = MutableStateFlow<List<NewsFeedDataClassItem>>(emptyList())
-    val posts: StateFlow<List<NewsFeedDataClassItem>> = _posts
 
+    // ✅ Paging source with caching
+    private val _pager = MutableStateFlow(createPager())
+    val posts = _pager.flatMapLatest { it.flow.cachedIn(viewModelScope) }
+
+    // ✅ Refresh state (true when refreshing)
     private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    init {
-        fetchPosts()
+    // ✅ Create new pager for reloading
+    private fun createPager(): Pager<Int, NewsFeedDataClassItem> {
+        return Pager(
+            config = PagingConfig(pageSize = 10, prefetchDistance = 2),
+            pagingSourceFactory = { NewsFeedPagingSource() }
+        )
     }
 
-    private fun fetchPosts() {
+    // ✅ Force refresh function
+    fun refreshPosts() {
         viewModelScope.launch {
+            _isRefreshing.value = true
             try {
-                _isRefreshing.value = true
-                val response = RetrofitInstance.api.getAllPosts()
-                _posts.value = response
-            } catch (e: HttpException) {
-                Log.e("NewsFeedViewModel", "Error fetching posts: ${e.message}")
+                _pager.value = createPager() // ✅ Forces reloading posts
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "❌ Error refreshing posts", e)
             } finally {
                 _isRefreshing.value = false
             }
         }
-    }
-
-    fun refreshPosts() {
-        fetchPosts()
     }
 
     fun addPost(content: String, imageUri: Uri?) {
@@ -59,24 +60,13 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
             }
 
             try {
-                var imageUrl: String? = null
-
-                // ✅ Step 1: Upload image first (if provided)
-                if (imageUri != null) {
-                    imageUrl = uploadImageToServer(imageUri, userId, content)
-                    if (imageUrl == null) {
-                        Log.e("NewsFeedViewModel", "❌ Image upload failed, skipping post creation")
-                        return@launch
-                    }
-                }
-
-                // ✅ Step 2: Create post with the image URL in the first request
+                // ✅ Step 1: Create the post first
                 val newPost = NewsFeedDataClassItem(
                     id = 0,
                     user_id = userId,
                     title = "You",
                     content = content,
-                    img_url = imageUrl, // ✅ Attach image URL in the same request
+                    img_url = null,
                     category = "Formula 1",
                     privacy = "Public",
                     type = if (imageUri != null) "image" else "text",
@@ -88,53 +78,64 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
                     updated_at = ""
                 )
 
-                val response = RetrofitInstance.api.createPost(newPost)
+                val postResponse = RetrofitInstance.api.createPost(newPost)
 
-                if (response.isSuccessful && response.body() != null) {
-                    val createdPost = response.body()!!
-                    Log.d("NewsFeedViewModel", "✅ Post created successfully: ID = ${createdPost.id}")
-
-                    _posts.update { currentPosts -> currentPosts + createdPost }
-                    fetchPosts()
-                } else {
-                    Log.e("NewsFeedViewModel", "❌ Failed to create post: ${response.errorBody()?.string()}")
+                if (!postResponse.isSuccessful || postResponse.body() == null) {
+                    Log.e("NewsFeedViewModel", "❌ Failed to create post: ${postResponse.errorBody()?.string()}")
+                    return@launch // Stop execution if post creation fails
                 }
+
+                val postId = postResponse.body()!!.id  // ✅ Get the post ID
+                Log.d("NewsFeedViewModel", "✅ Post created successfully: ID = $postId")
+
+                // ✅ Step 2: Upload image only if post creation is successful
+                if (imageUri != null) {
+                    val imageUrl = uploadImageToServer(imageUri, userId, content, postId)
+                    if (imageUrl != null) {
+                        Log.d("NewsFeedViewModel", "✅ Image uploaded successfully")
+                    } else {
+                        Log.e("NewsFeedViewModel", "❌ Image upload failed")
+                    }
+                }
+
+                // ✅ Step 3: Refresh posts after successful post (with or without image)
+                refreshPosts()
+
             } catch (e: Exception) {
                 Log.e("NewsFeedViewModel", "❌ Error adding post", e)
             }
         }
     }
 
-    private suspend fun uploadImageToServer(imageUri: Uri, userId: Int, content: String): String? {
-        return try {
-            val contentResolver = getApplication<Application>().contentResolver
-            val inputStream = contentResolver.openInputStream(imageUri)
 
-            if (inputStream == null) {
-                Log.e("NewsFeedViewModel", "❌ Failed to open image file: $imageUri")
+
+
+    private suspend fun uploadImageToServer(imageUri: Uri, userId: Int, content: String, postId: Int): String? {
+        return try {
+            if (postId <= 0) {
+                Log.e("NewsFeedViewModel", "❌ Invalid postId. Skipping image upload.")
                 return null
             }
 
-            // ✅ Convert image to temporary file
-            val tempFile = withContext(Dispatchers.IO) {
-                File.createTempFile("upload_", ".jpg", getApplication<Application>().cacheDir)
-            }
+            val contentResolver = getApplication<Application>().contentResolver
+            val inputStream = contentResolver.openInputStream(imageUri) ?: return null
+
+            val tempFile = File.createTempFile("upload_", ".jpg", getApplication<Application>().cacheDir)
             tempFile.outputStream().use { outputStream -> inputStream.copyTo(outputStream) }
 
-            // ✅ Create RequestBody for image
             val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), tempFile)
             val imagePart = MultipartBody.Part.createFormData("image", tempFile.name, requestFile)
 
-            // ✅ Create RequestBody for additional fields (Fix applied here)
+            // ✅ Include post_id, user_id, and content in the request
             val userIdPart = RequestBody.create("text/plain".toMediaTypeOrNull(), userId.toString())
             val contentPart = RequestBody.create("text/plain".toMediaTypeOrNull(), content)
+            val postIdPart = RequestBody.create("text/plain".toMediaTypeOrNull(), postId.toString())
 
-            // ✅ Send API request with additional data
-            val response = RetrofitInstance.api.uploadPostImage(imagePart, userIdPart, contentPart)
+            val response = RetrofitInstance.api.uploadPostImage(imagePart, userIdPart, contentPart, postIdPart)
 
-            if (response.isSuccessful && response.body()?.success == true) {
-                Log.d("NewsFeedViewModel", "✅ Image uploaded successfully: ${response.body()?.imageUrl}")
-                response.body()?.imageUrl
+            if (response.isSuccessful && response.body() != null) {
+                Log.d("NewsFeedViewModel", "✅ Image uploaded successfully: ${response.body()!!.imageUrl}")
+                response.body()!!.imageUrl
             } else {
                 Log.e("NewsFeedViewModel", "❌ Image upload failed: ${response.errorBody()?.string()}")
                 null
@@ -144,4 +145,6 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
             null
         }
     }
+
+
 }

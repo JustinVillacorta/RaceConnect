@@ -28,6 +28,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
     @POST("login")
@@ -51,26 +52,23 @@ interface ApiService {
 
 
     @GET("posts")
-    suspend fun getAllPosts(): List<NewsFeedDataClassItem>
+    suspend fun getAllPosts(
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int
+    ): List<NewsFeedDataClassItem>
+
+    @Multipart
+    @POST("posts")
+    suspend fun uploadPostImage(
+        @Part image: MultipartBody.Part,
+        @Part("user_id") userId: RequestBody,
+        @Part("content") content: RequestBody,
+        @Part("post_id") post_id: RequestBody
+
+    ): Response<ImageUploadResponse>
 
     @POST("posts")
     suspend fun createPost(@Body post: NewsFeedDataClassItem): Response<NewsFeedDataClassItem>
-
-    @Multipart
-    @POST("posts") // ✅ Ensure this matches the backend route
-    suspend fun uploadPostImage(
-        @Part image: MultipartBody.Part, // ✅ Only upload the image first
-        @Part("user_id") userId: RequestBody,
-    @Part("content") content: RequestBody
-    ): Response<ImageUploadResponse>
-
-
-    @PUT("posts/{postId}") // ✅ Ensure this matches your backend route
-    suspend fun updatePost(
-        @Path("postId") postId: Int, // ✅ Send Post ID in URL
-        @Body updateData: Map<String, String> // ✅ Send data as JSON
-    ): Response<Unit> // ✅ Expect empty success response
-
 
 
     @GET("marketplace-items")

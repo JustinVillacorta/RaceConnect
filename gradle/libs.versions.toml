@@ -19,12 +19,14 @@ navigationCompose = "2.8.5"
 media3CommonKtx = "1.5.1"
 media3Exoplayer = "1.5.1"
 media3Ui = "1.5.1"
+pagingRuntimeKtx = "3.1.1"
 
 [libraries]
 accompanist-swiperefresh = { module = "com.google.accompanist:accompanist-swiperefresh", version.ref = "accompanistSwiperefresh" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
+androidx-paging-runtime-ktx = { module = "androidx.paging:paging-runtime-ktx", version.ref = "pagingRuntimeKtx" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
