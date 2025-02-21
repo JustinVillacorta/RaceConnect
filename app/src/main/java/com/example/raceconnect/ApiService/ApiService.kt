@@ -10,6 +10,7 @@ import com.example.raceconnect.model.LogoutRequest
 import com.example.raceconnect.model.LogoutResponse
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.model.PostResponse
 import com.example.raceconnect.model.SignupRequest
 import com.example.raceconnect.model.SignupResponse
 import com.example.raceconnect.model.itemPostRequest
@@ -59,16 +60,16 @@ interface ApiService {
 
     @Multipart
     @POST("posts")
-    suspend fun uploadPostImage(
-        @Part image: MultipartBody.Part,
+    suspend fun createPostWithImage(
         @Part("user_id") userId: RequestBody,
         @Part("content") content: RequestBody,
-        @Part("post_id") post_id: RequestBody
-
-    ): Response<ImageUploadResponse>
-
-    @POST("posts")
-    suspend fun createPost(@Body post: NewsFeedDataClassItem): Response<NewsFeedDataClassItem>
+        @Part("title") title: RequestBody,
+        @Part("category") category: RequestBody,
+        @Part("privacy") privacy: RequestBody,
+        @Part("type") type: RequestBody,
+        @Part("post_type") postType: RequestBody,
+        @Part image: MultipartBody.Part? // Nullable for text-only posts
+    ): Response<PostResponse>
 
 
     @GET("marketplace-items")

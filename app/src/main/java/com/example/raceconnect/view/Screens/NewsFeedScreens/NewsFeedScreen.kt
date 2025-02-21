@@ -24,7 +24,7 @@
             import androidx.navigation.compose.*
             import androidx.paging.LoadState
             import androidx.paging.compose.collectAsLazyPagingItems
-            import androidx.paging.compose.items
+            import androidx.compose.foundation.lazy.items
             import com.example.raceconnect.datastore.UserPreferences
             import com.example.raceconnect.model.NewsFeedDataClassItem
             import com.example.raceconnect.view.Screens.NewsFeedScreens.*
@@ -78,7 +78,8 @@
                                 AddPostSection(navController = navController, onAddPostClick = { showCreatePostScreen = true })
                             }
 
-                            items(posts) { post ->
+                            items(posts.itemCount) { index ->
+                                val post = posts[index]
                                 post?.let {
                                     PostCard(
                                         post = it,

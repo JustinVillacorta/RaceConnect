@@ -3,22 +3,27 @@ package com.example.raceconnect.model
 import androidx.compose.ui.graphics.vector.ImageVector
 
 data class NewsFeedDataClassItem(
-    val id: Int = 0,  // Auto-increment in DB
-    val user_id: Int,  // Foreign key (Must exist in Users table)
-    val title: String?,  // Optional title
-    val content: String,  // Required
-    val img_url: String?,  // Optional image URL
-    val like_count: Int = 0,  // Default 0
-    val comment_count: Int = 0,  // Default 0
-    val repost_count: Int = 0,  // Default 0
-    val category: String = "Formula 1",  // Must match ENUM values
-    val privacy: String = "Public",  // Must match ENUM values
-    val type: String = "text",  // Must match ENUM values
-    val post_type: String = "normal",  // Can be "announcement" or "normal"
-    val created_at: String = "",  // Timestamp auto-filled in DB
-    val updated_at: String = ""  // Timestamp auto-updates in DB
+    val id: Int = 0,
+    val user_id: Int,
+    val title: String?,
+    val content: String,
+    val img_url: String?,
+    val like_count: Int = 0,
+    val comment_count: Int = 0,
+    val repost_count: Int = 0,
+    val category: String = "Formula 1",
+    val privacy: String = "Public",
+    val type: String = "text",
+    val post_type: String = "normal",
+    val created_at: String = "",
+    val updated_at: String = ""
 )
 
+data class PostResponse(
+    val message: String,
+    val post_id: String,  // Matches API response type
+    val image_urls: List<String>
+)
 
 
 
