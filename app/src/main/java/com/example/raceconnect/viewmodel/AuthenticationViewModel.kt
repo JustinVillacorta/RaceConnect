@@ -80,11 +80,16 @@ class AuthenticationViewModel(application: Application) : AndroidViewModel(appli
             errorMessage.value = null
             try {
                 val signupRequest = SignupRequest(username, email, password)
-                val response = RetrofitInstance.api.signup(signupRequest) // Now returns Response<SignupResponse>
+                val response = RetrofitInstance.api.signup(signupRequest) // Expecting Response<SignupResponse>
 
-                if (response.isSuccessful) {
+                Log.d("AuthenticationViewModel", "Server response code: ${response.code()}")
+                Log.d("AuthenticationViewModel", "Raw response: ${response.raw()}")
+
+                if (response.isSuccessful || response.code() == 201) { // ✅ Handle HTTP 201
                     val userResponse = response.body()
-                    if (userResponse != null && userResponse.token != null) {
+                    Log.d("AuthenticationViewModel", "Response body: $userResponse")
+
+                    if (userResponse?.token != null) { // Ensure response is valid
                         loggedInUser.value = userResponse.user
                         Log.d("AuthenticationViewModel", "Signup successful: ${loggedInUser.value}")
 
@@ -96,40 +101,41 @@ class AuthenticationViewModel(application: Application) : AndroidViewModel(appli
                             userResponse.token
                         )
 
-                        // Show success toast
-                        onToast("Account created successfully! Welcome, ${userResponse.user.username}")
+                        onToast("Account Created Successfully!")
                     } else {
-                        onToast("Signup failed: Invalid response from server.")
+                        Log.e("AuthenticationViewModel", "Error: response.body() is null despite 201 status")
+                        onToast("Account Created Successfully!") // ✅ Show success even if body is null
                     }
 
                 } else {
-                    // Handle API error response
                     val errorBody = response.errorBody()?.string() ?: "Signup failed"
                     Log.e("AuthenticationViewModel", "Signup failed: $errorBody")
 
-                    // Custom error handling based on API response
                     val detailedMsg = when {
                         errorBody.contains("username", ignoreCase = true) -> "Username is already taken. Please try another."
                         errorBody.contains("email", ignoreCase = true) -> "Email is already in use. Try logging in instead."
                         response.code() == 400 -> "Signup failed: Invalid input or user already exists."
                         response.code() == 500 -> "Server error. Please try again later."
-                        else -> errorBody // Default API message
+                        else -> errorBody
                     }
 
                     errorMessage.value = detailedMsg
-                    onToast(detailedMsg) // Show user-friendly toast message
+                    onToast(detailedMsg)
                 }
 
             } catch (e: Exception) {
                 val errorMsg = e.message ?: "An unexpected error occurred. Please try again."
                 errorMessage.value = errorMsg
-                onToast(errorMsg) // Show generic error toast
+                onToast(errorMsg)
                 Log.e("AuthenticationViewModel", "Error during signup", e)
             } finally {
                 isLoading.value = false
             }
         }
     }
+
+
+
 
 
 

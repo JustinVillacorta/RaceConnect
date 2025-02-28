@@ -61,7 +61,6 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
                 val typePart = RequestBody.create("text/plain".toMediaTypeOrNull(), if (imageUri != null) "image" else "text")
                 val postTypePart = RequestBody.create("text/plain".toMediaTypeOrNull(), "normal")
 
-                // ✅ Convert image to MultipartBody if available
                 val imagePart = imageUri?.let { uri ->
                     val contentResolver = getApplication<Application>().contentResolver
                     val inputStream = contentResolver.openInputStream(uri) ?: return@let null
@@ -73,13 +72,15 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
                     MultipartBody.Part.createFormData("image", tempFile.name, requestFile)
                 }
 
-                // ✅ Call API to create post with image (if available)
                 val response = RetrofitInstance.api.createPostWithImage(
                     userIdPart, contentPart, titlePart, categoryPart, privacyPart, typePart, postTypePart, imagePart
                 )
 
                 if (response.isSuccessful) {
-                    Log.d("NewsFeedViewModel", "✅ Post created successfully")
+                    val postResponse = response.body()
+                    val imageUrl = postResponse?.image_urls  // Extract the image URL from response
+
+                    Log.d("NewsFeedViewModel", "✅ Post created successfully, Image URL: $imageUrl")
                     refreshPosts()
                 } else {
                     Log.e("NewsFeedViewModel", "❌ Failed to create post: ${response.errorBody()?.string()}")
@@ -90,5 +91,6 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
             }
         }
     }
+
 
 }
