@@ -36,7 +36,7 @@ fun MainScreen(userPreferences: UserPreferences) {
               NewsFeedAppNavigation(application = application, userPreferences = userPreferences) }
             composable(TopNavTab.Marketplace.route) { MarketplaceScreen(userPreferences = userPreferences) }
             composable(TopNavTab.Notifications.route) { NotificationsScreen() }
-            composable(TopNavTab.Profile.route) { ProfileScreen() }
+            composable(TopNavTab.Profile.route) { ProfileScreen(onLogoutSuccess = { navController.navigate(TopNavTab.NewsFeed.route) }) }
         }
     }
 }

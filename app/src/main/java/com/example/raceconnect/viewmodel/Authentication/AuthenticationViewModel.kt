@@ -149,8 +149,7 @@ class AuthenticationViewModel(application: Application) : AndroidViewModel(appli
     }
 
 
-    // Logout and Clear Data
-    fun logout() {
+    fun logout(onLogoutResult: () -> Unit) {
         viewModelScope.launch {
             try {
                 val token = withContext(Dispatchers.IO) { userPreferences.getToken() }
@@ -159,26 +158,30 @@ class AuthenticationViewModel(application: Application) : AndroidViewModel(appli
                     val authHeader = "Bearer $token"
                     Log.d("AuthenticationViewModel", "Sending logout request with Authorization: $authHeader")
 
-                    val response = RetrofitInstance.api.logout(authHeader) // Send token in header
+                    val response = RetrofitInstance.api.logout(authHeader)
 
                     if (response.isSuccessful) {
                         userPreferences.clearUser()
                         loggedInUser.value = null
-                        Log.d("AuthenticationViewModel", "User logged out successfully")
+                        Log.d("AuthenticationViewModel", "✅ User logged out successfully")
+                        onLogoutResult() // ✅ Trigger navigation
                     } else {
-                        val errorResponse = response.errorBody()?.string()
-                        Log.e("AuthenticationViewModel", "Logout failed: $errorResponse")
+                        val errorResponse = response.errorBody()?.string() ?: "Unknown error"
+                        Log.e("AuthenticationViewModel", "❌ Logout failed: $errorResponse")
                     }
                 } else {
-                    Log.d("AuthenticationViewModel", "No token found, clearing session")
+                    Log.d("AuthenticationViewModel", "⚠️ No token found, clearing session")
                     userPreferences.clearUser()
                     loggedInUser.value = null
+                    onLogoutResult() // ✅ Trigger navigation
                 }
             } catch (e: Exception) {
-                Log.e("AuthenticationViewModel", "Error during logout", e)
+                Log.e("AuthenticationViewModel", "❌ Error during logout", e)
             }
         }
     }
+
+
 
 
 

@@ -18,8 +18,13 @@ import com.example.raceconnect.R
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 
 @Composable
-fun ProfileScreen(viewModel: AuthenticationViewModel = viewModel()) {
+fun ProfileScreen(
+    viewModel: AuthenticationViewModel = viewModel(),
+    onLogoutSuccess: () -> Unit // ✅ Callback to navigate after logout
+) {
     val user by viewModel.loggedInUser.collectAsState()
+    var showLogoutDialog by remember { mutableStateOf(false) } // ✅ State for showing logout confirmation dialog
+    var logoutErrorMessage by remember { mutableStateOf<String?>(null) } // ✅ State for logout error message
 
     Column(
         modifier = Modifier
@@ -96,11 +101,11 @@ fun ProfileScreen(viewModel: AuthenticationViewModel = viewModel()) {
 
         Spacer(modifier = Modifier.weight(1f)) // Push the logout button to the bottom
 
-        // Logout Button
+        // Logout Button with Confirmation Dialog
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { viewModel.logout() }
+                .clickable { showLogoutDialog = true } // ✅ Show confirmation dialog
                 .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -116,6 +121,44 @@ fun ProfileScreen(viewModel: AuthenticationViewModel = viewModel()) {
                 color = Color.Red
             )
         }
+
+// ✅ Logout Confirmation Dialog
+        if (showLogoutDialog) {
+            AlertDialog(
+                onDismissRequest = { showLogoutDialog = false },
+                title = { Text("Confirm Logout") },
+                text = { Text("Do you want to log out?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showLogoutDialog = false
+                            viewModel.logout {
+                                onLogoutSuccess() // ✅ Navigate to login screen
+                            }
+                        }
+                    ) {
+                        Text("Yes")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showLogoutDialog = false }
+                    ) {
+                        Text("No")
+                    }
+                }
+            )
+        }
+
+
+        // ✅ Show Logout Error Message
+        logoutErrorMessage?.let { errorMsg ->
+            Text(
+                text = errorMsg,
+                color = Color.Red,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
     }
 }
 
@@ -125,13 +168,13 @@ fun ProfileOptionItem(iconResId: Int, text: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 8.dp),
+            .padding(vertical = 12.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             painter = painterResource(id = iconResId),
             contentDescription = text,
-            tint = MaterialTheme.colorScheme.onSurface,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))

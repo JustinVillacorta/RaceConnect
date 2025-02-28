@@ -16,11 +16,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.users
@@ -210,4 +213,49 @@ fun VideosSection() {
     ) {
         Text("Videos Section")
     }
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewProfileViewScreen() {
+    ProfileViewScreen(navController = rememberNavController(), context = LocalContext.current)
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewProfileHeaderSection() {
+    ProfileHeaderSection(
+        user = users(id = 1, username = "John Doe", email = "johndoe@example.com")
+    )
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewProfileTabsWithContent() {
+    ProfileTabsWithContent()
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewPostsSection() {
+    PostsSection()
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewPostItem() {
+    PostItem(
+        username = "Jane Doe",
+        content = "Hello world! Enjoying my day.",
+        timestamp = "2h ago",
+        imageRes = R.drawable.baseline_ondemand_video_24
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewVideosSection() {
+    VideosSection()
 }
