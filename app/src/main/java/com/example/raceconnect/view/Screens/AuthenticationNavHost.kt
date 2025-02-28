@@ -55,19 +55,25 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
         }
 
         composable("signup") {
+
             SignupScreen(
-                onSignupClick = { username, email, password ->
+                onSignupClick = { ctx, username, email, password ->  // ✅ Match function signature
                     Log.d(
                         "AuthenticationNavHost",
                         "Signup clicked with username: $username, email: $email"
                     )
-                    viewModel.signUp(username, email, password)
+
+                    // Call signUp function with context and a toast message callback
+                    viewModel.signUp(ctx, username, email, password) { message ->
+                        Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+                    }
                 },
                 onBackNavigate = {
                     navController.navigate("login")
                 }
             )
         }
+
 
         errorMessage?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()

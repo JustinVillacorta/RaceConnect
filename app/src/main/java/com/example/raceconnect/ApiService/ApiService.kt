@@ -42,7 +42,8 @@ interface ApiService {
 
 
     @POST("users")
-    suspend fun signup(@Body request: SignupRequest): SignupResponse
+    suspend fun signup(@Body request: SignupRequest): Response<SignupResponse>
+
 
 
     @GET("users/{id}")

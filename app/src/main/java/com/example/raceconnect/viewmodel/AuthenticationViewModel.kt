@@ -1,7 +1,9 @@
 package com.example.raceconnect.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.raceconnect.datastore.UserPreferences
@@ -72,38 +74,64 @@ class AuthenticationViewModel(application: Application) : AndroidViewModel(appli
     }
     // sign up
 
-    fun signUp(username: String, email: String, password: String) {
+    fun signUp(context: Context, username: String, email: String, password: String, onToast: (String) -> Unit) {
         viewModelScope.launch {
             isLoading.value = true
             errorMessage.value = null
             try {
                 val signupRequest = SignupRequest(username, email, password)
-                val response = RetrofitInstance.api.signup(signupRequest)
+                val response = RetrofitInstance.api.signup(signupRequest) // Now returns Response<SignupResponse>
 
-                if (response.token != null && response.user != null) {
-                    loggedInUser.value = response.user
-                    Log.d("AuthenticationViewModel", "Signup successful: ${loggedInUser.value}")
+                if (response.isSuccessful) {
+                    val userResponse = response.body()
+                    if (userResponse != null && userResponse.token != null) {
+                        loggedInUser.value = userResponse.user
+                        Log.d("AuthenticationViewModel", "Signup successful: ${loggedInUser.value}")
 
-                    // Save user data to DataStore
-                    userPreferences.saveUser(
-                        response.user.id,
-                        response.user.username,
-                        response.user.email,
-                        response.token
-                    )
+                        // Save user data to DataStore
+                        userPreferences.saveUser(
+                            userResponse.user!!.id,
+                            userResponse.user!!.username,
+                            userResponse.user!!.email,
+                            userResponse.token
+                        )
+
+                        // Show success toast
+                        onToast("Account created successfully! Welcome, ${userResponse.user.username}")
+                    } else {
+                        onToast("Signup failed: Invalid response from server.")
+                    }
+
                 } else {
-                    errorMessage.value = response.message ?: "Signup failed"
-                    Log.d("AuthenticationViewModel", "Signup failed: ${response.message}")
+                    // Handle API error response
+                    val errorBody = response.errorBody()?.string() ?: "Signup failed"
+                    Log.e("AuthenticationViewModel", "Signup failed: $errorBody")
+
+                    // Custom error handling based on API response
+                    val detailedMsg = when {
+                        errorBody.contains("username", ignoreCase = true) -> "Username is already taken. Please try another."
+                        errorBody.contains("email", ignoreCase = true) -> "Email is already in use. Try logging in instead."
+                        response.code() == 400 -> "Signup failed: Invalid input or user already exists."
+                        response.code() == 500 -> "Server error. Please try again later."
+                        else -> errorBody // Default API message
+                    }
+
+                    errorMessage.value = detailedMsg
+                    onToast(detailedMsg) // Show user-friendly toast message
                 }
 
             } catch (e: Exception) {
-                errorMessage.value = e.message ?: "An unexpected error occurred"
+                val errorMsg = e.message ?: "An unexpected error occurred. Please try again."
+                errorMessage.value = errorMsg
+                onToast(errorMsg) // Show generic error toast
                 Log.e("AuthenticationViewModel", "Error during signup", e)
             } finally {
                 isLoading.value = false
             }
         }
     }
+
+
 
 
 
