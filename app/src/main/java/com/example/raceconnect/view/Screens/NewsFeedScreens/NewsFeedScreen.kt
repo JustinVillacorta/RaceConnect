@@ -44,14 +44,25 @@ fun NewsFeedScreen(
     val posts = viewModel.posts.collectAsLazyPagingItems()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val postLikes by viewModel.postLikes.collectAsState()
-    val likeCounts by viewModel.likeCounts.collectAsState() // ✅ Track like counts
+    val likeCounts by viewModel.likeCounts.collectAsState()
+    val newPostTrigger by viewModel.newPostTrigger.collectAsState() // ✅ Listen for new post events
 
+    // State to manage showing the create post modal
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showCreatePostScreen by remember { mutableStateOf(false) }
 
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
+    // **Trigger refresh when a new post is added**
+    LaunchedEffect(newPostTrigger) {
+        if (newPostTrigger) {
+            viewModel.refreshPosts()
+            viewModel.resetNewPostTrigger() // ✅ Reset the trigger
+        }
+    }
+
+    // Show Comments Modal Bottom Sheet
     if (showBottomSheet) {
         ModalBottomSheet(
             sheetState = sheetState,
@@ -61,80 +72,91 @@ fun NewsFeedScreen(
         }
     }
 
+    // Show Create Post Modal Bottom Sheet
     if (showCreatePostScreen) {
-        CreatePostScreen(
-            viewModel = viewModel,
-            onClose = { showCreatePostScreen = false }
-        )
-    } else {
-        SwipeRefresh(
-            state = rememberSwipeRefreshState(isRefreshing),
-            onRefresh = { viewModel.refreshPosts() }
+        ModalBottomSheet(
+            sheetState = sheetState,
+            onDismissRequest = { showCreatePostScreen = false }
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                item {
-                    AddPostSection(navController = navController, onAddPostClick = { showCreatePostScreen = true })
-                }
+            CreatePostScreen(
+                viewModel = viewModel,
+                onClose = { showCreatePostScreen = false }
+            )
+        }
+    }
 
-                items(posts.itemCount) { index ->
-                    val post = posts[index]
-                    post?.let {
-                        LaunchedEffect(it.id) { // ✅ Fetch likes when post is displayed
-                            viewModel.fetchPostLikes(it.id)
-                        }
+    // Main News Feed UI
+    SwipeRefresh(
+        state = rememberSwipeRefreshState(isRefreshing),
+        onRefresh = { viewModel.refreshPosts() }
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Add Post Section (Opens CreatePostScreen)
+            item {
+                AddPostSection(navController = navController, onAddPostClick = { showCreatePostScreen = true })
+            }
 
-                        PostCard(
-                            post = it.copy(
-                                isLiked = postLikes[it.id] ?: false,
-                                like_count = likeCounts[it.id] ?: it.like_count // ✅ Update like count dynamically
-                            ),
-                            navController = navController,
-                            onCommentClick = {
-                                selectedPostId = it.id
-                                showBottomSheet = true
-                            },
-                            onLikeClick = { isLiked ->
-                                if (isLiked) {
-                                    Log.d("NewsFeedScreen", "❤️ Liking post ID: ${it.id}")
-                                    viewModel.toggleLike(it.id, it.user_id)
-                                } else {
-                                    Log.d("NewsFeedScreen", "💔 Unliking post ID: ${it.id}")
-                                    viewModel.unlikePost(it.id)
-                                }
-                            }
-                        )
+            // Render Posts
+            items(posts.itemCount) { index ->
+                val post = posts[posts.itemCount - 1 - index]
+                post?.let {
+                    LaunchedEffect(it.id) {
+                        viewModel.fetchPostLikes(it.id)
                     }
-                }
 
-                // ✅ Loading Indicator for Pagination
-                posts.apply {
-                    when (loadState.append) {
-                        is LoadState.Loading -> {
-                            item {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp)
-                                )
+                    PostCard(
+                        post = it.copy(
+                            isLiked = postLikes[it.id] ?: false,
+                            like_count = likeCounts[it.id] ?: it.like_count
+                        ),
+                        navController = navController,
+                        onCommentClick = {
+                            selectedPostId = it.id
+                            showBottomSheet = true
+                        },
+                        onLikeClick = { isLiked ->
+                            if (isLiked) {
+                                Log.d("NewsFeedScreen", "❤️ Liking post ID: ${it.id}")
+                                viewModel.toggleLike(it.id, it.user_id)
+                            } else {
+                                Log.d("NewsFeedScreen", "💔 Unliking post ID: ${it.id}")
+                                viewModel.unlikePost(it.id)
                             }
                         }
-                        is LoadState.Error -> {
-                            item {
-                                Text(text = "Error loading posts", color = Color.Red)
-                            }
+                    )
+                }
+            }
+
+            // Loading Indicator for Pagination
+            posts.apply {
+                when (loadState.append) {
+                    is LoadState.Loading -> {
+                        item {
+                            CircularProgressIndicator(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp)
+                            )
                         }
-                        is LoadState.NotLoading -> {
-                            // No additional UI needed for this state
+                    }
+                    is LoadState.Error -> {
+                        item {
+                            Text(text = "Error loading posts", color = Color.Red)
                         }
+                    }
+                    is LoadState.NotLoading -> {
+                        // No additional UI needed
                     }
                 }
             }
         }
     }
 }
+
+
 
 
 

@@ -14,8 +14,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.R
 import com.example.raceconnect.view.Activities.TopNavTab
 
@@ -29,17 +33,19 @@ fun TopNavBar(navController: NavController, title: String = "RaceConnect") {
         TopNavTab.Profile
     )
 
+    // Observe navigation state
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
     Column {
         // Top App Bar
         TopAppBar(
             title = {
                 Text(
-                    text = "RaceConnect",
+                    text = title,
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             },
-
             actions = {
                 IconButton(onClick = { /* Handle search */ }) {
                     Icon(
@@ -50,7 +56,7 @@ fun TopNavBar(navController: NavController, title: String = "RaceConnect") {
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.primary,
+                containerColor = Color.Red,
                 titleContentColor = MaterialTheme.colorScheme.onPrimary
             )
         )
@@ -71,14 +77,24 @@ fun TopNavBar(navController: NavController, title: String = "RaceConnect") {
                     Icon(
                         painter = painterResource(id = item.icon),
                         contentDescription = item.title,
-                        tint = if (navController.currentDestination?.route == item.route) {
-                            MaterialTheme.colorScheme.primary
+                        tint = if (currentRoute == item.route) {
+                            Color.Red // Active state (Red)
                         } else {
-                            MaterialTheme.colorScheme.onSurface
+                            MaterialTheme.colorScheme.onSurface // Default state
                         }
                     )
                 }
             }
         }
     }
+}
+
+
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewTopNavBar() {
+    val navController = rememberNavController()
+
+    TopNavBar(navController = navController, title = "RaceConnect")
 }

@@ -63,11 +63,6 @@ interface ApiService {
 
 
 
-
-
-
-
-
     @GET("posts")
     suspend fun getAllPosts(
         @Query("limit") limit: Int,

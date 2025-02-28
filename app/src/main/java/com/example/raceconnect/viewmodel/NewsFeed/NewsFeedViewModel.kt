@@ -53,6 +53,14 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
         }
     }
 
+    fun resetNewPostTrigger() {
+        _newPostTrigger.value = false
+    }
+
+
+    private val _newPostTrigger = MutableStateFlow(false) // ✅ Tracks new posts
+    val newPostTrigger: StateFlow<Boolean> = _newPostTrigger.asStateFlow()
+
     fun addPost(content: String, imageUri: Uri?) {
         viewModelScope.launch {
             val userId = userPreferences.user.first()?.id ?: return@launch
@@ -83,10 +91,9 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
 
                 if (response.isSuccessful) {
                     val postResponse = response.body()
-                    val imageUrl = postResponse?.image_urls  // Extract the image URL from response
+                    Log.d("NewsFeedViewModel", "✅ Post created successfully, ID: ${postResponse?.post_id}")
 
-                    Log.d("NewsFeedViewModel", "✅ Post created successfully, Image URL: $imageUrl")
-                    refreshPosts()
+                    _newPostTrigger.value = true // ✅ Notify the screen to refresh
                 } else {
                     Log.e("NewsFeedViewModel", "❌ Failed to create post: ${response.errorBody()?.string()}")
                 }
@@ -106,10 +113,12 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
                 if (response.isSuccessful) {
                     val likes = response.body() ?: emptyList()
                     val isLiked = likes.any { it.userId == userId }
-                    val likeCount = likes.size // ✅ Track total likes
+                    val likeCount = likes.size
 
-                    _postLikes.value = _postLikes.value + (postId to isLiked)
-                    _likeCounts.value = _likeCounts.value + (postId to likeCount)
+                    if (_postLikes.value.containsKey(postId)) { // ✅ Prevent overriding newly added posts
+                        _postLikes.value = _postLikes.value + (postId to isLiked)
+                        _likeCounts.value = _likeCounts.value + (postId to likeCount)
+                    }
                 } else {
                     Log.e("NewsFeedViewModel", "❌ Failed to fetch likes: ${response.errorBody()?.string()}")
                 }
@@ -118,6 +127,7 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
             }
         }
     }
+
 
     fun toggleLike(postId: Int, ownerId: Int) {
         viewModelScope.launch {
@@ -130,38 +140,56 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
                     "owner_id" to ownerId
                 )
 
+                // ✅ Optimistic UI update before sending API request
+                _postLikes.value = _postLikes.value + (postId to true)
+                _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) + 1)
+
                 val response = RetrofitInstance.api.likePost(requestBody)
 
-                if (response.isSuccessful) {
-                    Log.d("NewsFeedViewModel", "✅ Like added")
-                    refreshPosts()
-                } else {
+                if (!response.isSuccessful) {
                     Log.e("NewsFeedViewModel", "❌ Failed to like post: ${response.errorBody()?.string()}")
+                    // Revert the UI update if API call fails
+                    _postLikes.value = _postLikes.value + (postId to false)
+                    _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) - 1)
+                } else {
+                    Log.d("NewsFeedViewModel", "✅ Like added successfully")
                 }
-
             } catch (e: Exception) {
                 Log.e("NewsFeedViewModel", "❌ Error liking post", e)
+                // Revert UI update on error
+                _postLikes.value = _postLikes.value + (postId to false)
+                _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) - 1)
             }
         }
     }
 
-    fun unlikePost(likeId: Int) {
+
+    fun unlikePost(postId: Int) {
         viewModelScope.launch {
             try {
-                val response = RetrofitInstance.api.unlikePost(likeId)
+                // ✅ Optimistic UI update before sending API request
+                _postLikes.value = _postLikes.value + (postId to false)
+                _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) - 1)
 
-                if (response.isSuccessful) {
-                    Log.d("NewsFeedViewModel", "✅ Post unliked")
-                    refreshPosts()
-                } else {
+                val response = RetrofitInstance.api.unlikePost(postId)
+
+                if (!response.isSuccessful) {
                     Log.e("NewsFeedViewModel", "❌ Failed to unlike post: ${response.errorBody()?.string()}")
+                    // Revert the UI update if API call fails
+                    _postLikes.value = _postLikes.value + (postId to true)
+                    _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) - 1)
+                } else {
+                    Log.d("NewsFeedViewModel", "✅ Post unliked successfully")
                 }
-
             } catch (e: Exception) {
                 Log.e("NewsFeedViewModel", "❌ Error unliking post", e)
+                // Revert UI update on error
+                _postLikes.value = _postLikes.value + (postId to true)
+                _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) - 1)
             }
         }
     }
+
 
 
 
