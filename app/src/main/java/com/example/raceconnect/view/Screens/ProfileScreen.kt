@@ -15,7 +15,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.raceconnect.R
-import com.example.raceconnect.viewmodel.AuthenticationViewModel
+import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 
 @Composable
 fun ProfileScreen(viewModel: AuthenticationViewModel = viewModel()) {

@@ -47,3 +47,24 @@ data class SignupResponse(
 
 data class LogoutRequest(val token: String)
 data class LogoutResponse(val message: String)
+
+
+// forgot password
+
+data class ForgotPasswordRequest(
+    val email: String
+)
+
+data class ResetPasswordRequest(
+    val email: String,
+    val otp: String,
+    val newPassword: String
+)
+
+data class ApiResponse(
+    val message: String
+)
+
+
+
+

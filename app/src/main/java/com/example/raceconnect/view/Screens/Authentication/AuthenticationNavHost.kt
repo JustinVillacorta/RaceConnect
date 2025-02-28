@@ -1,4 +1,4 @@
-package com.example.raceconnect.view.Screens
+package com.example.raceconnect.view.Screens.Authentication
 
 import android.content.Intent
 import android.util.Log
@@ -12,7 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.view.Activities.NewsFeedActivity
-import com.example.raceconnect.viewmodel.AuthenticationViewModel
+import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.ui.LoginScreen
 import com.example.raceconnect.ui.SignupScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -50,9 +50,13 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
                 },
                 onSignupNavigate = {
                     navController.navigate("signup")
+                },
+                onForgotPasswordNavigate = {   // ✅ Navigate to Forgot Password Screen
+                    navController.navigate("forgot_password")
                 }
             )
         }
+
 
         composable("signup") {
 
@@ -75,8 +79,24 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
         }
 
 
+        composable("forgot_password") {
+            ForgotPasswordScreen(viewModel) { email ->
+                navController.navigate("reset_password/$email")
+            }
+        }
+
+        composable("reset_password/{email}") { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            ResetPasswordScreen(viewModel, email) {
+                navController.navigate("login") // Redirect to login after reset
+            }
+        }
+
         errorMessage?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
     }
 }
+
+
+

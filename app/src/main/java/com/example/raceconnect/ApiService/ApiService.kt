@@ -3,6 +3,8 @@ package com.example.raceconnect.network
 
 
 
+import com.example.raceconnect.model.ApiResponse
+import com.example.raceconnect.model.ForgotPasswordRequest
 import com.example.raceconnect.model.ImageUploadResponse
 import com.example.raceconnect.model.LoginRequest
 import com.example.raceconnect.model.LoginResponse
@@ -11,6 +13,7 @@ import com.example.raceconnect.model.LogoutResponse
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.PostResponse
+import com.example.raceconnect.model.ResetPasswordRequest
 import com.example.raceconnect.model.SignupRequest
 import com.example.raceconnect.model.SignupResponse
 import com.example.raceconnect.model.itemPostRequest
@@ -48,6 +51,15 @@ interface ApiService {
 
     @GET("users/{id}")
     suspend fun getUser(@Path("id") id: Int): users
+
+    @POST("forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): Response<ApiResponse>
+
+    @PUT("reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordRequest): Response<ApiResponse>
+
+
+
 
 
 

@@ -10,12 +10,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun LoginScreen(
     onLoginClick: (String, String) -> Unit,
-    onSignupNavigate: () -> Unit
+    onSignupNavigate: () -> Unit,
+    onForgotPasswordNavigate: () -> Unit
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -60,6 +62,7 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Login Button
         Button(
             onClick = { onLoginClick(username, password) },
             modifier = Modifier.fillMaxWidth()
@@ -69,8 +72,36 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        TextButton(onClick = onSignupNavigate) {
-            Text("Don't have an account? Sign Up")
+        // Row for SignUp and Forgot Password Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween // Pushes them to opposite sides
+        ) {
+            TextButton(onClick = onSignupNavigate) {
+                Text("Don't have an account? Sign Up")
+            }
+
+            TextButton(onClick = onForgotPasswordNavigate) {
+                Text("Forgot Password?")
+            }
         }
     }
+}
+
+
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewLoginScreen() {
+    LoginScreen(
+        onLoginClick = { username, password ->
+            println("Login clicked with username: $username, password: $password")
+        },
+        onSignupNavigate = {
+            println("Navigate to Sign Up")
+        },
+        onForgotPasswordNavigate = {
+            println("Navigate to Forgot Password")
+        }
+    )
 }

@@ -1,24 +1,26 @@
-package com.example.raceconnect.viewmodel
+package com.example.raceconnect.viewmodel.Authentication
 
 import android.app.Application
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.ApiResponse
+import com.example.raceconnect.model.ForgotPasswordRequest
 import com.example.raceconnect.model.LoginRequest
 import com.example.raceconnect.model.LoginResponse
-import com.example.raceconnect.model.LogoutRequest
+import com.example.raceconnect.model.ResetPasswordRequest
 import com.example.raceconnect.model.SignupRequest
 import com.example.raceconnect.model.users
+import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.Response
 
 class AuthenticationViewModel(application: Application) : AndroidViewModel(application) {
     private val userPreferences = UserPreferences(application)
@@ -135,15 +137,6 @@ class AuthenticationViewModel(application: Application) : AndroidViewModel(appli
     }
 
 
-
-
-
-
-
-
-
-
-
     // Logout and Clear Data
     fun logout() {
         viewModelScope.launch {
@@ -177,8 +170,61 @@ class AuthenticationViewModel(application: Application) : AndroidViewModel(appli
 
 
 
+    //forgot password
+    fun forgotPassword(context: Context, email: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            Log.d("ForgotPassword", "Sending forgot password request for email: $email")
 
+            try {
+                val response: retrofit2.Response<ApiResponse> = RetrofitInstance.api.forgotPassword(
+                    ForgotPasswordRequest(email)
+                )
 
+                Log.d("ForgotPassword", "Server response code: ${response.code()}")
+                Log.d("ForgotPassword", "Raw response: ${response.raw()}")
 
+                if (response.isSuccessful) {
+                    val message = response.body()?.message ?: "Check your email for OTP"
+                    Log.d("ForgotPassword", "OTP sent successfully. Server message: $message")
+                    onResult(true, message)
+                } else {
+                    val errorMsg = response.errorBody()?.string() ?: "Failed to send OTP"
+                    Log.e("ForgotPassword", "Error: $errorMsg")
+                    onResult(false, errorMsg)
+                }
+            } catch (e: Exception) {
+                Log.e("ForgotPassword", "Exception: ${e.message}")
+                onResult(false, "Network error. Please try again.")
+            }
+        }
+    }
+
+    fun resetPassword(context: Context, email: String, otp: String, newPassword: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            Log.d("ResetPassword", "Sending reset password request for email: $email with OTP: $otp")
+
+            try {
+                val response: retrofit2.Response<ApiResponse> = RetrofitInstance.api.resetPassword(
+                    ResetPasswordRequest(email, otp, newPassword)
+                )
+
+                Log.d("ResetPassword", "Server response code: ${response.code()}")
+                Log.d("ResetPassword", "Raw response: ${response.raw()}")
+
+                if (response.isSuccessful) {
+                    val message = response.body()?.message ?: "Password reset successfully!"
+                    Log.d("ResetPassword", "Password reset successful. Server message: $message")
+                    onResult(true, message)
+                } else {
+                    val errorMsg = response.errorBody()?.string() ?: "Failed to reset password"
+                    Log.e("ResetPassword", "Error: $errorMsg")
+                    onResult(false, errorMsg)
+                }
+            } catch (e: Exception) {
+                Log.e("ResetPassword", "Exception: ${e.message}")
+                onResult(false, "Network error. Please try again.")
+            }
+        }
+    }
 
 }
