@@ -22,6 +22,11 @@ import java.io.File
 class NewsFeedViewModel(application: Application, private val userPreferences: UserPreferences) :
     AndroidViewModel(application) {
 
+
+    private val _postLikes = MutableStateFlow<Map<Int, Boolean>>(emptyMap()) // Post ID -> Liked Status
+    private val _likeCounts = MutableStateFlow<Map<Int, Int>>(emptyMap()) // Post ID -> Like Count
+    val postLikes: StateFlow<Map<Int, Boolean>> = _postLikes.asStateFlow()
+    val likeCounts: StateFlow<Map<Int, Int>> = _likeCounts.asStateFlow()
     private val _pager = MutableStateFlow(createPager())
     val posts = _pager.flatMapLatest { it.flow.cachedIn(viewModelScope) }
 
@@ -91,6 +96,73 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
             }
         }
     }
+
+
+    fun fetchPostLikes(postId: Int) {
+        viewModelScope.launch {
+            try {
+                val userId = userPreferences.user.first()?.id ?: return@launch
+                val response = RetrofitInstance.api.getPostLikes(postId)
+                if (response.isSuccessful) {
+                    val likes = response.body() ?: emptyList()
+                    val isLiked = likes.any { it.userId == userId }
+                    val likeCount = likes.size // ✅ Track total likes
+
+                    _postLikes.value = _postLikes.value + (postId to isLiked)
+                    _likeCounts.value = _likeCounts.value + (postId to likeCount)
+                } else {
+                    Log.e("NewsFeedViewModel", "❌ Failed to fetch likes: ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "❌ Error fetching likes", e)
+            }
+        }
+    }
+
+    fun toggleLike(postId: Int, ownerId: Int) {
+        viewModelScope.launch {
+            val userId = userPreferences.user.first()?.id ?: return@launch
+
+            try {
+                val requestBody = mapOf(
+                    "user_id" to userId,
+                    "post_id" to postId,
+                    "owner_id" to ownerId
+                )
+
+                val response = RetrofitInstance.api.likePost(requestBody)
+
+                if (response.isSuccessful) {
+                    Log.d("NewsFeedViewModel", "✅ Like added")
+                    refreshPosts()
+                } else {
+                    Log.e("NewsFeedViewModel", "❌ Failed to like post: ${response.errorBody()?.string()}")
+                }
+
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "❌ Error liking post", e)
+            }
+        }
+    }
+
+    fun unlikePost(likeId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitInstance.api.unlikePost(likeId)
+
+                if (response.isSuccessful) {
+                    Log.d("NewsFeedViewModel", "✅ Post unliked")
+                    refreshPosts()
+                } else {
+                    Log.e("NewsFeedViewModel", "❌ Failed to unlike post: ${response.errorBody()?.string()}")
+                }
+
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "❌ Error unliking post", e)
+            }
+        }
+    }
+
 
 
 }

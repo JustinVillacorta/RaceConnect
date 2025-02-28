@@ -12,6 +12,7 @@ import com.example.raceconnect.model.LogoutRequest
 import com.example.raceconnect.model.LogoutResponse
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.model.PostLike
 import com.example.raceconnect.model.PostResponse
 import com.example.raceconnect.model.ResetPasswordRequest
 import com.example.raceconnect.model.SignupRequest
@@ -21,10 +22,12 @@ import com.example.raceconnect.model.itemPostResponse
 import com.example.raceconnect.model.users
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Multipart
@@ -83,6 +86,17 @@ interface ApiService {
         @Part("post_type") postType: RequestBody,
         @Part image: MultipartBody.Part? // Nullable for text-only posts
     ): Response<PostResponse>
+
+
+
+    @POST("post-likes")
+    suspend fun likePost(@Body requestBody: Map<String, Int>): Response<ResponseBody>
+
+    @DELETE("post-likes/{id}")
+    suspend fun unlikePost(@Path("id") postLikeId: Int): Response<ResponseBody>
+
+    @GET("post-likes")
+    suspend fun getPostLikes(@Query("post_id") postId: Int): Response<List<PostLike>>
 
 
     @GET("marketplace-items")

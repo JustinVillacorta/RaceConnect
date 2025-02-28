@@ -1,6 +1,7 @@
 package com.example.raceconnect.model
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.google.gson.annotations.SerializedName
 
 data class NewsFeedDataClassItem(
     val id: Int = 0,
@@ -16,7 +17,8 @@ data class NewsFeedDataClassItem(
     val type: String = "text",
     val post_type: String = "normal",
     val created_at: String = "",
-    val updated_at: String = ""
+    val updated_at: String = "",
+    val isLiked: Boolean = false
 )
 
 data class PostResponse(
@@ -40,4 +42,16 @@ data class Comment(
     val timestamp: String,
     val likes: Int,
     val icon: ImageVector
+)
+
+
+
+// likes
+
+data class PostLike(
+    @SerializedName("id") val id: Int,
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("post_id") val postId: Int,
+    @SerializedName("owner_id") val ownerId: Int,
+    @SerializedName("created_at") val createdAt: String
 )

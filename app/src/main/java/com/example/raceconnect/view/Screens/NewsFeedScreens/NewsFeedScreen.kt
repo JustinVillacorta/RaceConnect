@@ -2,6 +2,7 @@
 
             import android.annotation.SuppressLint
             import android.app.Application
+            import android.util.Log
             import androidx.compose.foundation.background
             import androidx.compose.foundation.layout.*
             import androidx.compose.foundation.lazy.LazyColumn
@@ -32,90 +33,112 @@
             import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
             import com.google.accompanist.swiperefresh.*
 
-            @OptIn(ExperimentalMaterial3Api::class)
-            @Composable
-            fun NewsFeedScreen(
-                navController: NavController,
-                application: Application,
-                userPreferences: UserPreferences
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NewsFeedScreen(
+    navController: NavController,
+    application: Application,
+    userPreferences: UserPreferences
+) {
+    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(application, userPreferences))
+    val posts = viewModel.posts.collectAsLazyPagingItems()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val postLikes by viewModel.postLikes.collectAsState()
+    val likeCounts by viewModel.likeCounts.collectAsState() // ✅ Track like counts
+
+    var showCreatePostScreen by remember { mutableStateOf(false) }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var selectedPostId by remember { mutableStateOf<Int?>(null) }
+    var showBottomSheet by remember { mutableStateOf(false) }
+
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            sheetState = sheetState,
+            onDismissRequest = { showBottomSheet = false }
+        ) {
+            CommentScreen(postId = selectedPostId ?: -1, navController = navController)
+        }
+    }
+
+    if (showCreatePostScreen) {
+        CreatePostScreen(
+            viewModel = viewModel,
+            onClose = { showCreatePostScreen = false }
+        )
+    } else {
+        SwipeRefresh(
+            state = rememberSwipeRefreshState(isRefreshing),
+            onRefresh = { viewModel.refreshPosts() }
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(application, userPreferences))
-                val posts = viewModel.posts.collectAsLazyPagingItems()
-                val isRefreshing by viewModel.isRefreshing.collectAsState()
+                item {
+                    AddPostSection(navController = navController, onAddPostClick = { showCreatePostScreen = true })
+                }
 
-                var showCreatePostScreen by remember { mutableStateOf(false) }
+                items(posts.itemCount) { index ->
+                    val post = posts[index]
+                    post?.let {
+                        LaunchedEffect(it.id) { // ✅ Fetch likes when post is displayed
+                            viewModel.fetchPostLikes(it.id)
+                        }
 
-                val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-                var selectedPostId by remember { mutableStateOf<Int?>(null) }
-                var showBottomSheet by remember { mutableStateOf(false) }
-
-                if (showBottomSheet) {
-                    ModalBottomSheet(
-                        sheetState = sheetState,
-                        onDismissRequest = { showBottomSheet = false }
-                    ) {
-                        CommentScreen(postId = selectedPostId ?: -1, navController = navController)
+                        PostCard(
+                            post = it.copy(
+                                isLiked = postLikes[it.id] ?: false,
+                                like_count = likeCounts[it.id] ?: it.like_count // ✅ Update like count dynamically
+                            ),
+                            navController = navController,
+                            onCommentClick = {
+                                selectedPostId = it.id
+                                showBottomSheet = true
+                            },
+                            onLikeClick = { isLiked ->
+                                if (isLiked) {
+                                    Log.d("NewsFeedScreen", "❤️ Liking post ID: ${it.id}")
+                                    viewModel.toggleLike(it.id, it.user_id)
+                                } else {
+                                    Log.d("NewsFeedScreen", "💔 Unliking post ID: ${it.id}")
+                                    viewModel.unlikePost(it.id)
+                                }
+                            }
+                        )
                     }
                 }
 
-                if (showCreatePostScreen) {
-                    CreatePostScreen(
-                        viewModel = viewModel,
-                        onClose = { showCreatePostScreen = false }
-                    )
-                } else {
-                    SwipeRefresh(
-                        state = rememberSwipeRefreshState(isRefreshing),
-                        onRefresh = { viewModel.refreshPosts() }
-                    ) {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
+                // ✅ Loading Indicator for Pagination
+                posts.apply {
+                    when (loadState.append) {
+                        is LoadState.Loading -> {
                             item {
-                                AddPostSection(navController = navController, onAddPostClick = { showCreatePostScreen = true })
+                                CircularProgressIndicator(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                                )
                             }
-
-                            items(posts.itemCount) { index ->
-                                val post = posts[index]
-                                post?.let {
-                                    PostCard(
-                                        post = it,
-                                        navController = navController,
-                                        onCommentClick = {
-                                            selectedPostId = it.id
-                                            showBottomSheet = true
-                                        }
-                                    )
-                                }
+                        }
+                        is LoadState.Error -> {
+                            item {
+                                Text(text = "Error loading posts", color = Color.Red)
                             }
-
-                            // ✅ Loading Indicator for Pagination
-                            posts.apply {
-                                when (loadState.append) {
-                                    is LoadState.Loading -> {
-                                        item {
-                                            CircularProgressIndicator(modifier = Modifier.fillMaxWidth().padding(16.dp))
-                                        }
-                                    }
-                                    is LoadState.Error -> {
-                                        item {
-                                            Text(text = "Error loading posts", color = Color.Red)
-                                        }
-                                    }
-                                    is LoadState.NotLoading -> {
-                                        // No additional UI needed for this state
-                                    }
-                                }
-                            }
+                        }
+                        is LoadState.NotLoading -> {
+                            // No additional UI needed for this state
                         }
                     }
                 }
             }
+        }
+    }
+}
 
-            @Composable
+
+
+@Composable
             fun ActionButton(icon: ImageVector, text: String) {
                 Row(
                     modifier = Modifier
@@ -138,7 +161,6 @@
             }
 
             @SuppressLint("SuspiciousIndentation")
-            @OptIn(ExperimentalMaterial3Api::class)
             @Composable
             fun NewsFeedAppNavigation(application: Application, userPreferences: UserPreferences) {
                 val navController = rememberNavController()
@@ -165,59 +187,59 @@
                 }
             }
 
-            @Preview(showBackground = true)
-            @Composable
-            fun PreviewNewsFeedScreen() {
-                val mockPosts = listOf(
-                    NewsFeedDataClassItem(id = 1, user_id = 123, title = "Mock Title", content = "This is a mock post content.", img_url = "https://example.com/image.jpg"),
-                    NewsFeedDataClassItem(id = 2, user_id = 124, title = "Mock Title 2", content = "Another mock post.", img_url = "https://example.com/image.jpg")
-                )
-                val navController = rememberNavController()
-
-                NewsFeedScreenPreview(
-                    posts = mockPosts,
-                    isRefreshing = false,
-                    onRefresh = {},
-                    onCreatePost = {},
-                    navController = navController
-                )
-            }
-
-            @Composable
-            fun NewsFeedScreenPreview(
-                posts: List<NewsFeedDataClassItem>,
-                isRefreshing: Boolean,
-                onRefresh: () -> Unit,
-                onCreatePost: () -> Unit,
-                navController: NavController
-            ) {
-                SwipeRefresh(
-                    state = rememberSwipeRefreshState(isRefreshing),
-                    onRefresh = onRefresh
-                ) {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item {
-                            AddPostSection(navController = navController, onAddPostClick = onCreatePost)
-                        }
-
-                        items(posts, key = { it.id }) { post ->
-                            PostCard(
-                                post = post,
-                                navController = navController,
-                                onCommentClick = {}
-                            )
-                        }
-                    }
-                }
-            }
-
-            @Preview(showBackground = true)
-            @Composable
-            fun PreviewActionButton() {
-                ActionButton(icon = Icons.Default.Image, text = "Photos")
-            }
+//            @Preview(showBackground = true)
+//            @Composable
+//            fun PreviewNewsFeedScreen() {
+//                val mockPosts = listOf(
+//                    NewsFeedDataClassItem(id = 1, user_id = 123, title = "Mock Title", content = "This is a mock post content.", img_url = "https://example.com/image.jpg"),
+//                    NewsFeedDataClassItem(id = 2, user_id = 124, title = "Mock Title 2", content = "Another mock post.", img_url = "https://example.com/image.jpg")
+//                )
+//                val navController = rememberNavController()
+//
+//                NewsFeedScreenPreview(
+//                    posts = mockPosts,
+//                    isRefreshing = false,
+//                    onRefresh = {},
+//                    onCreatePost = {},
+//                    navController = navController
+//                )
+//            }
+//
+//            @Composable
+//            fun NewsFeedScreenPreview(
+//                posts: List<NewsFeedDataClassItem>,
+//                isRefreshing: Boolean,
+//                onRefresh: () -> Unit,
+//                onCreatePost: () -> Unit,
+//                navController: NavController
+//            ) {
+//                SwipeRefresh(
+//                    state = rememberSwipeRefreshState(isRefreshing),
+//                    onRefresh = onRefresh
+//                ) {
+//                    LazyColumn(
+//                        modifier = Modifier
+//                            .fillMaxSize()
+//                            .padding(8.dp),
+//                        verticalArrangement = Arrangement.spacedBy(8.dp)
+//                    ) {
+//                        item {
+//                            AddPostSection(navController = navController, onAddPostClick = onCreatePost)
+//                        }
+//
+//                        items(posts, key = { it.id }) { post ->
+//                            PostCard(
+//                                post = post,
+//                                navController = navController,
+//                                onCommentClick = {}
+//                            )
+//                        }
+//                    }
+//                }
+//            }
+//
+//            @Preview(showBackground = true)
+//            @Composable
+//            fun PreviewActionButton() {
+//                ActionButton(icon = Icons.Default.Image, text = "Photos")
+//            }
