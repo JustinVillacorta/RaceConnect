@@ -42,6 +42,7 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
     }
 
     NavHost(navController, startDestination = "login") {
+
         composable("login") {
             LoginScreen(
                 onLoginClick = { username, password ->
@@ -51,25 +52,22 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
                 onSignupNavigate = {
                     navController.navigate("signup")
                 },
-                onForgotPasswordNavigate = {   // ✅ Navigate to Forgot Password Screen
+                onForgotPasswordNavigate = {
                     navController.navigate("forgot_password")
                 }
             )
         }
 
-
         composable("signup") {
-
             SignupScreen(
-                onSignupClick = { ctx, username, email, password ->  // ✅ Match function signature
-                    Log.d(
-                        "AuthenticationNavHost",
-                        "Signup clicked with username: $username, email: $email"
-                    )
+                onSignupClick = { ctx, username, email, password, onSignupSuccess ->
+                    Log.d("AuthenticationNavHost", "Signup clicked with username: $username, email: $email")
 
-                    // Call signUp function with context and a toast message callback
                     viewModel.signUp(ctx, username, email, password) { message ->
                         Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+                        if (message.contains("success", ignoreCase = true)) { // ✅ Check for success message
+                            onSignupSuccess() // ✅ Navigate to login after success
+                        }
                     }
                 },
                 onBackNavigate = {
@@ -79,7 +77,9 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
         }
 
 
-        // ✅ Forgot Password Screen (Request OTP)
+
+
+    // ✅ Forgot Password Screen (Request OTP)
         composable("forgot_password") {
             ForgotPasswordScreen(viewModel) { email ->
                 navController.navigate("verify_otp/$email") // ✅ Pass email

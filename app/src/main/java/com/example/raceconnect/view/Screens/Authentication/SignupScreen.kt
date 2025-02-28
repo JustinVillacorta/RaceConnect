@@ -1,6 +1,7 @@
 package com.example.raceconnect.ui
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -18,7 +19,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun SignupScreen(
-    onSignupClick: (Context, String, String, String) -> Unit,
+    onSignupClick: (Context, String, String, String, () -> Unit) -> Unit, // ✅ Added onSignupSuccess callback
     onBackNavigate: () -> Unit
 ) {
     val context = LocalContext.current
@@ -117,7 +118,12 @@ fun SignupScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { onSignupClick(context, username, email, password) },
+            onClick = {
+                onSignupClick(context, username, email, password) {
+                    Toast.makeText(context, "Account Created Successfully!", Toast.LENGTH_SHORT).show()
+                    onBackNavigate() // ✅ Redirect to login after signup
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
             enabled = passwordsMatch && username.isNotBlank() && email.isNotBlank() && password.isNotBlank()
         ) {
