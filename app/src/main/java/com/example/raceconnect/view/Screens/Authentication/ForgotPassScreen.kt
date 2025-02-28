@@ -135,29 +135,75 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
     var confirmPassword by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
+    var passwordsMatch by remember { mutableStateOf(true) }
+
+    // States for toggling password visibility
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     Log.d("ResetPasswordScreen", "📩 Received Email: $email") // ✅ Logs email received in screen
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Reset Password", style = MaterialTheme.typography.headlineMedium)
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Password Field with Show/Hide Button
         OutlinedTextField(
             value = newPassword,
-            onValueChange = { newPassword = it },
+            onValueChange = {
+                newPassword = it
+                passwordsMatch = it == confirmPassword
+            },
             label = { Text("New Password") },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                    )
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Confirm Password Field with Show/Hide Button
         OutlinedTextField(
             value = confirmPassword,
-            onValueChange = { confirmPassword = it },
+            onValueChange = {
+                confirmPassword = it
+                passwordsMatch = it == newPassword
+            },
             label = { Text("Confirm Password") },
-            modifier = Modifier.fillMaxWidth()
+            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                    Icon(
+                        imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password"
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            isError = !passwordsMatch
         )
+
+        if (!passwordsMatch) {
+            Text(
+                "Passwords do not match",
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -179,7 +225,7 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = newPassword.isNotBlank() && confirmPassword.isNotBlank() && newPassword == confirmPassword && !isLoading
+            enabled = passwordsMatch && newPassword.isNotBlank() && confirmPassword.isNotBlank() && !isLoading
         ) {
             Text("Reset Password")
         }
@@ -193,5 +239,6 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
         }
     }
 }
+
 
 
