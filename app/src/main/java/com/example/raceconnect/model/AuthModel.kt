@@ -1,4 +1,7 @@
 package com.example.raceconnect.model
+
+import com.google.gson.annotations.SerializedName
+
 // Data class representing a User object
 data class users(
     val id: Int,
@@ -51,15 +54,21 @@ data class LogoutResponse(val message: String)
 
 // forgot password
 
-data class ForgotPasswordRequest(
-    val email: String
-)
+data class ForgotPasswordRequest(val email: String)
+data class ForgotPasswordResponse(val message: String)
+
+data class VerifyOtpRequest(val email: String, val otp: String)
+data class VerifyOtpResponse(val message: String, val verified: Boolean)
 
 data class ResetPasswordRequest(
-    val email: String,
-    val otp: String,
-    val newPassword: String
+    @SerializedName("email") val email: String,
+    @SerializedName("new_password") val newPassword: String,
+    @SerializedName("confirm_password") val confirmPassword: String
 )
+
+
+data class ResetPasswordResponse(val message: String)
+
 
 data class ApiResponse(
     val message: String

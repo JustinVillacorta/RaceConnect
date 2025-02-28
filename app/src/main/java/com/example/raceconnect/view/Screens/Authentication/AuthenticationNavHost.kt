@@ -79,16 +79,24 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
         }
 
 
+        // ✅ Forgot Password Screen (Request OTP)
         composable("forgot_password") {
             ForgotPasswordScreen(viewModel) { email ->
-                navController.navigate("reset_password/$email")
+                navController.navigate("verify_otp/$email") // ✅ Pass email
+            }
+        }
+
+        composable("verify_otp/{email}") { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            OtpVerificationScreen(viewModel, email) {
+                navController.navigate("reset_password/$email") // ✅ Pass email forward
             }
         }
 
         composable("reset_password/{email}") { backStackEntry ->
             val email = backStackEntry.arguments?.getString("email") ?: ""
             ResetPasswordScreen(viewModel, email) {
-                navController.navigate("login") // Redirect to login after reset
+                navController.navigate("login") // ✅ Redirect after reset
             }
         }
 

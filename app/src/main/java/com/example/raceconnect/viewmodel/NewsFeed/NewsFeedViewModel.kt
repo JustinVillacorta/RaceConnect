@@ -90,10 +90,13 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
                 )
 
                 if (response.isSuccessful) {
-                    val postResponse = response.body()
-                    Log.d("NewsFeedViewModel", "✅ Post created successfully, ID: ${postResponse?.post_id}")
+                    val postResponse = response.body() // ✅ Get the full response
+                    val imageUrls = postResponse?.image_urls ?: emptyList() // ✅ Extract images
 
-                    _newPostTrigger.value = true // ✅ Notify the screen to refresh
+                    Log.d("NewsFeedViewModel", "✅ Post created successfully, ID: ${postResponse?.post_id}, Image URLs: $imageUrls")
+
+                    _newPostTrigger.value = true // ✅ Notify UI to refresh
+
                 } else {
                     Log.e("NewsFeedViewModel", "❌ Failed to create post: ${response.errorBody()?.string()}")
                 }
@@ -103,6 +106,7 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
             }
         }
     }
+
 
 
     fun fetchPostLikes(postId: Int) {
