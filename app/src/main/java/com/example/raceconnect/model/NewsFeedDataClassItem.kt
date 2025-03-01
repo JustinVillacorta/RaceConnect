@@ -24,16 +24,8 @@ data class NewsFeedDataClassItem(
 data class PostResponse(
     val message: String,
     val post_id: String,  // Matches API response type
-    val image_urls: List<String>
+    val image_url: String
 )
-
-
-
-data class ImageUploadResponse(
-    val success: Boolean,
-    val imageUrl: String
-)
-
 
 // change if needed
 data class Comment(
@@ -43,7 +35,6 @@ data class Comment(
     val likes: Int,
     val icon: ImageVector
 )
-
 
 
 // likes

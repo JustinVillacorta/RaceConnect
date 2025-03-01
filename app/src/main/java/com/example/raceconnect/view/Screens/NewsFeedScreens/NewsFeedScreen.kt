@@ -40,7 +40,8 @@ fun NewsFeedScreen(
     application: Application,
     userPreferences: UserPreferences
 ) {
-    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(application, userPreferences))
+    val viewModel: NewsFeedViewModel =
+        viewModel(factory = NewsFeedViewModelFactory(application, userPreferences))
     val posts = viewModel.posts.collectAsLazyPagingItems()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val postLikes by viewModel.postLikes.collectAsState()
@@ -93,21 +94,27 @@ fun NewsFeedScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Add Post Section (Opens CreatePostScreen)
             item {
-                AddPostSection(navController = navController, onAddPostClick = { showCreatePostScreen = true })
+                AddPostSection(
+                    navController = navController,
+                    onAddPostClick = { showCreatePostScreen = true })
             }
 
             // Render Posts
             items(posts.itemCount) { index ->
-                val post = posts[posts.itemCount - 1 - index]
+                val post = posts[posts.itemCount - 1 - index] // ✅ Ensure correct ordering
                 post?.let {
+                    // Fetch post likes
                     LaunchedEffect(it.id) {
                         viewModel.fetchPostLikes(it.id)
                     }
+
+                    // ✅ Removed `LaunchedEffect` for fetching images here
+                    // ✅ `PostCard` now fetches its own images
 
                     PostCard(
                         post = it.copy(
@@ -115,6 +122,7 @@ fun NewsFeedScreen(
                             like_count = likeCounts[it.id] ?: it.like_count
                         ),
                         navController = navController,
+                        viewModel = viewModel, // ✅ PostCard handles image fetching
                         onCommentClick = {
                             selectedPostId = it.id
                             showBottomSheet = true
@@ -138,15 +146,19 @@ fun NewsFeedScreen(
                     is LoadState.Loading -> {
                         item {
                             CircularProgressIndicator(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
                             )
                         }
                     }
+
                     is LoadState.Error -> {
                         item {
                             Text(text = "Error loading posts", color = Color.Red)
                         }
                     }
+
                     is LoadState.NotLoading -> {
                         // No additional UI needed
                     }
@@ -155,6 +167,8 @@ fun NewsFeedScreen(
         }
     }
 }
+
+
 
 
 

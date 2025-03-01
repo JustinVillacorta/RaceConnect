@@ -6,7 +6,7 @@ package com.example.raceconnect.network
 import com.example.raceconnect.model.ApiResponse
 import com.example.raceconnect.model.ForgotPasswordRequest
 import com.example.raceconnect.model.ForgotPasswordResponse
-import com.example.raceconnect.model.ImageUploadResponse
+
 import com.example.raceconnect.model.LoginRequest
 import com.example.raceconnect.model.LoginResponse
 import com.example.raceconnect.model.LogoutRequest
@@ -97,6 +97,10 @@ interface ApiService {
         @Part image: MultipartBody.Part? // Nullable for text-only posts
     ): Response<PostResponse>
 
+
+
+    @GET("posts/{id}/images")
+    suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostResponse>> // ✅ Expect a list
 
 
     @POST("post-likes")

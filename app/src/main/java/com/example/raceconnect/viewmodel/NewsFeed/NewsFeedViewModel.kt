@@ -4,6 +4,8 @@ import android.app.Application
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import androidx.paging.*
 import com.example.raceconnect.datastore.UserPreferences
@@ -90,11 +92,6 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
                 )
 
                 if (response.isSuccessful) {
-                    val postResponse = response.body() // ✅ Get the full response
-                    val imageUrls = postResponse?.image_urls ?: emptyList() // ✅ Extract images
-
-                    Log.d("NewsFeedViewModel", "✅ Post created successfully, ID: ${postResponse?.post_id}, Image URLs: $imageUrls")
-
                     _newPostTrigger.value = true // ✅ Notify UI to refresh
 
                 } else {
@@ -106,6 +103,52 @@ class NewsFeedViewModel(application: Application, private val userPreferences: U
             }
         }
     }
+
+
+    private val _postImages = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
+    val postImages: StateFlow<Map<Int, List<String>>> = _postImages
+
+    fun getPostImages(postId: Int) {
+        viewModelScope.launch {
+            try {
+                Log.d("NewsFeedViewModel", "Fetching images for post ID: $postId")
+                val response = RetrofitInstance.api.GetPostImg(postId)
+
+                if (response.isSuccessful) {
+                    val postResponses = response.body() ?: emptyList()
+
+                    // Extract only image URLs
+                    val imageUrls = postResponses.map { it.image_url }
+
+                    Log.d("NewsFeedViewModel", "✅ Extracted Image URLs for post $postId: $imageUrls")
+
+                    // Update the map to keep existing images for other posts
+                    _postImages.value = _postImages.value.toMutableMap().apply {
+                        this[postId] = imageUrls
+                    }
+                } else {
+                    Log.e("NewsFeedViewModel", "❌ Failed to fetch images: ${response.errorBody()?.string()}")
+                    _postImages.value = _postImages.value.toMutableMap().apply {
+                        this[postId] = emptyList()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "❌ Error fetching post images", e)
+                _postImages.value = _postImages.value.toMutableMap().apply {
+                    this[postId] = emptyList()
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
 
 
 

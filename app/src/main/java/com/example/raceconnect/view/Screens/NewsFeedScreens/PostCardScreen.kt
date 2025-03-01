@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,6 +28,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +46,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.squareup.picasso.Callback
 import com.squareup.picasso.Picasso
 
@@ -50,19 +55,29 @@ fun PostCard(
     post: NewsFeedDataClassItem,
     navController: NavController,
     onCommentClick: () -> Unit,
-    onLikeClick: (Boolean) -> Unit // Pass true to like, false to unlike
+    onLikeClick: (Boolean) -> Unit,
+    viewModel: NewsFeedViewModel // Pass ViewModel to fetch images
+
 ) {
     Log.d("PostCard", "📝 Rendering post with ID: ${post.id}, Content: ${post.content}")
 
     var isLiked by remember { mutableStateOf(post.isLiked) }
-    var likeCount by remember { mutableStateOf(post.like_count) } // ✅ Track like count
+    var likeCount by remember { mutableStateOf(post.like_count) }
+
+    // ✅ Get images only for this post
+    val postImagesMap by viewModel.postImages.collectAsState()
+    val imageUrls = postImagesMap[post.id] ?: emptyList()
+
+    // ✅ Fetch images for this post
+    LaunchedEffect(post.id) {
+        Log.d("PostCard", "🔄 Fetching images for post ID: ${post.id}")
+        viewModel.getPostImages(post.id)
+    }
 
     Card(
         shape = RoundedCornerShape(0.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 0.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 0.dp)
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             // Profile Section
@@ -92,7 +107,7 @@ fun PostCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Post Content
             Log.d("PostCard", "📝 Post Content: ${post.content}")
@@ -101,32 +116,42 @@ fun PostCard(
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            // Image Display (if available)
-            post.img_url?.let { imageUrl ->
-                if (imageUrl.isNotEmpty()) {
-                    Log.d("PostCard", "🖼️ Post contains an image: $imageUrl")
+            // **Display Images**
+            if (imageUrls.isNotEmpty()) {
+                Log.d("PostCard", "🖼️ Displaying Images: $imageUrls")
 
-                    AndroidView(factory = { context ->
-                        ImageView(context).apply {
-                            Picasso.get()
-                                .load(imageUrl)
-                                .into(this, object : Callback {
-                                    override fun onSuccess() {
-                                        Log.d("PostCard", "✅ Image loaded successfully: $imageUrl")
-                                    }
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(imageUrls) { imageUrl ->
+                        Log.d("PostCard", "🖼️ Loading Image: $imageUrl")
 
-                                    override fun onError(e: Exception?) {
-                                        Log.e("PostCard", "❌ Error loading image: $imageUrl", e)
-                                    }
-                                })
-                        }
-                    }, modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp))
-                } else {
-                    Log.d("PostCard", "⚠️ Post has an empty image URL")
+                        AndroidView(
+                            factory = { context ->
+                                ImageView(context).apply {
+                                    Picasso.get()
+                                        .load(imageUrl)
+                                        .into(this, object : Callback {
+                                            override fun onSuccess() {
+                                                Log.d("PostCard", "✅ Image loaded: $imageUrl")
+                                            }
+
+                                            override fun onError(e: Exception?) {
+                                                Log.e("PostCard", "❌ Image load failed: $imageUrl", e)
+                                            }
+                                        })
+                                }
+                            },
+                            modifier = Modifier
+                                .size(200.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                    }
                 }
-            } ?: Log.d("PostCard", "🚫 No image found in post")
+            } else {
+                Log.d("PostCard", "🚫 No images found for post ID: ${post.id}")
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -141,13 +166,12 @@ fun PostCard(
                     isLiked = isLiked,
                     onClick = {
                         isLiked = !isLiked
-                        likeCount = if (isLiked) likeCount + 1 else likeCount - 1 // ✅ Update like count
-                        onLikeClick(isLiked) // Toggle like/unlike
+                        likeCount = if (isLiked) likeCount + 1 else likeCount - 1
+                        onLikeClick(isLiked)
                         Log.d("PostCard", if (isLiked) "❤️ Post liked" else "💔 Post unliked")
                     }
                 )
 
-                // ✅ Like Counter Display
                 Text(
                     text = likeCount.toString(),
                     style = MaterialTheme.typography.bodySmall,
@@ -166,6 +190,8 @@ fun PostCard(
         }
     }
 }
+
+
 
 @Composable
 fun ReactionIcon(icon: ImageVector, isLiked: Boolean = false, onClick: (() -> Unit)? = null) {
