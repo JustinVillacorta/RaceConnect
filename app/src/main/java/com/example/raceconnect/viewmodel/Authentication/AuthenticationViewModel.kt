@@ -273,6 +273,10 @@ class AuthenticationViewModel(application: Application) : AndroidViewModel(appli
         }
     }
 
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
 
 
 

@@ -1,15 +1,14 @@
 package com.example.raceconnect.view.Screens.Authentication
 
-import android.content.Intent
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.*
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.ui.LoginScreen
 import com.example.raceconnect.ui.SignupScreen
-import com.example.raceconnect.view.Navigation.MainActivity
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 
@@ -21,11 +20,7 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
     val loggedInUser by viewModel.loggedInUser.collectAsState(initial = null)
     val errorMessage by viewModel.errorMessage.collectAsState(initial = null)
 
-    LaunchedEffect(loggedInUser) {
-        loggedInUser?.let {
-            context.startActivity(Intent(context, MainActivity::class.java))
-        }
-    }
+    // Removed LaunchedEffect with Intent; AppNavigation will handle the transition
 
     NavHost(navController, startDestination = NavRoutes.Login.route) {
         composable(NavRoutes.Login.route) {
@@ -69,5 +64,10 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
         }
     }
 
-    errorMessage?.let { message -> Toast.makeText(context, message, Toast.LENGTH_SHORT).show() }
+    errorMessage?.let { message ->
+        LaunchedEffect(message) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.clearError() // Clear error to prevent repeated toasts
+        }
+    }
 }
