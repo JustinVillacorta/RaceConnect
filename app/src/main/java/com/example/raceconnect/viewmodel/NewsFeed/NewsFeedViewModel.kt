@@ -1,5 +1,6 @@
 package com.example.raceconnect.viewmodel.NewsFeed
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -55,7 +56,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         _newPostTrigger.value = false
     }
 
-    fun addPost(content: String, imageUri: Uri?) {
+    fun addPost(context: Context, content: String, imageUri: Uri?) {
         viewModelScope.launch {
             val userId = userPreferences.user.first()?.id ?: return@launch
             try {
@@ -67,9 +68,13 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
                 val typePart = RequestBody.create("text/plain".toMediaTypeOrNull(), if (imageUri != null) "image" else "text")
                 val postTypePart = RequestBody.create("text/plain".toMediaTypeOrNull(), "normal")
 
+                // ✅ Convert URI to File Before Upload
                 val imagePart = imageUri?.let { uri ->
-                    val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), File(uri.path!!))
-                    MultipartBody.Part.createFormData("image", File(uri.path!!).name, requestFile)
+                    val tempFile = getFileFromUri(context, uri)
+                    tempFile?.let {
+                        val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), it)
+                        MultipartBody.Part.createFormData("image", it.name, requestFile)
+                    }
                 }
 
                 val response = RetrofitInstance.api.createPostWithImage(
@@ -87,6 +92,22 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
             }
         }
     }
+
+
+    fun getFileFromUri(context: Context, uri: Uri): File? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+            val file = File(context.cacheDir, "upload_${System.currentTimeMillis()}.jpg")
+            file.outputStream().use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+            file
+        } catch (e: Exception) {
+            Log.e("FileUtil", "❌ Failed to get file from URI", e)
+            null
+        }
+    }
+
 
     private val _postImages = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
     val postImages: StateFlow<Map<Int, List<String>>> = _postImages

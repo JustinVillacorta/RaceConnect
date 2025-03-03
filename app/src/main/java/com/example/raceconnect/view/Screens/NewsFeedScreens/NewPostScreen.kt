@@ -20,6 +20,7 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
     import androidx.compose.ui.*
     import androidx.compose.ui.draw.clip
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.platform.LocalContext
     import androidx.compose.ui.text.font.FontWeight
     import androidx.compose.ui.unit.dp
     import androidx.navigation.NavController
@@ -71,9 +72,9 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
+    val context = LocalContext.current // ✅ Get context for URI conversion
     var postText by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         selectedImageUri = uri
@@ -82,9 +83,7 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text("Create post", fontWeight = FontWeight.Bold)
-                },
+                title = { Text("Create post", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -94,7 +93,7 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                     Button(
                         onClick = {
                             if (postText.isNotEmpty()) {
-                                viewModel.addPost(postText, selectedImageUri)
+                                viewModel.addPost(context, postText, selectedImageUri) // ✅ Pass context here
                                 onClose()
                             }
                         },
@@ -166,3 +165,4 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
         }
     )
 }
+
