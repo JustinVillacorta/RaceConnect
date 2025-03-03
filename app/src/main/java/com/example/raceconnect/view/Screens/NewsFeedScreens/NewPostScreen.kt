@@ -1,6 +1,5 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
-    import ActionButton
     import android.net.Uri
     import androidx.activity.compose.rememberLauncherForActivityResult
     import androidx.activity.result.contract.ActivityResultContracts
@@ -16,7 +15,6 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
     import androidx.compose.material.icons.automirrored.filled.ArrowBack
     import androidx.compose.material.icons.filled.AccountCircle
     import androidx.compose.material.icons.filled.Image
-    import androidx.compose.material.icons.filled.Videocam
     import androidx.compose.material3.*
     import androidx.compose.runtime.*
     import androidx.compose.ui.*

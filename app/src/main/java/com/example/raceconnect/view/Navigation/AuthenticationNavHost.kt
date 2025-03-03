@@ -1,4 +1,4 @@
-package com.example.raceconnect.view.Screens.Authentication
+package com.example.raceconnect.view.Navigation
 
 import android.widget.Toast
 import androidx.compose.runtime.*
@@ -9,7 +9,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.ui.LoginScreen
 import com.example.raceconnect.ui.SignupScreen
-import com.example.raceconnect.view.Navigation.NavRoutes
+import com.example.raceconnect.view.Screens.Authentication.ForgotPasswordScreen
+import com.example.raceconnect.view.Screens.Authentication.OtpVerificationScreen
+import com.example.raceconnect.view.Screens.Authentication.ResetPasswordScreen
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 
 @Composable

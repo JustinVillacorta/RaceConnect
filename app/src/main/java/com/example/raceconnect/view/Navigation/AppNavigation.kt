@@ -17,7 +17,7 @@ import com.example.raceconnect.ui.BottomNavBar
 import com.example.raceconnect.ui.MarketplaceScreen
 import com.example.raceconnect.ui.TopAppBar
 import com.example.raceconnect.view.Navigation.NavRoutes
-import com.example.raceconnect.view.Screens.Authentication.AuthenticationNavHost
+import com.example.raceconnect.view.Navigation.AuthenticationNavHost
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
 
