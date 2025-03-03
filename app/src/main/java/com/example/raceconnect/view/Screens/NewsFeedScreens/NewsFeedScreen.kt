@@ -75,8 +75,8 @@ fun NewsFeedScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
                 AddPostSection(

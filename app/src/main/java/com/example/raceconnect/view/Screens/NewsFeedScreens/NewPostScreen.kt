@@ -27,47 +27,45 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
     import coil.compose.rememberAsyncImagePainter
 
 @Composable
-    fun AddPostSection(navController: NavController, onAddPostClick: () -> Unit) {
-        Row(
+fun AddPostSection(navController: NavController, onAddPostClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .clickable(onClick = onAddPostClick),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.AccountCircle,
+            contentDescription = "Profile Picture",
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .clickable(onClick = onAddPostClick),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.AccountCircle,
-                contentDescription = "Profile Picture",
-                modifier = Modifier
-                    .size(40.dp)
-                    .padding(4.dp)
-                    .clickable {
-                        navController.navigate("profileView")
-                    }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFFF8F8F8))
-                    .border(
-                        width = 1.dp,
-                        color = Color.LightGray,
-                        shape = RoundedCornerShape(24.dp)
-                    )
-                    .clickable(onClick = onAddPostClick),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Text(
-                    text = "What's new today?",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray),
-                    modifier = Modifier.padding(start = 16.dp)
+                .size(48.dp) // Adjusted size to account for padding
+                .padding(4.dp)
+                .clickable { navController.navigate("profileView") }
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFFF8F8F8))
+                .border(
+                    width = 1.dp,
+                    color = Color.LightGray,
+                    shape = RoundedCornerShape(24.dp)
                 )
-            }
+                .clickable(onClick = onAddPostClick),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = "What's new today?",
+                style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray),
+                modifier = Modifier.padding(start = 16.dp)
+            )
         }
     }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
