@@ -43,7 +43,7 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
                     .size(40.dp)
                     .padding(4.dp)
                     .clickable {
-                        navController.navigate("profile")
+                        navController.navigate("profileView")
                     }
             )
             Spacer(modifier = Modifier.width(8.dp))

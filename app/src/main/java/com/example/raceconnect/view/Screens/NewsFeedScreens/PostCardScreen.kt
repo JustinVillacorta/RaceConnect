@@ -89,7 +89,7 @@ fun PostCard(
                         .clip(CircleShape)
                         .background(Color.Gray)
                         .clickable {
-                            navController.navigate("profile")
+                            navController.navigate("profileView")
                             Log.d("PostCard", "📌 Navigating to profile")
                         }
                 )

@@ -8,6 +8,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -18,11 +19,13 @@ import com.example.raceconnect.ui.TopAppBar
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.Screens.Authentication.AuthenticationNavHost
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
+import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
 
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {
     val navController = rememberNavController()
     val token = userPreferences.token.collectAsState(initial = null).value
+    val context = LocalContext.current // Get the context for ProfileViewScreen
 
     // If token is null, user is not logged in -> show AuthenticationNavHost
     if (token == null) {
@@ -53,6 +56,13 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
                 composable(NavRoutes.Notifications.route) {
                     NotificationsScreen()
+                }
+                // Add ProfileViewScreen as a separate route
+                composable("profileView") {
+                    ProfileViewScreen(
+                        navController = navController,
+                        context = context
+                    )
                 }
             }
         }
