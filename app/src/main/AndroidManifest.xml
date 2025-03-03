@@ -19,7 +19,7 @@
 
         <!-- Authentication Activity (Launcher Activity) -->
         <activity
-            android:name=".view.Activities.AuthenticationActivity"
+            android:name=".view.Navigation.AuthenticationActivity"
             android:exported="true"
             android:theme="@style/Theme.RaceConnect">
             <intent-filter>
@@ -30,28 +30,28 @@
 
         <!-- News Feed Activity -->
         <activity
-            android:name=".view.Activities.NewsFeedActivity"
+            android:name=".view.Navigation.NewsFeedActivity"
             android:exported="true"
             android:label="@string/title_activity_news_feed"
             android:theme="@style/Theme.RaceConnect" />
 
         <!-- Profile Activity -->
         <activity
-            android:name=".view.Activities.ProfileActivity"
+            android:name=".view.Navigation.ProfileActivity"
             android:exported="true"
             android:label="@string/title_activity_profile"
             android:theme="@style/Theme.RaceConnect" />
 
         <!-- Marketplace Activity -->
         <activity
-            android:name=".view.Activities.MarketplaceActivity"
+            android:name=".view.Navigation.MarketplaceActivity"
             android:exported="true"
             android:label="@string/title_activity_marketplace"
             android:theme="@style/Theme.RaceConnect" />
 
         <!-- Reels Activity -->
         <activity
-            android:name=".view.Activities.ReelsActivity"
+            android:name=".view.Navigation.ReelsActivity"
             android:exported="true"
             android:label="@string/title_activity_reel"
             android:theme="@style/Theme.RaceConnect" />

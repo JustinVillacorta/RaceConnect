@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -127,11 +128,23 @@ fun PostCard(
                     items(imageUrls) { imageUrl ->
                         Log.d("PostCard", "🖼️ Loading Image: $imageUrl")
 
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxWidth(0.9f) // Ensures images fit well inside the post card
+                                .aspectRatio(16f / 9f) // Universal aspect ratio for all images
+
+                        ){
+
                         AndroidView(
                             factory = { context ->
                                 ImageView(context).apply {
+                                    scaleType = ImageView.ScaleType.CENTER_CROP // Crop but maintain focus
+                                    adjustViewBounds = true // Adjust bounds dynamically
                                     Picasso.get()
                                         .load(imageUrl)
+                                        .resize(1080, 720) // Resize to a standard HD resolution
+                                        .centerCrop()
                                         .into(this, object : Callback {
                                             override fun onSuccess() {
                                                 Log.d("PostCard", "✅ Image loaded: $imageUrl")
@@ -147,7 +160,7 @@ fun PostCard(
                                 .size(200.dp)
                                 .clip(RoundedCornerShape(8.dp))
                         )
-                    }
+                    }}
                 }
             } else {
                 Log.d("PostCard", "🚫 No images found for post ID: ${post.id}")
@@ -208,27 +221,3 @@ fun ReactionIcon(icon: ImageVector, isLiked: Boolean = false, onClick: (() -> Un
 
 
 
-//@Preview(showBackground = true)
-//@Composable
-//fun PreviewPostCard() {
-//    val samplePost = NewsFeedDataClassItem(
-//        id = 1,
-//        user_id = 1,
-//        title = "Sample Title",
-//        content = "This is a sample post for preview.",
-//        img_url = "https://via.placeholder.com/150", // Sample image placeholder
-//        like_count = 0,
-//        comment_count = 0,
-//        repost_count = 0,
-//        category = "Formula 1",
-//        privacy = "Public",
-//        type = "text",
-//        post_type = "normal",
-//        created_at = "",
-//        updated_at = ""
-//    )
-//
-//    val navController = rememberNavController()
-//
-//    PostCard(post = samplePost, navController = navController, onCommentClick = {})
-//}

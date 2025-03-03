@@ -10,7 +10,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.raceconnect.view.Activities.BottomNavTab
+import com.example.raceconnect.view.Navigation.BottomNavTab
 
 
 

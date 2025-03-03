@@ -1,4 +1,4 @@
-package com.example.raceconnect.view.Activities
+package com.example.raceconnect.view.Navigation
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent

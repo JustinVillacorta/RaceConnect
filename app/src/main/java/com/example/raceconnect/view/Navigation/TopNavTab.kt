@@ -1,4 +1,4 @@
-package com.example.raceconnect.view.Activities
+package com.example.raceconnect.view.Navigation
 
 import com.example.raceconnect.R
 

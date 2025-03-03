@@ -1,4 +1,4 @@
-package com.example.raceconnect.view.Activities
+package com.example.raceconnect.view.Navigation
 
 import ProfileScreen
 import android.os.Bundle
@@ -7,9 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.ui.LoginScreen
-import com.example.raceconnect.view.Screens.MainScreen
 
 
 class ProfileActivity : ComponentActivity() {

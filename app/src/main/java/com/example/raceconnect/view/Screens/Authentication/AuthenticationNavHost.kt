@@ -11,7 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.raceconnect.view.Activities.NewsFeedActivity
+import com.example.raceconnect.view.Navigation.NewsFeedActivity
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.ui.LoginScreen
 import com.example.raceconnect.ui.SignupScreen

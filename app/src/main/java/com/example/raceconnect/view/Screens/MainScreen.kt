@@ -15,7 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.ui.BottomNavBar
-import com.example.raceconnect.view.Activities.BottomNavTab
+import com.example.raceconnect.view.Navigation.BottomNavTab
 import com.example.raceconnect.datastore.UserPreferences
 
 import com.example.raceconnect.ui.MarketplaceScreen

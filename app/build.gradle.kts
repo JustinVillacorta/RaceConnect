@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -87,7 +88,14 @@ dependencies {
 
     implementation ("androidx.paging:paging-compose:1.0.0-alpha18")
 
+    implementation(libs.navigation.compose)
+    implementation(libs.kotlinx.serialization.json)
+
+
 
     // pagination
     implementation(libs.androidx.paging.runtime.ktx)}
+
+
+
 
