@@ -3,108 +3,71 @@ package com.example.raceconnect.view.Screens.Authentication
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.example.raceconnect.view.Navigation.NewsFeedActivity
-import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.*
 import com.example.raceconnect.ui.LoginScreen
 import com.example.raceconnect.ui.SignupScreen
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.raceconnect.view.Navigation.MainActivity
+import com.example.raceconnect.view.Navigation.NavRoutes
+import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 
 @Composable
 fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
     val navController = rememberNavController()
     val context = LocalContext.current
 
-    // Observe login state and error message using collectAsState
     val loggedInUser by viewModel.loggedInUser.collectAsState(initial = null)
     val errorMessage by viewModel.errorMessage.collectAsState(initial = null)
 
-    // Redirect to NewsFeedActivity on successful login
     LaunchedEffect(loggedInUser) {
-        Log.d("AuthenticationNavHost", "LaunchedEffect triggered with loggedInUser: $loggedInUser")
-        loggedInUser?.let { user ->
-            Log.d(
-                "AuthenticationNavHost",
-                "Navigating to NewsFeedActivity with user: ${user.username}"
-            )
-            val intent = Intent(context, NewsFeedActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
-            context.startActivity(intent)
+        loggedInUser?.let {
+            context.startActivity(Intent(context, MainActivity::class.java))
         }
     }
 
-    NavHost(navController, startDestination = "login") {
-
-        composable("login") {
+    NavHost(navController, startDestination = NavRoutes.Login.route) {
+        composable(NavRoutes.Login.route) {
             LoginScreen(
-                onLoginClick = { username, password ->
-                    Log.d("AuthenticationNavHost", "Login clicked with username: $username")
-                    viewModel.validateLogin(username, password)
-                },
-                onSignupNavigate = {
-                    navController.navigate("signup")
-                },
-                onForgotPasswordNavigate = {
-                    navController.navigate("forgot_password")
-                }
+                onLoginClick = { username, password -> viewModel.validateLogin(username, password) },
+                onSignupNavigate = { navController.navigate(NavRoutes.Signup.route) },
+                onForgotPasswordNavigate = { navController.navigate(NavRoutes.ForgotPassword.route) }
             )
         }
 
-        composable("signup") {
+        composable(NavRoutes.Signup.route) {
             SignupScreen(
                 onSignupClick = { ctx, username, email, password, onSignupSuccess ->
-                    Log.d("AuthenticationNavHost", "Signup clicked with username: $username, email: $email")
-
                     viewModel.signUp(ctx, username, email, password) { message ->
                         Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
-                        if (message.contains("success", ignoreCase = true)) { // ✅ Check for success message
-                            onSignupSuccess() // ✅ Navigate to login after success
-                        }
+                        if (message.contains("success", ignoreCase = true)) onSignupSuccess()
                     }
                 },
-                onBackNavigate = {
-                    navController.navigate("login")
-                }
+                onBackNavigate = { navController.navigateUp() }
             )
         }
 
-
-
-
-    // ✅ Forgot Password Screen (Request OTP)
-        composable("forgot_password") {
+        composable(NavRoutes.ForgotPassword.route) {
             ForgotPasswordScreen(viewModel) { email ->
-                navController.navigate("verify_otp/$email") // ✅ Pass email
+                navController.navigate(NavRoutes.VerifyOtp.createRoute(email))
             }
         }
 
-        composable("verify_otp/{email}") { backStackEntry ->
+        composable(NavRoutes.VerifyOtp.route) { backStackEntry ->
             val email = backStackEntry.arguments?.getString("email") ?: ""
             OtpVerificationScreen(viewModel, email) {
-                navController.navigate("reset_password/$email") // ✅ Pass email forward
+                navController.navigate(NavRoutes.ResetPassword.createRoute(email))
             }
         }
 
-        composable("reset_password/{email}") { backStackEntry ->
+        composable(NavRoutes.ResetPassword.route) { backStackEntry ->
             val email = backStackEntry.arguments?.getString("email") ?: ""
             ResetPasswordScreen(viewModel, email) {
-                navController.navigate("login") // ✅ Redirect after reset
+                navController.navigate(NavRoutes.Login.route)
             }
         }
-
-        errorMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-        }
     }
+
+    errorMessage?.let { message -> Toast.makeText(context, message, Toast.LENGTH_SHORT).show() }
 }
-
-
-

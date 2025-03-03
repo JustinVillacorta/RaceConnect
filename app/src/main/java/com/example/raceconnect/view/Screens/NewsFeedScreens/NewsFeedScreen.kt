@@ -28,6 +28,7 @@
             import androidx.compose.foundation.lazy.items
             import com.example.raceconnect.datastore.UserPreferences
             import com.example.raceconnect.model.NewsFeedDataClassItem
+            import com.example.raceconnect.view.Navigation.NavRoutes
             import com.example.raceconnect.view.Screens.NewsFeedScreens.*
             import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
             import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
@@ -37,33 +38,31 @@
 @Composable
 fun NewsFeedScreen(
     navController: NavController,
-    application: Application,
-    userPreferences: UserPreferences
+    userPreferences: UserPreferences // ✅ Remove Application, keep UserPreferences
 ) {
     val viewModel: NewsFeedViewModel =
-        viewModel(factory = NewsFeedViewModelFactory(application, userPreferences))
+        viewModel(factory = NewsFeedViewModelFactory(userPreferences)) // ✅ Pass UserPreferences only
+
     val posts = viewModel.posts.collectAsLazyPagingItems()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val postLikes by viewModel.postLikes.collectAsState()
     val likeCounts by viewModel.likeCounts.collectAsState()
-    val newPostTrigger by viewModel.newPostTrigger.collectAsState() // ✅ Listen for new post events
+    val newPostTrigger by viewModel.newPostTrigger.collectAsState()
 
-    // State to manage showing the create post modal
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showCreatePostScreen by remember { mutableStateOf(false) }
-
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    // **Trigger refresh when a new post is added**
+    // ✅ Listen for new post events and refresh
     LaunchedEffect(newPostTrigger) {
         if (newPostTrigger) {
             viewModel.refreshPosts()
-            viewModel.resetNewPostTrigger() // ✅ Reset the trigger
+            viewModel.resetNewPostTrigger()
         }
     }
 
-    // Show Comments Modal Bottom Sheet
+    // ✅ Show Comments Modal Bottom Sheet
     if (showBottomSheet) {
         ModalBottomSheet(
             sheetState = sheetState,
@@ -73,7 +72,7 @@ fun NewsFeedScreen(
         }
     }
 
-    // Show Create Post Modal Bottom Sheet
+    // ✅ Show Create Post Modal Bottom Sheet
     if (showCreatePostScreen) {
         ModalBottomSheet(
             sheetState = sheetState,
@@ -86,7 +85,7 @@ fun NewsFeedScreen(
         }
     }
 
-    // Main News Feed UI
+    // ✅ Main UI
     SwipeRefresh(
         state = rememberSwipeRefreshState(isRefreshing),
         onRefresh = { viewModel.refreshPosts() }
@@ -97,24 +96,18 @@ fun NewsFeedScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Add Post Section (Opens CreatePostScreen)
             item {
                 AddPostSection(
                     navController = navController,
                     onAddPostClick = { showCreatePostScreen = true })
             }
 
-            // Render Posts
             items(posts.itemCount) { index ->
-                val post = posts[posts.itemCount - 1 - index] // ✅ Ensure correct ordering
+                val post = posts[posts.itemCount - 1 - index]
                 post?.let {
-                    // Fetch post likes
                     LaunchedEffect(it.id) {
                         viewModel.fetchPostLikes(it.id)
                     }
-
-                    // ✅ Removed `LaunchedEffect` for fetching images here
-                    // ✅ `PostCard` now fetches its own images
 
                     PostCard(
                         post = it.copy(
@@ -122,17 +115,15 @@ fun NewsFeedScreen(
                             like_count = likeCounts[it.id] ?: it.like_count
                         ),
                         navController = navController,
-                        viewModel = viewModel, // ✅ PostCard handles image fetching
+                        viewModel = viewModel,
                         onCommentClick = {
                             selectedPostId = it.id
                             showBottomSheet = true
                         },
                         onLikeClick = { isLiked ->
                             if (isLiked) {
-                                Log.d("NewsFeedScreen", "❤️ Liking post ID: ${it.id}")
                                 viewModel.toggleLike(it.id, it.user_id)
                             } else {
-                                Log.d("NewsFeedScreen", "💔 Unliking post ID: ${it.id}")
                                 viewModel.unlikePost(it.id)
                             }
                         }
@@ -140,7 +131,6 @@ fun NewsFeedScreen(
                 }
             }
 
-            // Loading Indicator for Pagination
             posts.apply {
                 when (loadState.append) {
                     is LoadState.Loading -> {
@@ -159,15 +149,12 @@ fun NewsFeedScreen(
                         }
                     }
 
-                    is LoadState.NotLoading -> {
-                        // No additional UI needed
-                    }
+                    is LoadState.NotLoading -> {}
                 }
             }
         }
     }
 }
-
 
 
 
@@ -196,32 +183,34 @@ fun NewsFeedScreen(
                 }
             }
 
-            @SuppressLint("SuspiciousIndentation")
-            @Composable
-            fun NewsFeedAppNavigation(application: Application, userPreferences: UserPreferences) {
-                val navController = rememberNavController()
 
-                NavHost(
-                    navController = navController,
-                    startDestination = "newsFeed",
-                ) {
-                    composable("newsFeed") {
-                        NewsFeedScreen(navController, application, userPreferences)
-                    }
-                    composable("comments/{postId}") { backStackEntry ->
-                        val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
-                        CommentScreen(postId = postId, navController = navController)
-                    }
-                    composable("profile") {
-                        ProfileViewScreen(navController, context = LocalContext.current)
-                    }
-                    composable("createPost") {
-                        CreatePostScreen(viewModel = viewModel(factory = NewsFeedViewModelFactory(application, userPreferences))) {
-                            navController.popBackStack()
-                        }
-                    }
-                }
+
+@Composable
+fun NewsFeedAppNavigation(application: Application, userPreferences: UserPreferences) {
+    val navController = rememberNavController()
+
+    NavHost(navController = navController, startDestination = NavRoutes.NewsFeed.route) {
+        composable(NavRoutes.NewsFeed.route) {
+            NewsFeedScreen(navController, userPreferences)
+        }
+
+        composable(NavRoutes.Comments.route) { backStackEntry ->
+            val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
+            CommentScreen(postId = postId, navController = navController)
+        }
+
+        composable(NavRoutes.Profile.route) {
+            ProfileScreen(onLogoutSuccess = { navController.navigate(NavRoutes.NewsFeed.route) })
+        }
+
+        composable(NavRoutes.CreatePost.route) {
+            CreatePostScreen(viewModel = viewModel(factory = NewsFeedViewModelFactory( userPreferences))) {
+                navController.popBackStack()
             }
+        }
+    }
+}
+
 
 //            @Preview(showBackground = true)
 //            @Composable

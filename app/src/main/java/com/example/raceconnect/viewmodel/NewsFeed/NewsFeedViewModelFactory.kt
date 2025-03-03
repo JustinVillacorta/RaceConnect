@@ -6,13 +6,12 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.raceconnect.datastore.UserPreferences
 
 class NewsFeedViewModelFactory(
-    private val application: Application,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences // ✅ Use UserPreferences instead of Application
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(NewsFeedViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return NewsFeedViewModel(application, userPreferences) as T
+            return NewsFeedViewModel(userPreferences) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
