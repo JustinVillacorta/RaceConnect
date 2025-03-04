@@ -1,5 +1,7 @@
 package com.example.raceconnect.navigation
 
+
+import FriendsScreen
 import NewsFeedScreen
 import NotificationsScreen
 import ProfileScreen
@@ -14,6 +16,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.ui.BottomNavBar
+
+
 import com.example.raceconnect.ui.MarketplaceScreen
 import com.example.raceconnect.ui.TopAppBar
 import com.example.raceconnect.view.Navigation.NavRoutes
@@ -57,11 +61,16 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 composable(NavRoutes.Notifications.route) {
                     NotificationsScreen()
                 }
-                // Add ProfileViewScreen as a separate route
-                composable("profileView") {
+                composable(NavRoutes.ProfileView.route) {
                     ProfileViewScreen(
                         navController = navController,
                         context = context
+                    )
+                }
+                composable(NavRoutes.Friends.route) { // Add Friends screen route
+                    FriendsScreen(
+                        userPreferences = userPreferences,
+                        onClose = { navController.popBackStack() } // Navigate back when closing
                     )
                 }
             }

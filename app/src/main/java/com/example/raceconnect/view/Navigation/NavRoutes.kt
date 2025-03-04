@@ -19,4 +19,5 @@ sealed class NavRoutes(val route: String) {
     object Marketplace : NavRoutes("marketplace")
     object Notifications : NavRoutes("notifications")
     object ProfileView : NavRoutes("profileView")
+    object Friends : NavRoutes("friends") // New route for Friends screen
 }
