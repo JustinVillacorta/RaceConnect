@@ -10,17 +10,18 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import com.example.raceconnect.network.RetrofitInstance
+import kotlinx.coroutines.flow.asStateFlow
 
 class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewModel() {
 
     private val _items = MutableStateFlow<List<MarketplaceDataClassItem>>(emptyList())
-    val items: StateFlow<List<MarketplaceDataClassItem>> = _items
+    val items: StateFlow<List<MarketplaceDataClassItem>> = _items.asStateFlow()
 
     private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     private val _currentUserId = MutableStateFlow<Int?>(null)
-    val currentUserId: StateFlow<Int?> = _currentUserId
+    val currentUserId: StateFlow<Int?> = _currentUserId.asStateFlow()
 
     init {
         fetchCurrentUser()
@@ -57,7 +58,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         price: String,
         description: String,
         category: String,
-        imageUrl: String
+        imageUrl: String = ""
     ) {
         viewModelScope.launch {
             val sellerId = _currentUserId.value
@@ -76,9 +77,13 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                     category = category,
                     image_url = imageUrl,
                     favorite_count = 0,
-                    status = "available",
-                    created_at = "",
-                    updated_at = ""
+                    status = "Available",
+                    report = "None",
+                    reported_at = null,
+                    previous_status = null,
+                    listing_status = "Available",
+                    created_at = "", // Backend will set this
+                    updated_at = "" // Backend will set this
                 )
 
                 val response = RetrofitInstance.api.createMarketplaceItem(newItem)
