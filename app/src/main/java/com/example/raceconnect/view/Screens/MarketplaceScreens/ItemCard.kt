@@ -16,16 +16,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.model.MarketplaceDataClassItem
 
 @Composable
-fun MarketplaceItemCard(item: MarketplaceDataClassItem) {
+fun MarketplaceItemCard(
+    item: MarketplaceDataClassItem,
+    navController: NavController // Pass the navController for navigation
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
-            .clickable { /* Navigate to item details */ },
+            .clickable {
+                // Navigate to the item details screen with the item ID
+                navController.navigate("marketplaceItemDetail/${item.id}")
+            },
         elevation = CardDefaults.cardElevation(4.dp),
         shape = RoundedCornerShape(8.dp)
     ) {

@@ -19,5 +19,8 @@ sealed class NavRoutes(val route: String) {
     object Marketplace : NavRoutes("marketplace")
     object Notifications : NavRoutes("notifications")
     object ProfileView : NavRoutes("profileView")
-    object Friends : NavRoutes("friends") // New route for Friends screen
+    object Friends : NavRoutes("friends")
+    object MarketplaceItemDetail : NavRoutes("marketplaceItemDetail/{itemId}") {
+        fun createRoute(itemId: Int) = "marketplaceItemDetail/$itemId"
+    }
 }

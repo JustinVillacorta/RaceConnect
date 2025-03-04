@@ -1,4 +1,5 @@
 package com.example.raceconnect.ui
+
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -9,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemCard
@@ -16,11 +18,11 @@ import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
-
 // Marketplace screen displaying "Current's Best" and "More for You" sections
 @Composable
 fun MarketplaceScreen(
     userPreferences: UserPreferences,
+    navController: NavController, // Add NavController parameter
     viewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
 ) {
     val items by viewModel.items.collectAsState()
@@ -36,7 +38,6 @@ fun MarketplaceScreen(
         )
     } else {
         Column(modifier = Modifier.fillMaxSize()) {
-
             // Content with "Create and Sell" button and Grid
             SwipeRefresh(
                 state = rememberSwipeRefreshState(isRefreshing),
@@ -61,7 +62,7 @@ fun MarketplaceScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(items, key = { it.id }) { item ->
-                            MarketplaceItemCard(item = item)
+                            MarketplaceItemCard(item = item, navController = navController) // Pass navController
                         }
                     }
                 }
@@ -69,7 +70,3 @@ fun MarketplaceScreen(
         }
     }
 }
-
-
-
-
