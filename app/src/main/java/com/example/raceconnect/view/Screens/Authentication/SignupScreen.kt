@@ -12,10 +12,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun SignupScreen(
@@ -133,7 +135,10 @@ fun SignupScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         TextButton(onClick = onBackNavigate) {
-            Text("Already have an account? Login")
+            Text("Already have an account? Login",
+                fontSize = 12.sp,  // Adjust size as needed
+                fontWeight = FontWeight.Medium,  // Optional: make it medium or bold
+                color = MaterialTheme.colorScheme.primary)
         }
     }
 }

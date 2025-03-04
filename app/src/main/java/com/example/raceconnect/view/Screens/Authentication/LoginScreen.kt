@@ -8,10 +8,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun LoginScreen(
@@ -78,12 +80,22 @@ fun LoginScreen(
             horizontalArrangement = Arrangement.SpaceBetween // Pushes them to opposite sides
         ) {
             TextButton(onClick = onSignupNavigate) {
-                Text("Don't have an account? Sign Up")
+                Text(text =  "Don't have an account? Sign Up",
+                    fontSize = 12.sp,  // Adjust size as needed
+                    fontWeight = FontWeight.Medium,  // Optional: make it medium or bold
+                    color = MaterialTheme.colorScheme.primary
+                )// Use theme-based color")
             }
 
             TextButton(onClick = onForgotPasswordNavigate) {
-                Text("Forgot Password?")
+                Text(
+                    text = "Forgot Password?",
+                    fontSize = 12.sp,  // Adjust size as needed
+                    fontWeight = FontWeight.Medium,  // Optional: make it medium or bold
+                    color = MaterialTheme.colorScheme.primary  // Use theme-based color
+                )
             }
+
         }
     }
 }
