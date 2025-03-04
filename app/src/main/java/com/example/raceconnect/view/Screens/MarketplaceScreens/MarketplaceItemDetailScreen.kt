@@ -19,6 +19,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.model.MarketplaceDataClassItem
+import com.example.raceconnect.view.Navigation.NavRoutes
 
 @Composable
 fun MarketplaceItemDetailScreen(itemId: Int, navController: NavController) {
@@ -136,7 +137,7 @@ fun MarketplaceItemDetailScreen(itemId: Int, navController: NavController) {
             }
 
             Button(
-                onClick = { /* Handle chat seller */ },
+                onClick = { navController.navigate(NavRoutes.ChatSeller.createRoute(itemId)) }, // Navigate to ChatSeller screen
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 modifier = Modifier

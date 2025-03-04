@@ -19,7 +19,8 @@ import com.example.raceconnect.ui.MarketplaceScreen
 import com.example.raceconnect.ui.TopAppBar
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.Navigation.AuthenticationNavHost
-import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
+import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen // Add this import
+import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen // Add this import
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
 
@@ -71,10 +72,14 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         onClose = { navController.popBackStack() } // Navigate back when closing
                     )
                 }
-                // New route for marketplace item details
                 composable(NavRoutes.MarketplaceItemDetail.route) { backStackEntry ->
                     val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
                     MarketplaceItemDetailScreen(itemId = itemId, navController = navController)
+                }
+                // ChatSellerScreen as a standalone screen (no Scaffold, no top bar or bottom nav)
+                composable(NavRoutes.ChatSeller.route) { backStackEntry ->
+                    val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
+                    ChatSellerScreen(itemId = itemId, navController = navController)
                 }
             }
         }
