@@ -30,11 +30,10 @@ import com.google.accompanist.swiperefresh.*
 fun NewsFeedScreen(
     navController: NavController,
     userPreferences: UserPreferences,
-    onShowCreatePost: () -> Unit // Callback to show CreatePostScreen
+    onShowCreatePost: () -> Unit,
+    onShowFullScreenImage: (String, Int) -> Unit
 ) {
-    val viewModel: NewsFeedViewModel =
-        viewModel(factory = NewsFeedViewModelFactory(userPreferences))
-
+    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val posts = viewModel.posts.collectAsLazyPagingItems()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val postLikes by viewModel.postLikes.collectAsState()
@@ -45,10 +44,11 @@ fun NewsFeedScreen(
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
+    // Auto-update when a new post is created
     LaunchedEffect(newPostTrigger) {
         if (newPostTrigger) {
-            viewModel.refreshPosts()
-            viewModel.resetNewPostTrigger()
+            viewModel.refreshPosts() // Triggers a refresh of the PagingData
+            viewModel.resetNewPostTrigger() // Resets the trigger
         }
     }
 
@@ -74,7 +74,7 @@ fun NewsFeedScreen(
             item {
                 AddPostSection(
                     navController = navController,
-                    onAddPostClick = onShowCreatePost // Trigger the callback
+                    onAddPostClick = onShowCreatePost
                 )
             }
 
@@ -97,12 +97,10 @@ fun NewsFeedScreen(
                             showBottomSheet = true
                         },
                         onLikeClick = { isLiked ->
-                            if (isLiked) {
-                                viewModel.toggleLike(it.id, it.user_id)
-                            } else {
-                                viewModel.unlikePost(it.id)
-                            }
-                        }
+                            if (isLiked) viewModel.toggleLike(it.id, it.user_id)
+                            else viewModel.unlikePost(it.id)
+                        },
+                        onShowFullScreenImage = { imageUrl -> onShowFullScreenImage(imageUrl, it.id) }
                     )
                 }
             }
@@ -110,18 +108,10 @@ fun NewsFeedScreen(
             posts.apply {
                 when (loadState.append) {
                     is LoadState.Loading -> {
-                        item {
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
-                            )
-                        }
+                        item { CircularProgressIndicator(modifier = Modifier.fillMaxWidth().padding(16.dp)) }
                     }
                     is LoadState.Error -> {
-                        item {
-                            Text(text = "Error loading posts", color = Color.Red)
-                        }
+                        item { Text(text = "Error loading posts", color = Color.Red) }
                     }
                     is LoadState.NotLoading -> {}
                 }

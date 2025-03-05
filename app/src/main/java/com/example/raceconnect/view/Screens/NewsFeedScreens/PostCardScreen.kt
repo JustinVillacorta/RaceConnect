@@ -21,8 +21,10 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,52 +50,43 @@ fun PostCard(
     navController: NavController,
     onCommentClick: () -> Unit,
     onLikeClick: (Boolean) -> Unit,
-    viewModel: NewsFeedViewModel
+    viewModel: NewsFeedViewModel,
+    onShowFullScreenImage: (String) -> Unit // Callback to show full-screen image
 ) {
     Log.d("PostCard", "📝 Rendering post with ID: ${post.id}, Content: ${post.content}")
 
     var isLiked by remember { mutableStateOf(post.isLiked) }
     var likeCount by remember { mutableStateOf(post.like_count) }
-
-    // Get images for this post
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: emptyList()
 
-    // State to control full-screen image viewer
-    var showFullScreenImage by remember { mutableStateOf<String?>(null) }
-
-    // Fetch images for this post
     LaunchedEffect(post.id) {
         Log.d("PostCard", "🔄 Fetching images for post ID: ${post.id}")
         viewModel.getPostImages(post.id)
     }
 
     Card(
-        shape = RoundedCornerShape(12.dp), // Rounded corners like Facebook
-        elevation = CardDefaults.cardElevation(2.dp), // Subtle elevation
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp) // Match Facebook margins
-            .background(Color.White) // White background like Facebook
+            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .background(Color.White)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) { // Consistent padding inside card
-            // Profile Section
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp) // Circular profile avatar size
+                        .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color.Gray) // Placeholder color
-                        .clickable {
-                            navController.navigate("profileView")
-                            Log.d("PostCard", "📌 Navigating to profile")
-                        }
+                        .background(Color.Gray)
+                        .clickable { navController.navigate("profileView") }
                 )
-                Spacer(modifier = Modifier.width(12.dp)) // More spacing like Facebook
-                Column(modifier = Modifier.weight(1f)) { // Allow text to expand
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Anonymous",
                         style = MaterialTheme.typography.bodyMedium,
@@ -102,49 +95,45 @@ fun PostCard(
                     Text(
                         text = "Just now",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray // Gray timestamp like Facebook
+                        color = Color.Gray
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp)) // Increased spacing
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Post Content
             Text(
                 text = post.content ?: "No content available.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Black
             )
 
-            Spacer(modifier = Modifier.height(12.dp)) // Spacing before image
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Display Image (single image, dynamically sized, clickable for full screen)
             if (imageUrls.isNotEmpty()) {
                 Log.d("PostCard", "🖼️ Displaying Image: ${imageUrls.first()}")
-
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp)
-                        .clip(RoundedCornerShape(8.dp)) // Rounded corners for image
-                        .clickable { showFullScreenImage = imageUrls.first() } // Click to show full screen
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onShowFullScreenImage(imageUrls.first()) } // Use callback
                 ) {
                     AsyncImage(
-                        model = imageUrls.first(), // Use the first image
+                        model = imageUrls.first(),
                         contentDescription = "Post image",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1.91f), // Default to Facebook's 1.91:1 (horizontal), can be dynamic
-                        contentScale = ContentScale.Crop // Crop to fill while maintaining aspect ratio
+                            .aspectRatio(1.91f),
+                        contentScale = ContentScale.Crop
                     )
                 }
             } else {
                 Log.d("PostCard", "🚫 No images found for post ID: ${post.id}")
             }
 
-            Spacer(modifier = Modifier.height(12.dp)) // Spacing before reactions
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Reaction Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -159,33 +148,24 @@ fun PostCard(
                         isLiked = !isLiked
                         likeCount = if (isLiked) likeCount + 1 else likeCount - 1
                         onLikeClick(isLiked)
-                        Log.d("PostCard", if (isLiked) "❤️ Post liked" else "💔 Post unliked")
                     }
                 )
                 Text(
-                    text = "$likeCount", // Show count directly
+                    text = "$likeCount",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray,
-                    modifier = Modifier.padding(start = 4.dp, end = 12.dp) // More spacing
+                    modifier = Modifier.padding(start = 4.dp, end = 12.dp)
                 )
-                ReactionIcon(icon = Icons.Default.ChatBubble, onClick = { onCommentClick(); Log.d("PostCard", "💬 Comment button clicked") })
-                Spacer(modifier = Modifier.width(8.dp)) // Reduced spacing
+                ReactionIcon(icon = Icons.Default.ChatBubble, onClick = onCommentClick)
+                Spacer(modifier = Modifier.width(8.dp))
                 ReactionIcon(icon = Icons.Default.Repeat)
             }
         }
     }
-
-    // Show full-screen image viewer if triggered
-    showFullScreenImage?.let { imageUrl ->
-        FullScreenImageViewer(
-            imageUrl = imageUrl,
-            onDismiss = { showFullScreenImage = null },
-            onLikeClick = { isLiked -> onLikeClick(isLiked) }, // Pass like callback
-            onCommentClick = onCommentClick // Pass comment callback
-        )
-    }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullScreenImageViewer(
     imageUrl: String,
@@ -196,155 +176,158 @@ fun FullScreenImageViewer(
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isAnimating by remember { mutableStateOf(false) }
-    var isLiked by remember { mutableStateOf(false) } // Track like state for the full-screen viewer
+    var isLiked by remember { mutableStateOf(false) }
     val velocityTracker = remember { VelocityTracker() }
     var isDragging by remember { mutableStateOf(false) }
 
     // Animate scale for double-tap zoom
     val animatedScale by animateFloatAsState(
-        targetValue = if (isAnimating) if (scale == 1f) 3f else 1f else scale,
+        targetValue = if (isAnimating) if (scale == 1f) 2.5f else 1f else scale,
         animationSpec = tween(durationMillis = 200),
         finishedListener = { isAnimating = false }
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black) // Solid black background like Facebook
-            .pointerInput(Unit) {
-
-                detectTapGestures(
-                    onDoubleTap = { cent -> // Double-tap to zoom in/out
-                        isAnimating = true
-                        scale = if (scale == 1f) 3f else 1f
-                        offset = Offset.Zero // Reset offset on double-tap
-                    },
-                    onPress = { offset ->
-                        velocityTracker.resetTracking()
-                        isDragging = false
-                    }
-                )
-
-                detectTransformGestures { centroid, pan, zoom, rotation ->
-                    velocityTracker.addPosition(System.currentTimeMillis(), centroid)
-                    isDragging = true
-                    if (!isAnimating) {
-                        scale = (scale * zoom).coerceIn(0.5f, 5f) // Limit zoom
-                        offset += pan
-                        // Limit panning to prevent image from moving off-screen
-                        val maxOffset = (size.width * (scale - 1)) / 2
-                        offset = Offset(
-                            offset.x.coerceIn(-maxOffset, maxOffset),
-                            offset.y.coerceIn(-maxOffset, maxOffset)
-                        )
-                    }
-                }
-
-                // Handle gesture end for swipe-down dismiss
-                detectDragGestures(
-                    onDrag = { change, dragAmount ->
-                        if (scale == 1f && !isAnimating) { // Only allow dismiss when not zoomed
-                            offset += dragAmount
-                            velocityTracker.addPosition(System.currentTimeMillis(), change.position)
-                        }
-                    },
-                    onDragEnd = {
-                        val velocity = velocityTracker.calculateVelocity()
-                        if (isDragging && velocity.y > 1000f && scale == 1f) { // Swipe down to dismiss
-                            onDismiss()
-                        }
-                        velocityTracker.resetTracking()
-                        isDragging = false
-                        offset = Offset.Zero // Reset offset after dismiss
-                    }
-                )
-            }
-    ) {
-        // Full-screen image with zoom and pan, filling the screen
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "Full-screen image",
-            modifier = Modifier
-                .fillMaxSize() // Fill the entire screen
-                .graphicsLayer(
-                    scaleX = animatedScale,
-                    scaleY = animatedScale,
-                    translationX = offset.x,
-                    translationY = offset.y
-                ),
-            contentScale = ContentScale.Crop // Crop to fill the screen while maintaining aspect ratio
-        )
-
-        // Close button (top-right, like the screenshot)
-        Icon(
-            imageVector = Icons.Default.Close,
-            contentDescription = "Close",
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-                .size(24.dp)
-                .clickable { onDismiss() }
-                .clip(CircleShape) // Circular shape for consistency with Facebook
-                .background(Color.Black.copy(alpha = 0.5f))
-                .padding(4.dp),
-            tint = Color.White
-        )
-
-        // Action buttons (bottom, like the screenshot)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Black // Solid black background
+    ) { paddingValues ->
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
-                .background(Color.Black, shape = RoundedCornerShape(8.dp))
-                .padding(horizontal = 8.dp, vertical = 8.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Like Button
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clickable {
-                            isLiked = !isLiked
-                            onLikeClick(isLiked)
+                .fillMaxSize()
+                .padding(paddingValues)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = { centroid ->
+                            isAnimating = true
+                            scale = if (scale <= 1f) 2.5f else 1f // Toggle between 1x and 2.5x on double-tap
+                            offset = Offset.Zero // Reset offset when zooming
+                        },
+                        onPress = {
+                            velocityTracker.resetTracking()
+                            isDragging = false
                         }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = "Like",
-                        tint = if (isLiked) Color.Red else Color.White,
-                        modifier = Modifier.size(24.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Like",
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyMedium
+
+                    detectTransformGestures { centroid, pan, zoom, rotation ->
+                        velocityTracker.addPosition(System.currentTimeMillis(), centroid)
+                        isDragging = true
+                        if (!isAnimating) {
+                            scale = (scale * zoom).coerceIn(0.5f, 5f) // Allow zoom from 0.5x to 5x
+                            offset += pan
+                            val maxOffsetX = (size.width * (scale - 1)) / 2
+                            val maxOffsetY = (size.height * (scale - 1)) / 2
+                            offset = Offset(
+                                offset.x.coerceIn(-maxOffsetX, maxOffsetX),
+                                offset.y.coerceIn(-maxOffsetY, maxOffsetY)
+                            )
+                        }
+                    }
+
+                    detectDragGestures(
+                        onDrag = { change, dragAmount ->
+                            if (scale == 1f && !isAnimating) { // Only allow swipe dismiss at 1x scale
+                                offset += dragAmount
+                                velocityTracker.addPosition(System.currentTimeMillis(), change.position)
+                            }
+                        },
+                        onDragEnd = {
+                            val velocity = velocityTracker.calculateVelocity()
+                            if (isDragging && velocity.y > 1000f && scale == 1f) {
+                                onDismiss()
+                            } else {
+                                // Reset offset if not dismissing
+                                if (scale == 1f) offset = Offset.Zero
+                            }
+                            velocityTracker.resetTracking()
+                            isDragging = false
+                        }
                     )
                 }
+        ) {
+            // Full-screen image with automatic scaling
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "Full-screen image",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = animatedScale,
+                        scaleY = animatedScale,
+                        translationX = offset.x,
+                        translationY = offset.y
+                    ),
+                contentScale = ContentScale.Fit // Scale to fit the screen by default
+            )
 
-                // Comments Button
+            // Close button (top-right)
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Close",
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .size(28.dp) // Slightly larger for better touch target
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(6.dp)
+                    .clickable { onDismiss() },
+                tint = Color.White
+            )
+
+            // Action buttons (bottom)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+                    .background(Color.Black.copy(alpha = 0.8f), shape = RoundedCornerShape(12.dp)) // Slightly more rounded and translucent
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clickable { onCommentClick() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.ChatBubble,
-                        contentDescription = "Comments",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Comments",
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clickable {
+                                isLiked = !isLiked
+                                onLikeClick(isLiked)
+                            }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = "Like",
+                            tint = if (isLiked) Color.Red else Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Like",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clickable { onCommentClick() }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ChatBubble,
+                            contentDescription = "Comments",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Comments",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
         }

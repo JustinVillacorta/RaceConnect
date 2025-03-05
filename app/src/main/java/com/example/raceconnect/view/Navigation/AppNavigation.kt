@@ -37,6 +37,7 @@ import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplace
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
+import com.example.raceconnect.view.Screens.NewsFeedScreens.FullScreenImageViewer
 import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
@@ -53,7 +54,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showCreatePostScreen by remember { mutableStateOf(false) }
     var showCreateListing by remember { mutableStateOf(false) }
     var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
-    var showChatSellerScreen by remember { mutableStateOf<Int?>(null) } // New state for ChatSellerScreen
+    var showChatSellerScreen by remember { mutableStateOf<Int?>(null) }
+    var showFullScreenImage by remember { mutableStateOf<Pair<String, Int>?>(null) } // Pair of imageUrl and postId
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
@@ -75,7 +77,10 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         NewsFeedScreen(
                             navController = navController,
                             userPreferences = userPreferences,
-                            onShowCreatePost = { showCreatePostScreen = true }
+                            onShowCreatePost = { showCreatePostScreen = true },
+                            onShowFullScreenImage = { imageUrl, postId ->
+                                showFullScreenImage = Pair(imageUrl, postId)
+                            }
                         )
                     }
                     composable(NavRoutes.Comments.route) { backStackEntry ->
@@ -105,7 +110,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             onClose = { navController.popBackStack() }
                         )
                     }
-                    // ChatSellerScreen removed from NavHost since it’s an overlay
                 }
             }
 
@@ -145,7 +149,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         itemId = itemId,
                         navController = navController,
                         onClose = { showItemDetailScreen = null },
-                        onClickChat = { showChatSellerScreen = it } // Trigger ChatSellerScreen overlay
+                        onClickChat = { showChatSellerScreen = it }
                     )
                 }
             }
@@ -160,7 +164,26 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     ChatSellerScreen(
                         itemId = itemId,
                         navController = navController,
-                        onClose = { showChatSellerScreen = null } // Dismiss overlay
+                        onClose = { showChatSellerScreen = null }
+                    )
+                }
+            }
+
+            // Overlay FullScreenImageViewer
+            showFullScreenImage?.let { (imageUrl, postId) ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                ) {
+                    FullScreenImageViewer(
+                        imageUrl = imageUrl,
+                        onDismiss = { showFullScreenImage = null },
+                        onLikeClick = { isLiked ->
+                            if (isLiked) newsFeedViewModel.toggleLike(postId, 0) // Assuming user_id is 0 for now
+                            else newsFeedViewModel.unlikePost(postId)
+                        },
+                        onCommentClick = { navController.navigate(NavRoutes.Comments.createRoute(postId)) }
                     )
                 }
             }

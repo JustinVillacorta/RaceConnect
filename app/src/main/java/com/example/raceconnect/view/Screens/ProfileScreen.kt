@@ -168,7 +168,8 @@ fun ProfileOptionItem(iconResId: Int, text: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 12.dp, horizontal = 16.dp),
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
