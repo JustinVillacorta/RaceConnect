@@ -17,28 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.view.Navigation.BottomNavTab
 import com.example.raceconnect.view.ui.theme.Red
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TopAppBar(navController: NavController) {
-    TopAppBar(
-        title = {
-            Text(text = "RaceConnect", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimary)
-        },
-        actions = {
-            IconButton(onClick = { /* Handle search */ }) {
-                Icon(
-                    painter = painterResource(id = com.example.raceconnect.R.drawable.baseline_search_24),
-                    contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Red,
-            titleContentColor = MaterialTheme.colorScheme.onPrimary
-        )
-    )
-}
+
 
 @Composable
 fun BottomNavBar(navController: NavController) {

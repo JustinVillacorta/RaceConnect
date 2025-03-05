@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -22,6 +23,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Friend
 import com.example.raceconnect.model.FriendStatus
+import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.FriendsViewModel
 import com.example.raceconnect.viewmodel.FriendsViewModelFactory
 
@@ -37,17 +39,36 @@ fun FriendsScreen(
 
     Scaffold(
         topBar = {
-            // A centered top bar with the screen title "Friends".
-            CenterAlignedTopAppBar(
-                title = { Text("Friends", style = MaterialTheme.typography.titleLarge) },
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Friends",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White
+                    )
+                },
+                actions = {
 
+                    // Search icon
+                    IconButton(onClick = { /* Handle search click */ }) {
+                        Icon(
+                            painter = painterResource(id = com.example.raceconnect.R.drawable.baseline_search_24),
+                            contentDescription = "Search",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Red,
+                    titleContentColor = Color.White
+                )
             )
         }
-    ) { innerPadding ->
+    ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
             // Friend Requests Section

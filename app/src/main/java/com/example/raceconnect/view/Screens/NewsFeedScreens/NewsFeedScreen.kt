@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -21,6 +22,7 @@ import com.example.raceconnect.view.Screens.NewsFeedScreens.AddPostSection
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.PostCard
+import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.google.accompanist.swiperefresh.*
@@ -68,62 +70,91 @@ fun NewsFeedScreen(
         }
     }
 
-    SwipeRefresh(
-        state = rememberSwipeRefreshState(isRefreshing),
-        onRefresh = { viewModel.refreshPosts() }
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            item {
-                AddPostSection(
-                    navController = navController,
-                    onAddPostClick = onShowCreatePost,
-                    onShowProfileView = onShowProfileView
-                )
-            }
-
-            items(posts.itemCount) { index ->
-                val post = posts[posts.itemCount - 1 - index]
-                post?.let {
-                    LaunchedEffect(it.id) {
-                        viewModel.fetchPostLikes(it.id)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "RaceConnect",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White
+                    )
+                },
+                actions = {
+                    // Search icon
+                    IconButton(onClick = { /* Handle search click */ }) {
+                        Icon(
+                            painter = painterResource(id = com.example.raceconnect.R.drawable.baseline_search_24),
+                            contentDescription = "Search",
+                            tint = Color.White
+                        )
                     }
-
-                    PostCard(
-                        post = it.copy(
-                            isLiked = postLikes[it.id] ?: false,
-                            like_count = likeCounts[it.id] ?: it.like_count
-                        ),
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Red,
+                    titleContentColor = Color.White
+                )
+            )
+        }
+    ) { paddingValues ->
+        SwipeRefresh(
+            state = rememberSwipeRefreshState(isRefreshing),
+            onRefresh = { viewModel.refreshPosts() },
+            modifier = Modifier.padding(paddingValues) // Apply padding from Scaffold to avoid overlap with TopAppBar
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    AddPostSection(
                         navController = navController,
-                        viewModel = viewModel,
-                        onCommentClick = {
-                            selectedPostId = it.id
-                            showBottomSheet = true
-                        },
-                        onLikeClick = { isLiked ->
-                            if (isLiked) viewModel.toggleLike(it.id, it.user_id)
-                            else viewModel.unlikePost(it.id)
-                        },
-                        onShowFullScreenImage = { imageUrl -> onShowFullScreenImage(imageUrl, it.id) },
-                        onShowProfileView = onShowProfileView,
-                        onReportClick = { viewModel.reportPost(it.id) }
+                        onAddPostClick = onShowCreatePost,
+                        onShowProfileView = onShowProfileView
                     )
                 }
-            }
 
-            posts.apply {
-                when (loadState.append) {
-                    is LoadState.Loading -> {
-                        item { CircularProgressIndicator(modifier = Modifier.fillMaxWidth().padding(16.dp)) }
+                items(posts.itemCount) { index ->
+                    val post = posts[posts.itemCount - 1 - index]
+                    post?.let {
+                        LaunchedEffect(it.id) {
+                            viewModel.fetchPostLikes(it.id)
+                        }
+
+                        PostCard(
+                            post = it.copy(
+                                isLiked = postLikes[it.id] ?: false,
+                                like_count = likeCounts[it.id] ?: it.like_count
+                            ),
+                            navController = navController,
+                            viewModel = viewModel,
+                            onCommentClick = {
+                                selectedPostId = it.id
+                                showBottomSheet = true
+                            },
+                            onLikeClick = { isLiked ->
+                                if (isLiked) viewModel.toggleLike(it.id, it.user_id)
+                                else viewModel.unlikePost(it.id)
+                            },
+                            onShowFullScreenImage = { imageUrl -> onShowFullScreenImage(imageUrl, it.id) },
+                            onShowProfileView = onShowProfileView,
+                            onReportClick = { viewModel.reportPost(it.id) }
+                        )
                     }
-                    is LoadState.Error -> {
-                        item { Text(text = "Error loading posts", color = Color.Red) }
+                }
+
+                posts.apply {
+                    when (loadState.append) {
+                        is LoadState.Loading -> {
+                            item { CircularProgressIndicator(modifier = Modifier.fillMaxWidth().padding(16.dp)) }
+                        }
+                        is LoadState.Error -> {
+                            item { Text(text = "Error loading posts", color = Color.Red) }
+                        }
+                        is LoadState.NotLoading -> {}
                     }
-                    is LoadState.NotLoading -> {}
                 }
             }
         }

@@ -2,6 +2,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -15,14 +16,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.raceconnect.model.Notification
 import com.example.raceconnect.R
-
-
+import com.example.raceconnect.view.ui.theme.Red
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen() {
-    // Sample notifications
+    // Sample notifications (you can move this to a ViewModel or data source if needed)
     val notifications = listOf(
         Notification(
             profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
@@ -31,25 +31,25 @@ fun NotificationsScreen() {
             timestamp = "2h"
         ),
         Notification(
-            profilePic =  R.drawable.baseline_account_circle_24, // Replace with actual drawable
+            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
             userName = "Jake Jordan Gyllenhaal",
             action = "liked your report.",
             timestamp = "4h"
         ),
         Notification(
-            profilePic =  R.drawable.baseline_account_circle_24, // Replace with actual drawable
+            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
             userName = "Mark Zuckerberg",
             action = "reposted the same post.",
             timestamp = "5h"
         ),
         Notification(
-            profilePic =  R.drawable.baseline_account_circle_24, // Replace with actual drawable
+            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
             userName = "John Cena",
             action = "commented on your post.",
             timestamp = "1d"
         ),
         Notification(
-            profilePic =  R.drawable.baseline_account_circle_24, // Replace with actual drawable
+            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
             userName = "Earl Parra",
             action = "commented on your post.",
             timestamp = "1d"
@@ -68,20 +68,47 @@ fun NotificationsScreen() {
         )
     )
 
-
-    // Notifications List
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 16.dp), // Padding below the AppBar
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(notifications.size) { index ->
-            NotificationItem(notification = notifications[index])
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Notifications", // Changed from "Friends" to "Notifications" to match the screen name
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White
+                    )
+                },
+                actions = {
+                    // Search icon
+                    IconButton(onClick = { /* Handle search click */ }) {
+                        Icon(
+                            painter = painterResource(id = com.example.raceconnect.R.drawable.baseline_search_24),
+                            contentDescription = "Search",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Red,
+                    titleContentColor = Color.White
+                )
+            )
+        }
+    ) { paddingValues ->
+        // Notifications List
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues) // Apply padding from Scaffold to avoid overlap with TopAppBar
+                .padding(top = 16.dp), // Additional padding below the AppBar
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(notifications) { notification ->
+                NotificationItem(notification = notification)
             }
         }
     }
-
+}
 
 @Composable
 fun NotificationItem(notification: Notification) {

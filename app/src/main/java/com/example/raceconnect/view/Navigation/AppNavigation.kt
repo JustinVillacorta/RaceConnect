@@ -25,11 +25,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.ui.BottomNavBar
 import com.example.raceconnect.ui.MarketplaceScreen
-import com.example.raceconnect.ui.TopAppBar
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.Navigation.AuthenticationNavHost
 import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
@@ -57,17 +57,20 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
     var showChatSellerScreen by remember { mutableStateOf<Int?>(null) }
     var showFullScreenImage by remember { mutableStateOf<Pair<String, Int>?>(null) }
-    var showProfileViewScreen by remember { mutableStateOf(false) } // New state for ProfileViewScreen
+    var showProfileViewScreen by remember { mutableStateOf(false) }
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
+
+    // Get the current route
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
 
     if (token == null) {
         AuthenticationNavHost()
     } else {
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
-                topBar = { TopAppBar(navController = navController) },
                 bottomBar = { BottomNavBar(navController) }
             ) { paddingValues ->
                 NavHost(
@@ -89,7 +92,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         CommentScreen(
                             postId = postId,
                             navController = navController,
-                            onShowProfileView = { showProfileViewScreen = true } // Pass from here
+                            onShowProfileView = { showProfileViewScreen = true }
                         )
                     }
                     composable(NavRoutes.Profile.route) {
@@ -114,9 +117,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     }
                 }
             }
-
-
-
 
             // Overlay CreatePostScreen
             AnimatedVisibility(
