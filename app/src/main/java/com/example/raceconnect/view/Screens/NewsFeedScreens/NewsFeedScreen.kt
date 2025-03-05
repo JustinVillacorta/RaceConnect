@@ -1,4 +1,10 @@
 @file:Suppress("DEPRECATION")
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -11,7 +17,10 @@ import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.raceconnect.datastore.UserPreferences
-import com.example.raceconnect.view.Screens.NewsFeedScreens.*
+import com.example.raceconnect.view.Screens.NewsFeedScreens.AddPostSection
+import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
+import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
+import com.example.raceconnect.view.Screens.NewsFeedScreens.PostCard
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.google.accompanist.swiperefresh.*
@@ -20,10 +29,11 @@ import com.google.accompanist.swiperefresh.*
 @Composable
 fun NewsFeedScreen(
     navController: NavController,
-    userPreferences: UserPreferences // ✅ Remove Application, keep UserPreferences
+    userPreferences: UserPreferences,
+    onShowCreatePost: () -> Unit // Callback to show CreatePostScreen
 ) {
     val viewModel: NewsFeedViewModel =
-        viewModel(factory = NewsFeedViewModelFactory(userPreferences)) // ✅ Pass UserPreferences only
+        viewModel(factory = NewsFeedViewModelFactory(userPreferences))
 
     val posts = viewModel.posts.collectAsLazyPagingItems()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
@@ -32,11 +42,9 @@ fun NewsFeedScreen(
     val newPostTrigger by viewModel.newPostTrigger.collectAsState()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var showCreatePostScreen by remember { mutableStateOf(false) }
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    // ✅ Listen for new post events and refresh
     LaunchedEffect(newPostTrigger) {
         if (newPostTrigger) {
             viewModel.refreshPosts()
@@ -44,7 +52,6 @@ fun NewsFeedScreen(
         }
     }
 
-    // ✅ Show Comments Modal Bottom Sheet
     if (showBottomSheet) {
         ModalBottomSheet(
             sheetState = sheetState,
@@ -54,20 +61,6 @@ fun NewsFeedScreen(
         }
     }
 
-    // ✅ Show Create Post Modal Bottom Sheet
-    if (showCreatePostScreen) {
-        ModalBottomSheet(
-            sheetState = sheetState,
-            onDismissRequest = { showCreatePostScreen = false }
-        ) {
-            CreatePostScreen(
-                viewModel = viewModel,
-                onClose = { showCreatePostScreen = false }
-            )
-        }
-    }
-
-    // ✅ Main UI
     SwipeRefresh(
         state = rememberSwipeRefreshState(isRefreshing),
         onRefresh = { viewModel.refreshPosts() }
@@ -81,7 +74,8 @@ fun NewsFeedScreen(
             item {
                 AddPostSection(
                     navController = navController,
-                    onAddPostClick = { showCreatePostScreen = true })
+                    onAddPostClick = onShowCreatePost // Trigger the callback
+                )
             }
 
             items(posts.itemCount) { index ->
@@ -124,22 +118,14 @@ fun NewsFeedScreen(
                             )
                         }
                     }
-
                     is LoadState.Error -> {
                         item {
                             Text(text = "Error loading posts", color = Color.Red)
                         }
                     }
-
                     is LoadState.NotLoading -> {}
                 }
             }
         }
     }
 }
-
-
-
-
-
-

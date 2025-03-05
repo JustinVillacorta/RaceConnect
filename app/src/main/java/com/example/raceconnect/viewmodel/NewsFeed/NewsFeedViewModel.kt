@@ -56,15 +56,15 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         _newPostTrigger.value = false
     }
 
-    fun addPost(context: Context, content: String, imageUri: Uri?) {
+    fun addPost(context: Context, content: String, imageUri: Uri?, category: String, privacy: String) {
         viewModelScope.launch {
             val userId = userPreferences.user.first()?.id ?: return@launch
             try {
                 val userIdPart = RequestBody.create("text/plain".toMediaTypeOrNull(), userId.toString())
                 val contentPart = RequestBody.create("text/plain".toMediaTypeOrNull(), content)
                 val titlePart = RequestBody.create("text/plain".toMediaTypeOrNull(), "You")
-                val categoryPart = RequestBody.create("text/plain".toMediaTypeOrNull(), "Formula 1")
-                val privacyPart = RequestBody.create("text/plain".toMediaTypeOrNull(), "Public")
+                val categoryPart = RequestBody.create("text/plain".toMediaTypeOrNull(), category) // Use provided category
+                val privacyPart = RequestBody.create("text/plain".toMediaTypeOrNull(), privacy) // Use provided privacy
                 val typePart = RequestBody.create("text/plain".toMediaTypeOrNull(), if (imageUri != null) "image" else "text")
                 val postTypePart = RequestBody.create("text/plain".toMediaTypeOrNull(), "normal")
 
@@ -92,7 +92,6 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
             }
         }
     }
-
 
     fun getFileFromUri(context: Context, uri: Uri): File? {
         return try {

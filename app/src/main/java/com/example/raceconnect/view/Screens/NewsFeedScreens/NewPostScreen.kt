@@ -9,11 +9,14 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
     import androidx.compose.foundation.border
     import androidx.compose.foundation.clickable
     import androidx.compose.foundation.layout.*
+    import androidx.compose.foundation.rememberScrollState
     import androidx.compose.foundation.shape.CircleShape
     import androidx.compose.foundation.shape.RoundedCornerShape
+    import androidx.compose.foundation.verticalScroll
     import androidx.compose.material.icons.Icons
     import androidx.compose.material.icons.automirrored.filled.ArrowBack
     import androidx.compose.material.icons.filled.AccountCircle
+    import androidx.compose.material.icons.filled.ArrowDropDown
     import androidx.compose.material.icons.filled.Image
     import androidx.compose.material3.*
     import androidx.compose.runtime.*
@@ -22,6 +25,7 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
     import androidx.compose.ui.graphics.Color
     import androidx.compose.ui.platform.LocalContext
     import androidx.compose.ui.text.font.FontWeight
+    import androidx.compose.ui.text.style.TextAlign
     import androidx.compose.ui.unit.dp
     import androidx.navigation.NavController
     import coil.compose.rememberAsyncImagePainter
@@ -66,101 +70,244 @@ fun AddPostSection(navController: NavController, onAddPostClick: () -> Unit) {
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
-    val context = LocalContext.current // ✅ Get context for URI conversion
+    val context = LocalContext.current
     var postText by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedCategory by remember { mutableStateOf("Formula 1") } // Default category
+    var selectedPrivacy by remember { mutableStateOf("Public") } // Default privacy (UI-only)
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         selectedImageUri = uri
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Create post", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    Button(
-                        onClick = {
-                            if (postText.isNotEmpty()) {
-                                viewModel.addPost(context, postText, selectedImageUri) // ✅ Pass context here
-                                onClose()
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF696666))
-                    ) {
-                        Text("Publish", color = Color.White)
-                    }
-                }
-            )
-        },
-        content = { innerPadding ->
-            Column(
+    // Categories for the dropdown (using enum display names)
+    val categories = listOf("Formula 1", "24 Hours of Le Mans", "World Rally Championship")
+    // Privacy options for the dropdown (UI-only: Public and Friends Only)
+    val privacyOptions = listOf("Public", "Friends Only")
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background // Use theme background color
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()) // Enable scrolling for the entire content
+                .padding(horizontal = 8.dp) // Reduced horizontal padding
+        ) {
+            // TopBar integrated into the scrollable content
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(vertical = 16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(Color.Gray)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Anonymous",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                    )
+                IconButton(onClick = onClose) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-
-                // Post Content Input
-                OutlinedTextField(
-                    value = postText,
-                    onValueChange = { postText = it },
-                    placeholder = { Text("What's new today?") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
+                Text(
+                    text = "Create Post",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
                 )
-
-                // Image Preview Section
-                if (selectedImageUri != null) {
-                    Image(
-                        painter = rememberAsyncImagePainter(selectedImageUri),
-                        contentDescription = "Selected Image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .padding(top = 8.dp)
-                    )
-                }
-
-                // Image Picker Button
                 Button(
-                    onClick = { launcher.launch("image/*") },
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = {
+                        if (postText.isNotEmpty()) {
+                            viewModel.addPost(context, postText, selectedImageUri, selectedCategory, selectedPrivacy)
+                            onClose()
+                        }
+                    },
+                    enabled = postText.isNotEmpty(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary), // Use theme primary color
+                    modifier = Modifier.padding(end = 8.dp)
                 ) {
-                    Icon(Icons.Default.Image, contentDescription = "Pick Image")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Select Image")
+                    Text("Post", color = MaterialTheme.colorScheme.onPrimary) // Use theme onPrimary color
                 }
             }
-        }
-    )
-}
 
+            // Profile Section
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier
+                        .size(36.dp) // Slightly smaller for a more compact look
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)) // Use theme surface variant with transparency
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Anonymous",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                )
+            }
+
+            // Dropdowns for Categories and Privacy (Smaller and more rounded, no explicit colors)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center, // Center the dropdowns
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Category Dropdown
+                var categoryExpanded by remember { mutableStateOf(false) }
+                Box(
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .width(100.dp) // Smaller width for a compact look
+                        .height(32.dp) // Smaller height for a compact look
+                        .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(8.dp)) // Use theme primary color, more rounded
+                        .clickable { categoryExpanded = true }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = selectedCategory,
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onPrimary),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "Dropdown Arrow",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp) // Smaller icon for compact look
+                        )
+                    }
+                }
+                DropdownMenu(
+                    expanded = categoryExpanded,
+                    onDismissRequest = { categoryExpanded = false },
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surface) // Use theme surface color
+                        .width(100.dp)
+                ) {
+                    categories.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall) },
+                            onClick = {
+                                selectedCategory = category
+                                categoryExpanded = false
+                            },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                        )
+                    }
+                }
+
+                // Privacy Dropdown
+                var privacyExpanded by remember { mutableStateOf(false) }
+                Box(
+                    modifier = Modifier
+                        .width(100.dp) // Smaller width for a compact look
+                        .height(32.dp) // Smaller height for a compact look
+                        .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(8.dp)) // Use theme primary color, more rounded
+                        .clickable { privacyExpanded = true }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = selectedPrivacy,
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onPrimary),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "Dropdown Arrow",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp) // Smaller icon for compact look
+                        )
+                    }
+                }
+                DropdownMenu(
+                    expanded = privacyExpanded,
+                    onDismissRequest = { privacyExpanded = false },
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surface) // Use theme surface color
+                        .width(100.dp)
+                ) {
+                    privacyOptions.forEach { privacy ->
+                        DropdownMenuItem(
+                            text = { Text(privacy, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall) },
+                            onClick = {
+                                selectedPrivacy = privacy
+                                privacyExpanded = false
+                            },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                        )
+                    }
+                }
+            }
+
+            // TextField without outline, auto-adjusting height
+            TextField(
+                value = postText,
+                onValueChange = { postText = it },
+                placeholder = { Text("What's on your mind?", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight() // Auto-adjust height based on content
+                    .background(Color.Transparent), // No background
+                textStyle = MaterialTheme.typography.bodyLarge,
+                colors = TextFieldDefaults.colors(
+                    focusedIndicatorColor = Color.Transparent, // Remove underline
+                    unfocusedIndicatorColor = Color.Transparent, // Remove underline
+                    disabledIndicatorColor = Color.Transparent,
+                    focusedContainerColor = Color.Transparent, // Ensure no container color
+                    unfocusedContainerColor = Color.Transparent // Ensure no container color
+                )
+            )
+
+            // Fixed-size Image Preview
+            if (selectedImageUri != null) {
+                Image(
+                    painter = rememberAsyncImagePainter(selectedImageUri),
+                    contentDescription = "Selected Image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp) // Fixed height like Facebook
+                        .padding(top = 8.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop // Crop to fit like Facebook
+                )
+            }
+
+            Button(
+                onClick = { launcher.launch("image/*") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                contentPadding = PaddingValues(12.dp)
+            ) {
+                Icon(
+                    Icons.Default.Image,
+                    contentDescription = "Pick Image",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Add Photo", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            // Add bottom padding to prevent content from being cut off
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}

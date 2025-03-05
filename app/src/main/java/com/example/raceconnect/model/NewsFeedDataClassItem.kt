@@ -20,6 +20,17 @@ data class NewsFeedDataClassItem(
     val updated_at: String = "",
     val isLiked: Boolean = false
 )
+// for testing to be changed
+//enum class PostCategory(val displayName: String) {
+//    FORMULA_1("Formula 1"),
+//    LE_MANS("24 Hours of Le Mans"),
+//    WRC("World Rally Championship");
+//
+//    companion object {
+//        fun fromDisplayName(name: String): PostCategory? =
+//            values().find { it.displayName.equals(name, ignoreCase = true) }
+//    }
+//}
 
 data class PostResponse(
     val message: String,
