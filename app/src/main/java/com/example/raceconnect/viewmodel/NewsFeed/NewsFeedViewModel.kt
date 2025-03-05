@@ -201,4 +201,20 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
             }
         }
     }
+
+    fun reportPost(postId: Int) {
+        viewModelScope.launch {
+            try {
+                // Replace with your actual reporting logic (e.g., API call)
+                // For example:
+                // repository.reportPost(postId)
+                Log.d("NewsFeedViewModel", "Post $postId reported")
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "Error reporting post: $e")
+            }
+        }
+    }
+
+
+
 }

@@ -109,7 +109,8 @@ fun NewsFeedScreen(
                             else viewModel.unlikePost(it.id)
                         },
                         onShowFullScreenImage = { imageUrl -> onShowFullScreenImage(imageUrl, it.id) },
-                        onShowProfileView = onShowProfileView
+                        onShowProfileView = onShowProfileView,
+                        onReportClick = { viewModel.reportPost(it.id) }
                     )
                 }
             }
