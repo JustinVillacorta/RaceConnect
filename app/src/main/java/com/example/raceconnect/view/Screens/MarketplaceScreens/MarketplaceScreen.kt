@@ -23,7 +23,8 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 fun MarketplaceScreen(
     userPreferences: UserPreferences,
     navController: NavController,
-    onShowCreateListing: () -> Unit, // Callback to show CreateMarketplaceItemScreen
+    onShowCreateListing: () -> Unit,
+    onShowItemDetail: (Int) -> Unit, // Callback to show MarketplaceItemDetailScreen
     viewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
 ) {
     val items by viewModel.items.collectAsState()
@@ -38,7 +39,7 @@ fun MarketplaceScreen(
             Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                 // "Create and Sell" Button
                 Button(
-                    onClick = onShowCreateListing, // Trigger the callback
+                    onClick = onShowCreateListing,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
@@ -54,7 +55,11 @@ fun MarketplaceScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(items, key = { it.id }) { item ->
-                        MarketplaceItemCard(item = item, navController = navController)
+                        MarketplaceItemCard(
+                            item = item,
+                            navController = navController,
+                            onClick = { onShowItemDetail(item.id) } // Trigger callback
+                        )
                     }
                 }
             }

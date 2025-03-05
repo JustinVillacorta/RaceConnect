@@ -52,8 +52,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
     // State to control screen visibility
     var showCreatePostScreen by remember { mutableStateOf(false) }
     var showCreateListing by remember { mutableStateOf(false) }
+    var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
+    var showChatSellerScreen by remember { mutableStateOf<Int?>(null) } // New state for ChatSellerScreen
 
-    // ViewModels
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
 
@@ -88,7 +89,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         MarketplaceScreen(
                             userPreferences = userPreferences,
                             navController = navController,
-                            onShowCreateListing = { showCreateListing = true }
+                            onShowCreateListing = { showCreateListing = true },
+                            onShowItemDetail = { itemId -> showItemDetailScreen = itemId }
                         )
                     }
                     composable(NavRoutes.Notifications.route) {
@@ -103,28 +105,15 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             onClose = { navController.popBackStack() }
                         )
                     }
-                    composable(NavRoutes.MarketplaceItemDetail.route) { backStackEntry ->
-                        val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
-                        MarketplaceItemDetailScreen(itemId = itemId, navController = navController)
-                    }
-                    composable(NavRoutes.ChatSeller.route) { backStackEntry ->
-                        val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
-                        ChatSellerScreen(itemId = itemId, navController = navController)
-                    }
+                    // ChatSellerScreen removed from NavHost since it’s an overlay
                 }
             }
 
             // Overlay CreatePostScreen
             AnimatedVisibility(
                 visible = showCreatePostScreen,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(durationMillis = 300)
-                ) + fadeIn(animationSpec = tween(durationMillis = 300)),
-                exit = slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(durationMillis = 300)
-                ) + fadeOut(animationSpec = tween(durationMillis = 300))
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
                 CreatePostScreen(
                     viewModel = newsFeedViewModel,
@@ -135,20 +124,45 @@ fun AppNavigation(userPreferences: UserPreferences) {
             // Overlay CreateMarketplaceItemScreen
             AnimatedVisibility(
                 visible = showCreateListing,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(durationMillis = 300)
-                ) + fadeIn(animationSpec = tween(durationMillis = 300)),
-                exit = slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(durationMillis = 300)
-                ) + fadeOut(animationSpec = tween(durationMillis = 300))
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
                 CreateMarketplaceItemScreen(
                     userPreferences = userPreferences,
                     onClose = { showCreateListing = false },
                     viewModel = marketplaceViewModel
                 )
+            }
+
+            // Overlay MarketplaceItemDetailScreen
+            showItemDetailScreen?.let { itemId ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                ) {
+                    MarketplaceItemDetailScreen(
+                        itemId = itemId,
+                        navController = navController,
+                        onClose = { showItemDetailScreen = null },
+                        onClickChat = { showChatSellerScreen = it } // Trigger ChatSellerScreen overlay
+                    )
+                }
+            }
+
+            // Overlay ChatSellerScreen
+            showChatSellerScreen?.let { itemId ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                ) {
+                    ChatSellerScreen(
+                        itemId = itemId,
+                        navController = navController,
+                        onClose = { showChatSellerScreen = null } // Dismiss overlay
+                    )
+                }
             }
         }
     }

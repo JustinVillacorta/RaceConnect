@@ -20,19 +20,18 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.model.MarketplaceDataClassItem
 
+
 @Composable
 fun MarketplaceItemCard(
     item: MarketplaceDataClassItem,
-    navController: NavController // Pass the navController for navigation
+    navController: NavController, // Keep navController for potential future use (e.g., ChatSeller)
+    onClick: () -> Unit = {} // Add onClick callback to trigger MarketplaceItemDetailScreen
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
-            .clickable {
-                // Navigate to the item details screen with the item ID
-                navController.navigate("marketplaceItemDetail/${item.id}")
-            },
+            .clickable { onClick() }, // Use the callback instead of navigation
         elevation = CardDefaults.cardElevation(4.dp),
         shape = RoundedCornerShape(8.dp)
     ) {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Send
@@ -27,12 +28,17 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.example.raceconnect.view.ui.theme.Red
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatSellerScreen(itemId: Int, navController: NavController) {
+fun ChatSellerScreen(
+    itemId: Int,
+    navController: NavController,
+    onClose: () -> Unit = { navController.popBackStack() } // Add onClose callback with default navigation
+) {
     // Simulate seller and item data (replace with actual data source)
     val sellerImageUrl = "https://example.com/mclaren_polo.jpg" // Seller profile image
     val itemTitle = "McLaren 2024 Team Polo"
@@ -43,7 +49,7 @@ fun ChatSellerScreen(itemId: Int, navController: NavController) {
     var messages by remember { mutableStateOf<List<ChatMessage>>(listOf(
         ChatMessage(
             id = 1,
-            senderId = currentUserId, // Buyer’s message
+            senderId = currentUserId,
             content = "Hi there, is the product still available?",
             timestamp = Date()
         )
@@ -55,13 +61,12 @@ fun ChatSellerScreen(itemId: Int, navController: NavController) {
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? ->
-            selectedPhotoUri = uri // Store the selected photo URI
-            // Add the photo as a message at the bottom
+            selectedPhotoUri = uri
             uri?.let { photoUri ->
                 messages = messages + ChatMessage(
                     id = messages.size + 1,
                     senderId = currentUserId,
-                    content = "Photo", // Placeholder for photo
+                    content = "Photo",
                     timestamp = Date(),
                     photoUri = photoUri
                 )
@@ -69,50 +74,49 @@ fun ChatSellerScreen(itemId: Int, navController: NavController) {
         }
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        // Custom Top Bar for ChatSellerScreen (red with "Chat Seller" and back arrow)
-        TopAppBar(
-            title = { Text("Chat Seller") },
-            navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back"
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFFD32F2F) // Exact red as in the image
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Chat Seller") },
+                navigationIcon = {
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Red,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
-        )
-
-        // Chat Content (Header, Messages, and Input)
+        },
+        modifier = Modifier.fillMaxSize()
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp) // Adjusted padding for clean look
+                .padding(paddingValues) // Respect Scaffold padding
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             // Chat Header (Seller Profile and Product Title)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
             ) {
-                // Seller Profile Image (circular, centered)
                 AsyncImage(
                     model = sellerImageUrl,
                     contentDescription = "Seller Profile",
                     modifier = Modifier
-                        .size(60.dp) // Smaller size for messenger-like design
+                        .size(60.dp)
                         .clip(CircleShape)
                         .align(Alignment.CenterHorizontally)
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Product Title (centered)
                 Text(
                     text = itemTitle,
                     style = MaterialTheme.typography.titleMedium,
@@ -123,11 +127,11 @@ fun ChatSellerScreen(itemId: Int, navController: NavController) {
                 )
             }
 
-            // Chat Messages (Scrollable, new messages at bottom)
+            // Chat Messages
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 0.dp), // Remove horizontal padding to match the image's border
+                    .padding(horizontal = 0.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(messages) { message ->
@@ -139,11 +143,11 @@ fun ChatSellerScreen(itemId: Int, navController: NavController) {
                 }
             }
 
-            // Message Input Field (messenger-style)
+            // Message Input Field
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White, shape = RoundedCornerShape(8.dp)) // White background for input
+                    .background(Color.White, shape = RoundedCornerShape(8.dp))
                     .padding(vertical = 8.dp, horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -153,7 +157,7 @@ fun ChatSellerScreen(itemId: Int, navController: NavController) {
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
                         contentDescription = "Attach Photo",
-                        tint = Color(0xFFD32F2F) // Red to match the image
+                        tint = Color(0xFFD32F2F)
                     )
                 }
 
@@ -180,19 +184,19 @@ fun ChatSellerScreen(itemId: Int, navController: NavController) {
                             messages = messages + ChatMessage(
                                 id = messages.size + 1,
                                 senderId = currentUserId,
-                                content = messageInput.ifBlank { "Photo" }, // Use "Photo" if no text but photo selected
+                                content = messageInput.ifBlank { "Photo" },
                                 timestamp = Date(),
                                 photoUri = selectedPhotoUri
                             )
-                            messageInput = "" // Clear input
-                            selectedPhotoUri = null // Clear photo selection
+                            messageInput = ""
+                            selectedPhotoUri = null
                         }
                     }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Send,
                         contentDescription = "Send Message",
-                        tint = Color(0xFFD32F2F) // Red to match the image
+                        tint = Color(0xFFD32F2F)
                     )
                 }
             }
