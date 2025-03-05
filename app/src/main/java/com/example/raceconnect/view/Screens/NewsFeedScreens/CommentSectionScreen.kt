@@ -42,7 +42,7 @@ import androidx.navigation.NavController
 import com.example.raceconnect.model.Comment
 
 @Composable
-fun CommentScreen(postId: Int, navController: NavController) {
+fun CommentScreen(postId: Int, navController: NavController, onShowProfileView: () -> Unit) {
     var commentText by remember { mutableStateOf("") }
     val comments = remember {
         mutableStateListOf(
@@ -63,7 +63,11 @@ fun CommentScreen(postId: Int, navController: NavController) {
             modifier = Modifier.weight(1f)
         ) {
             items(comments) { comment ->
-                CommentItem(comment, navController)
+                CommentItem(
+                    comment = comment,
+                    navController = navController,
+                    onShowProfileView = onShowProfileView // Pass it down
+                )
             }
         }
 
@@ -102,7 +106,11 @@ fun CommentScreen(postId: Int, navController: NavController) {
 
 
 @Composable
-fun CommentItem(comment: Comment, navController: NavController) {
+fun CommentItem(
+    comment: Comment,
+    navController: NavController,
+    onShowProfileView: () -> Unit // New callback to show ProfileViewScreen
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -115,9 +123,7 @@ fun CommentItem(comment: Comment, navController: NavController) {
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(Color.Gray)
-                .clickable {
-                    navController.navigate("profile")
-                }
+                .clickable { onShowProfileView() } // Use callback instead of navigation
         )
 
         Spacer(modifier = Modifier.width(8.dp))
@@ -162,8 +168,8 @@ fun CommentItem(comment: Comment, navController: NavController) {
 }
 
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewCommentScreen() {
-    CommentScreen(postId = 1, navController = NavController(LocalContext.current))
-}
+//@Preview(showBackground = true)
+//@Composable
+//fun PreviewCommentScreen() {
+//    CommentScreen(postId = 1, navController = NavController(LocalContext.current))
+//}

@@ -31,7 +31,8 @@ fun NewsFeedScreen(
     navController: NavController,
     userPreferences: UserPreferences,
     onShowCreatePost: () -> Unit,
-    onShowFullScreenImage: (String, Int) -> Unit
+    onShowFullScreenImage: (String, Int) -> Unit,
+    onShowProfileView: () -> Unit
 ) {
     val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val posts = viewModel.posts.collectAsLazyPagingItems()
@@ -44,11 +45,10 @@ fun NewsFeedScreen(
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    // Auto-update when a new post is created
     LaunchedEffect(newPostTrigger) {
         if (newPostTrigger) {
-            viewModel.refreshPosts() // Triggers a refresh of the PagingData
-            viewModel.resetNewPostTrigger() // Resets the trigger
+            viewModel.refreshPosts()
+            viewModel.resetNewPostTrigger()
         }
     }
 
@@ -57,7 +57,14 @@ fun NewsFeedScreen(
             sheetState = sheetState,
             onDismissRequest = { showBottomSheet = false }
         ) {
-            CommentScreen(postId = selectedPostId ?: -1, navController = navController)
+            CommentScreen(
+                postId = selectedPostId ?: -1,
+                navController = navController,
+                onShowProfileView = {
+                    onShowProfileView() // Trigger ProfileViewScreen overlay
+                    showBottomSheet = false // Close the bottom sheet
+                }
+            )
         }
     }
 
@@ -74,7 +81,8 @@ fun NewsFeedScreen(
             item {
                 AddPostSection(
                     navController = navController,
-                    onAddPostClick = onShowCreatePost
+                    onAddPostClick = onShowCreatePost,
+                    onShowProfileView = onShowProfileView
                 )
             }
 
@@ -100,7 +108,8 @@ fun NewsFeedScreen(
                             if (isLiked) viewModel.toggleLike(it.id, it.user_id)
                             else viewModel.unlikePost(it.id)
                         },
-                        onShowFullScreenImage = { imageUrl -> onShowFullScreenImage(imageUrl, it.id) }
+                        onShowFullScreenImage = { imageUrl -> onShowFullScreenImage(imageUrl, it.id) },
+                        onShowProfileView = onShowProfileView
                     )
                 }
             }

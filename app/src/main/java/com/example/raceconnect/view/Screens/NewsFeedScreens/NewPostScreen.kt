@@ -1,37 +1,43 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
-    import android.net.Uri
-    import androidx.activity.compose.rememberLauncherForActivityResult
-    import androidx.activity.result.contract.ActivityResultContracts
-    import androidx.compose.foundation.Image
-    import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
-    import androidx.compose.foundation.background
-    import androidx.compose.foundation.border
-    import androidx.compose.foundation.clickable
-    import androidx.compose.foundation.layout.*
-    import androidx.compose.foundation.rememberScrollState
-    import androidx.compose.foundation.shape.CircleShape
-    import androidx.compose.foundation.shape.RoundedCornerShape
-    import androidx.compose.foundation.verticalScroll
-    import androidx.compose.material.icons.Icons
-    import androidx.compose.material.icons.automirrored.filled.ArrowBack
-    import androidx.compose.material.icons.filled.AccountCircle
-    import androidx.compose.material.icons.filled.ArrowDropDown
-    import androidx.compose.material.icons.filled.Image
-    import androidx.compose.material3.*
-    import androidx.compose.runtime.*
-    import androidx.compose.ui.*
-    import androidx.compose.ui.draw.clip
-    import androidx.compose.ui.graphics.Color
-    import androidx.compose.ui.platform.LocalContext
-    import androidx.compose.ui.text.font.FontWeight
-    import androidx.compose.ui.text.style.TextAlign
-    import androidx.compose.ui.unit.dp
-    import androidx.navigation.NavController
-    import coil.compose.rememberAsyncImagePainter
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
+
+
 
 @Composable
-fun AddPostSection(navController: NavController, onAddPostClick: () -> Unit) {
+fun AddPostSection(
+    navController: NavController,
+    onAddPostClick: () -> Unit,
+    onShowProfileView: () -> Unit // New callback to show ProfileViewScreen
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -45,7 +51,7 @@ fun AddPostSection(navController: NavController, onAddPostClick: () -> Unit) {
             modifier = Modifier
                 .size(48.dp) // Adjusted size to account for padding
                 .padding(4.dp)
-                .clickable { navController.navigate("profileView") }
+                .clickable { onShowProfileView() } // Use the new callback
         )
         Spacer(modifier = Modifier.width(8.dp))
         Box(

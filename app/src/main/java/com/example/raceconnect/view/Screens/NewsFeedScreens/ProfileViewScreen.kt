@@ -8,7 +8,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -16,36 +19,53 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.users
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileViewScreen(navController: NavController, context: Context) {
+fun ProfileViewScreen(
+    navController: NavController,
+    context: Context,
+    onClose: () -> Unit // Add onClose callback to dismiss the screen
+) {
     val userPreferences = remember { UserPreferences(context) }
     val user by userPreferences.user.collectAsState(initial = null)
 
     Scaffold(
-        content = { padding ->
-            Column(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background // Use theme background
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp)
+        ) {
+            // Back button (top-left)
+            IconButton(
+                onClick = onClose,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp)
+                    .align(Alignment.Start)
+                    .padding(top = 16.dp, start = 8.dp)
             ) {
-                ProfileHeaderSection(user)
-                Spacer(modifier = Modifier.height(16.dp))
-                ProfileTabsWithContent()
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
             }
+
+            ProfileHeaderSection(user)
+            Spacer(modifier = Modifier.height(16.dp))
+            ProfileTabsWithContent()
         }
-    )
+    }
 }
 
 @Composable
@@ -209,49 +229,4 @@ fun VideosSection() {
     ) {
         Text("Videos Section")
     }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewProfileViewScreen() {
-    ProfileViewScreen(navController = rememberNavController(), context = LocalContext.current)
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewProfileHeaderSection() {
-    ProfileHeaderSection(
-        user = users(id = 1, username = "John Doe", email = "johndoe@example.com")
-    )
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewProfileTabsWithContent() {
-    ProfileTabsWithContent()
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewPostsSection() {
-    PostsSection()
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewPostItem() {
-    PostItem(
-        username = "Jane Doe",
-        content = "Hello world! Enjoying my day.",
-        timestamp = "2h ago",
-        imageRes = R.drawable.baseline_ondemand_video_24
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewVideosSection() {
-    VideosSection()
 }

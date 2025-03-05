@@ -51,17 +51,15 @@ fun PostCard(
     onCommentClick: () -> Unit,
     onLikeClick: (Boolean) -> Unit,
     viewModel: NewsFeedViewModel,
-    onShowFullScreenImage: (String) -> Unit // Callback to show full-screen image
+    onShowFullScreenImage: (String) -> Unit,
+    onShowProfileView: () -> Unit // New callback to show ProfileViewScreen
 ) {
-    Log.d("PostCard", "📝 Rendering post with ID: ${post.id}, Content: ${post.content}")
-
     var isLiked by remember { mutableStateOf(post.isLiked) }
     var likeCount by remember { mutableStateOf(post.like_count) }
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: emptyList()
 
     LaunchedEffect(post.id) {
-        Log.d("PostCard", "🔄 Fetching images for post ID: ${post.id}")
         viewModel.getPostImages(post.id)
     }
 
@@ -83,7 +81,7 @@ fun PostCard(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(Color.Gray)
-                        .clickable { navController.navigate("profileView") }
+                        .clickable { onShowProfileView() } // Trigger ProfileViewScreen
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -111,13 +109,12 @@ fun PostCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (imageUrls.isNotEmpty()) {
-                Log.d("PostCard", "🖼️ Displaying Image: ${imageUrls.first()}")
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { onShowFullScreenImage(imageUrls.first()) } // Use callback
+                        .clickable { onShowFullScreenImage(imageUrls.first()) }
                 ) {
                     AsyncImage(
                         model = imageUrls.first(),
@@ -128,8 +125,6 @@ fun PostCard(
                         contentScale = ContentScale.Crop
                     )
                 }
-            } else {
-                Log.d("PostCard", "🚫 No images found for post ID: ${post.id}")
             }
 
             Spacer(modifier = Modifier.height(12.dp))

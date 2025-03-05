@@ -44,6 +44,7 @@ import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 
+
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {
     val navController = rememberNavController()
@@ -55,7 +56,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showCreateListing by remember { mutableStateOf(false) }
     var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
     var showChatSellerScreen by remember { mutableStateOf<Int?>(null) }
-    var showFullScreenImage by remember { mutableStateOf<Pair<String, Int>?>(null) } // Pair of imageUrl and postId
+    var showFullScreenImage by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    var showProfileViewScreen by remember { mutableStateOf(false) } // New state for ProfileViewScreen
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
@@ -78,14 +80,17 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             navController = navController,
                             userPreferences = userPreferences,
                             onShowCreatePost = { showCreatePostScreen = true },
-                            onShowFullScreenImage = { imageUrl, postId ->
-                                showFullScreenImage = Pair(imageUrl, postId)
-                            }
+                            onShowFullScreenImage = { imageUrl, postId -> showFullScreenImage = Pair(imageUrl, postId) },
+                            onShowProfileView = { showProfileViewScreen = true }
                         )
                     }
                     composable(NavRoutes.Comments.route) { backStackEntry ->
                         val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
-                        CommentScreen(postId = postId, navController = navController)
+                        CommentScreen(
+                            postId = postId,
+                            navController = navController,
+                            onShowProfileView = { showProfileViewScreen = true } // Pass from here
+                        )
                     }
                     composable(NavRoutes.Profile.route) {
                         ProfileScreen { navController.navigate(NavRoutes.Login.route) }
@@ -101,9 +106,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     composable(NavRoutes.Notifications.route) {
                         NotificationsScreen()
                     }
-                    composable(NavRoutes.ProfileView.route) {
-                        ProfileViewScreen(navController = navController, context = context)
-                    }
                     composable(NavRoutes.Friends.route) {
                         FriendsScreen(
                             userPreferences = userPreferences,
@@ -112,6 +114,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     }
                 }
             }
+
+
+
 
             // Overlay CreatePostScreen
             AnimatedVisibility(
@@ -180,12 +185,25 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         imageUrl = imageUrl,
                         onDismiss = { showFullScreenImage = null },
                         onLikeClick = { isLiked ->
-                            if (isLiked) newsFeedViewModel.toggleLike(postId, 0) // Assuming user_id is 0 for now
+                            if (isLiked) newsFeedViewModel.toggleLike(postId, 0)
                             else newsFeedViewModel.unlikePost(postId)
                         },
                         onCommentClick = { navController.navigate(NavRoutes.Comments.createRoute(postId)) }
                     )
                 }
+            }
+
+            // Overlay ProfileViewScreen
+            AnimatedVisibility(
+                visible = showProfileViewScreen,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+            ) {
+                ProfileViewScreen(
+                    navController = navController,
+                    context = context,
+                    onClose = { showProfileViewScreen = false }
+                )
             }
         }
     }
