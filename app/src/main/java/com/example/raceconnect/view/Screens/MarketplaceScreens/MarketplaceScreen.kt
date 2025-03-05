@@ -22,48 +22,39 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 @Composable
 fun MarketplaceScreen(
     userPreferences: UserPreferences,
-    navController: NavController, // Add NavController parameter
+    navController: NavController,
+    onShowCreateListing: () -> Unit, // Callback to show CreateMarketplaceItemScreen
     viewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
 ) {
     val items by viewModel.items.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val currentUserId by viewModel.currentUserId.collectAsState()
 
-    var showCreateListing by remember { mutableStateOf(false) }
+    Column(modifier = Modifier.fillMaxSize()) {
+        SwipeRefresh(
+            state = rememberSwipeRefreshState(isRefreshing),
+            onRefresh = { viewModel.refreshMarketplaceItems() }
+        ) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                // "Create and Sell" Button
+                Button(
+                    onClick = onShowCreateListing, // Trigger the callback
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Text("Create and Sell")
+                }
 
-    if (showCreateListing) {
-        CreateMarketplaceItemScreen(
-            userPreferences = userPreferences, // Pass the userPreferences parameter
-            onClose = { showCreateListing = false } // Pass the onClose lambda
-        )
-    } else {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Content with "Create and Sell" button and Grid
-            SwipeRefresh(
-                state = rememberSwipeRefreshState(isRefreshing),
-                onRefresh = { viewModel.refreshMarketplaceItems() }
-            ) {
-                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                    // "Create and Sell" Button
-                    Button(
-                        onClick = { showCreateListing = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                    ) {
-                        Text("Create and Sell")
-                    }
-
-                    // Grid of Marketplace Items
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(items, key = { it.id }) { item ->
-                            MarketplaceItemCard(item = item, navController = navController) // Pass navController
-                        }
+                // Grid of Marketplace Items
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(items, key = { it.id }) { item ->
+                        MarketplaceItemCard(item = item, navController = navController)
                     }
                 }
             }

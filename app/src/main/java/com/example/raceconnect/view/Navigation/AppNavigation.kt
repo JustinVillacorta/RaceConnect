@@ -33,10 +33,13 @@ import com.example.raceconnect.ui.TopAppBar
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.Navigation.AuthenticationNavHost
 import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
+import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
+import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
+import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 
@@ -46,11 +49,13 @@ fun AppNavigation(userPreferences: UserPreferences) {
     val token = userPreferences.token.collectAsState(initial = null).value
     val context = LocalContext.current
 
-    // State to control CreatePostScreen visibility
+    // State to control screen visibility
     var showCreatePostScreen by remember { mutableStateOf(false) }
+    var showCreateListing by remember { mutableStateOf(false) }
 
-    // Use viewModel() with factory to instantiate NewsFeedViewModel
-    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
+    // ViewModels
+    val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
+    val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
 
     if (token == null) {
         AuthenticationNavHost()
@@ -80,7 +85,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         ProfileScreen { navController.navigate(NavRoutes.Login.route) }
                     }
                     composable(NavRoutes.Marketplace.route) {
-                        MarketplaceScreen(userPreferences, navController)
+                        MarketplaceScreen(
+                            userPreferences = userPreferences,
+                            navController = navController,
+                            onShowCreateListing = { showCreateListing = true }
+                        )
                     }
                     composable(NavRoutes.Notifications.route) {
                         NotificationsScreen()
@@ -105,7 +114,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
-            // Overlay CreatePostScreen on top of everything
+            // Overlay CreatePostScreen
             AnimatedVisibility(
                 visible = showCreatePostScreen,
                 enter = slideInVertically(
@@ -118,8 +127,27 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 ) + fadeOut(animationSpec = tween(durationMillis = 300))
             ) {
                 CreatePostScreen(
-                    viewModel = viewModel,
+                    viewModel = newsFeedViewModel,
                     onClose = { showCreatePostScreen = false }
+                )
+            }
+
+            // Overlay CreateMarketplaceItemScreen
+            AnimatedVisibility(
+                visible = showCreateListing,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(durationMillis = 300)
+                ) + fadeIn(animationSpec = tween(durationMillis = 300)),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(durationMillis = 300)
+                ) + fadeOut(animationSpec = tween(durationMillis = 300))
+            ) {
+                CreateMarketplaceItemScreen(
+                    userPreferences = userPreferences,
+                    onClose = { showCreateListing = false },
+                    viewModel = marketplaceViewModel
                 )
             }
         }
