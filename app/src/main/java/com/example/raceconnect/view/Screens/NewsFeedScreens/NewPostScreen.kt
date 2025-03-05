@@ -23,9 +23,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
@@ -89,22 +91,20 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
         selectedImageUri = uri
     }
 
-    // Categories for the dropdown (using enum display names)
     val categories = listOf("Formula 1", "24 Hours of Le Mans", "World Rally Championship")
-    // Privacy options for the dropdown (UI-only: Public and Friends Only)
     val privacyOptions = listOf("Public", "Friends Only")
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background // Use theme background color
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()) // Enable scrolling for the entire content
-                .padding(horizontal = 8.dp) // Reduced horizontal padding
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
         ) {
-            // TopBar integrated into the scrollable content
+            // TopBar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -117,7 +117,7 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                 }
                 Text(
                     text = "Create Post",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center
                 )
@@ -129,190 +129,190 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                         }
                     },
                     enabled = postText.isNotEmpty(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary), // Use theme primary color
                     modifier = Modifier.padding(end = 8.dp)
                 ) {
-                    Text("Post", color = MaterialTheme.colorScheme.onPrimary) // Use theme onPrimary color
+                    Text("Post")
                 }
             }
 
             // Profile Section
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.padding(vertical = 12.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.AccountCircle,
                     contentDescription = "Profile Picture",
                     modifier = Modifier
-                        .size(36.dp) // Slightly smaller for a more compact look
+                        .size(40.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)) // Use theme surface variant with transparency
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = "Anonymous",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
 
-            // Dropdowns for Categories and Privacy (Smaller and more rounded, no explicit colors)
+            // Material 3 Dropdowns for Categories and Privacy
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.Center, // Center the dropdowns
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Category Dropdown
                 var categoryExpanded by remember { mutableStateOf(false) }
-                Box(
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .width(100.dp) // Smaller width for a compact look
-                        .height(32.dp) // Smaller height for a compact look
-                        .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(8.dp)) // Use theme primary color, more rounded
-                        .clickable { categoryExpanded = true }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = selectedCategory,
-                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onPrimary),
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "Dropdown Arrow",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(16.dp) // Smaller icon for compact look
-                        )
-                    }
-                }
-                DropdownMenu(
+                ExposedDropdownMenuBox(
                     expanded = categoryExpanded,
-                    onDismissRequest = { categoryExpanded = false },
-                    modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surface) // Use theme surface color
-                        .width(100.dp)
+                    onExpandedChange = { categoryExpanded = !categoryExpanded },
+                    modifier = Modifier.weight(1f)
                 ) {
-                    categories.forEach { category ->
-                        DropdownMenuItem(
-                            text = { Text(category, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall) },
-                            onClick = {
-                                selectedCategory = category
-                                categoryExpanded = false
-                            },
-                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    TextField(
+                        value = selectedCategory,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Category", style = MaterialTheme.typography.labelMedium) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .height(48.dp)
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        colors = ExposedDropdownMenuDefaults.textFieldColors(
+                            focusedIndicatorColor = Color.Transparent, // Remove outline when focused
+                            unfocusedIndicatorColor = Color.Transparent // Remove outline when unfocused
                         )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = categoryExpanded,
+                        onDismissRequest = { categoryExpanded = false },
+                        modifier = Modifier
+                            .width(IntrinsicSize.Min)
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                    ) {
+                        categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        category,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                onClick = {
+                                    selectedCategory = category
+                                    categoryExpanded = false
+                                },
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
                     }
                 }
 
                 // Privacy Dropdown
                 var privacyExpanded by remember { mutableStateOf(false) }
-                Box(
-                    modifier = Modifier
-                        .width(100.dp) // Smaller width for a compact look
-                        .height(32.dp) // Smaller height for a compact look
-                        .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(8.dp)) // Use theme primary color, more rounded
-                        .clickable { privacyExpanded = true }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = selectedPrivacy,
-                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onPrimary),
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "Dropdown Arrow",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(16.dp) // Smaller icon for compact look
-                        )
-                    }
-                }
-                DropdownMenu(
+                ExposedDropdownMenuBox(
                     expanded = privacyExpanded,
-                    onDismissRequest = { privacyExpanded = false },
-                    modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surface) // Use theme surface color
-                        .width(100.dp)
+                    onExpandedChange = { privacyExpanded = !privacyExpanded },
+                    modifier = Modifier.weight(1f)
                 ) {
-                    privacyOptions.forEach { privacy ->
-                        DropdownMenuItem(
-                            text = { Text(privacy, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall) },
-                            onClick = {
-                                selectedPrivacy = privacy
-                                privacyExpanded = false
-                            },
-                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    TextField(
+                        value = selectedPrivacy,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Privacy", style = MaterialTheme.typography.labelMedium) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = privacyExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .height(48.dp)
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        colors = ExposedDropdownMenuDefaults.textFieldColors(
+                            focusedIndicatorColor = Color.Transparent, // Remove outline when focused
+                            unfocusedIndicatorColor = Color.Transparent // Remove outline when unfocused
                         )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = privacyExpanded,
+                        onDismissRequest = { privacyExpanded = false },
+                        modifier = Modifier
+                            .width(IntrinsicSize.Min)
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                    ) {
+                        privacyOptions.forEach { privacy ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        privacy,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                onClick = {
+                                    selectedPrivacy = privacy
+                                    privacyExpanded = false
+                                },
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
                     }
                 }
             }
 
-            // TextField without outline, auto-adjusting height
+            // TextField
             TextField(
                 value = postText,
                 onValueChange = { postText = it },
-                placeholder = { Text("What's on your mind?", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                placeholder = { Text("What's on your mind?") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight() // Auto-adjust height based on content
-                    .background(Color.Transparent), // No background
+                    .padding(vertical = 8.dp),
                 textStyle = MaterialTheme.typography.bodyLarge,
                 colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = Color.Transparent, // Remove underline
-                    unfocusedIndicatorColor = Color.Transparent, // Remove underline
-                    disabledIndicatorColor = Color.Transparent,
-                    focusedContainerColor = Color.Transparent, // Ensure no container color
-                    unfocusedContainerColor = Color.Transparent // Ensure no container color
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
                 )
             )
 
-            // Fixed-size Image Preview
+            // Image Preview
             if (selectedImageUri != null) {
                 Image(
                     painter = rememberAsyncImagePainter(selectedImageUri),
                     contentDescription = "Selected Image",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp) // Fixed height like Facebook
-                        .padding(top = 8.dp)
+                        .height(300.dp)
+                        .padding(vertical = 8.dp)
                         .clip(RoundedCornerShape(8.dp)),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop // Crop to fit like Facebook
+                    contentScale = ContentScale.Crop
                 )
             }
 
-            Button(
+            // Add Photo Button
+            OutlinedButton(
                 onClick = { launcher.launch("image/*") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                contentPadding = PaddingValues(12.dp)
+                contentPadding = PaddingValues(12.dp),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(
-                    Icons.Default.Image,
-                    contentDescription = "Pick Image",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Icon(Icons.Default.Image, contentDescription = "Pick Image")
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Add Photo", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Add Photo")
             }
 
-            // Add bottom padding to prevent content from being cut off
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
