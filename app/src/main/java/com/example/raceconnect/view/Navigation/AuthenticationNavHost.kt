@@ -9,9 +9,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.ui.LoginScreen
 import com.example.raceconnect.ui.SignupScreen
-import com.example.raceconnect.view.Screens.Authentication.ForgotPasswordScreen
-import com.example.raceconnect.view.Screens.Authentication.OtpVerificationScreen
-import com.example.raceconnect.view.Screens.Authentication.ResetPasswordScreen
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 
 @Composable
@@ -22,14 +19,14 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
     val loggedInUser by viewModel.loggedInUser.collectAsState(initial = null)
     val errorMessage by viewModel.errorMessage.collectAsState(initial = null)
 
-    // Removed LaunchedEffect with Intent; AppNavigation will handle the transition
-
     NavHost(navController, startDestination = NavRoutes.Login.route) {
         composable(NavRoutes.Login.route) {
             LoginScreen(
-                onLoginClick = { username, password -> viewModel.validateLogin(username, password) },
-                onSignupNavigate = { navController.navigate(NavRoutes.Signup.route) },
-                onForgotPasswordNavigate = { navController.navigate(NavRoutes.ForgotPassword.route) }
+                viewModel = viewModel,
+                onLoginClick = { username, password ->
+                    viewModel.validateLogin(username, password)
+                },
+                onSignupNavigate = { navController.navigate(NavRoutes.Signup.route) }
             )
         }
 
@@ -43,26 +40,6 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
                 },
                 onBackNavigate = { navController.navigateUp() }
             )
-        }
-
-        composable(NavRoutes.ForgotPassword.route) {
-            ForgotPasswordScreen(viewModel) { email ->
-                navController.navigate(NavRoutes.VerifyOtp.createRoute(email))
-            }
-        }
-
-        composable(NavRoutes.VerifyOtp.route) { backStackEntry ->
-            val email = backStackEntry.arguments?.getString("email") ?: ""
-            OtpVerificationScreen(viewModel, email) {
-                navController.navigate(NavRoutes.ResetPassword.createRoute(email))
-            }
-        }
-
-        composable(NavRoutes.ResetPassword.route) { backStackEntry ->
-            val email = backStackEntry.arguments?.getString("email") ?: ""
-            ResetPasswordScreen(viewModel, email) {
-                navController.navigate(NavRoutes.Login.route)
-            }
         }
     }
 

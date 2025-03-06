@@ -25,17 +25,31 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.raceconnect.R // Replace with your own R import if needed
+import com.example.raceconnect.view.Screens.Authentication.ForgotPasswordDialog
+import com.example.raceconnect.view.Screens.Authentication.OtpVerificationDialog
+import com.example.raceconnect.view.Screens.Authentication.ResetPasswordDialog
+import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
+import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 
 @Composable
 fun LoginScreen(
+    viewModel: AuthenticationViewModel,
     onLoginClick: (String, String) -> Unit,
-    onSignupNavigate: () -> Unit,
-    onForgotPasswordNavigate: () -> Unit
+    onSignupNavigate: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
     var isPasswordVisible by remember { mutableStateOf(false) }
+
+    // In your LoginScreen:
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
+    var showOtpDialog by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
+
+// Holds the email from Forgot Password step to OTP, then to Reset
+    var tempEmail by remember { mutableStateOf("") }
+
 
     // Main column fills the screen
     Column(modifier = Modifier.fillMaxSize()) {
@@ -150,11 +164,12 @@ fun LoginScreen(
 
                         // "Forgot Password?" in red
                         TextButton(
-                            onClick = onForgotPasswordNavigate,
+                            onClick = { showForgotPasswordDialog = true },
                             contentPadding = PaddingValues(0.dp)
                         ) {
                             Text("Forgot Password?", color = Color(0xFFC62828))
                         }
+
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -218,21 +233,49 @@ fun LoginScreen(
             }
         }
     }
+
+    if (showForgotPasswordDialog) {
+        ForgotPasswordDialog(
+            viewModel = viewModel,
+            onDismiss = { showForgotPasswordDialog = false },
+            onOtpSent = { email ->
+                // 1) Close Forgot Password dialog
+                showForgotPasswordDialog = false
+                // 2) Store the email so the next dialog knows it
+                tempEmail = email
+                // 3) Open the OTP dialog
+                showOtpDialog = true
+            }
+        )
+    }
+
+    if (showOtpDialog) {
+        OtpVerificationDialog(
+            viewModel = viewModel,
+            email = tempEmail,
+            onDismiss = { showOtpDialog = false },
+            onVerified = {
+                // 1) Close OTP dialog
+                showOtpDialog = false
+                // 2) Open Reset Password dialog
+                showResetDialog = true
+            }
+        )
+    }
+
+    if (showResetDialog) {
+        ResetPasswordDialog(
+            viewModel = viewModel,
+            email = tempEmail,
+            onDismiss = { showResetDialog = false },
+            onResetSuccess = {
+                // Close Reset Password dialog
+                showResetDialog = false
+            }
+        )
+    }
+
+
 }
 
 
-@Preview(showBackground = true, widthDp = 360, heightDp = 640)
-@Composable
-fun PreviewLoginScreen() {
-    LoginScreen(
-        onLoginClick = { email, password ->
-            // Handle login preview
-        },
-        onSignupNavigate = {
-            // Handle sign-up preview
-        },
-        onForgotPasswordNavigate = {
-            // Handle forgot password preview
-        }
-    )
-}
