@@ -105,7 +105,7 @@ fun ProfileHeaderSection(user: users?) {
 @Composable
 fun ProfileTabsWithContent() {
     var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabTitles = listOf("Posts", "Photos", "Videos")
+    val tabTitles = listOf("Posts", "Photos",)
 
     TabRow(
         selectedTabIndex = selectedTabIndex,
@@ -126,7 +126,7 @@ fun ProfileTabsWithContent() {
     when (selectedTabIndex) {
         0 -> PostsSection()
         1 -> PhotosSection()
-        2 -> VideosSection()
+
     }
 }
 
@@ -221,12 +221,3 @@ fun PhotosSection() {
     }
 }
 
-@Composable
-fun VideosSection() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("Videos Section")
-    }
-}

@@ -40,6 +40,7 @@ fun LoginScreen(
             value = username,
             onValueChange = { username = it },
             label = { Text("Username") },
+            singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -59,7 +60,8 @@ fun LoginScreen(
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),singleLine = true
+
         )
 
         Spacer(modifier = Modifier.height(16.dp))

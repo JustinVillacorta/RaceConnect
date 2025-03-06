@@ -49,6 +49,7 @@ fun ForgotPasswordScreen(viewModel: AuthenticationViewModel, onOtpSent: (String)
             onValueChange = { email = it },
             label = { Text("Enter your email") },
             modifier = Modifier.fillMaxWidth()
+            ,singleLine = true
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -97,6 +98,7 @@ fun OtpVerificationScreen(viewModel: AuthenticationViewModel, email: String, onV
             onValueChange = { otp = it },
             label = { Text("Enter OTP") },
             modifier = Modifier.fillMaxWidth()
+            ,singleLine = true
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -170,6 +172,7 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
                 }
             },
             modifier = Modifier.fillMaxWidth()
+            ,singleLine = true
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -192,6 +195,7 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
                 }
             },
             modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
             isError = !passwordsMatch
         )
 

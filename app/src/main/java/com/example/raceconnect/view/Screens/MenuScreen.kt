@@ -105,15 +105,15 @@ fun ProfileScreen(
                 }
                 item {
                     ProfileOptionItem(
-                        iconResId = R.drawable.baseline_settings_24,
-                        text = "Settings",
+                        iconResId = R.drawable.baseline_sell_24,
+                        text = "Listed Items",
                         onClick = { /* Handle Settings Click */ }
                     )
                 }
                 item {
                     ProfileOptionItem(
                         iconResId = R.drawable.baseline_settings_24,
-                        text = "FAQ",
+                        text = "Settings",
                         onClick = { /* Handle FAQ Click */ }
                     )
                 }

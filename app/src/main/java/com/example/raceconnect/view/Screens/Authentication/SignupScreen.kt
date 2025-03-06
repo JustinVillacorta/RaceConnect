@@ -51,6 +51,7 @@ fun SignupScreen(
             onValueChange = { username = it },
             label = { Text("Username") },
             modifier = Modifier.fillMaxWidth()
+            ,singleLine = true
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -60,6 +61,7 @@ fun SignupScreen(
             onValueChange = { email = it },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth()
+            ,singleLine = true
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -83,6 +85,7 @@ fun SignupScreen(
                 }
             },
             modifier = Modifier.fillMaxWidth()
+            ,singleLine = true
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -105,7 +108,8 @@ fun SignupScreen(
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
+            ,singleLine = true,
             isError = !passwordsMatch
         )
 
@@ -114,6 +118,7 @@ fun SignupScreen(
                 "Passwords do not match",
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = 4.dp)
+
             )
         }
 

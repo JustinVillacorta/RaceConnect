@@ -91,8 +91,8 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
         selectedImageUri = uri
     }
 
-    val categories = listOf("Formula 1", "24 Hours of Le Mans", "World Rally Championship")
-    val privacyOptions = listOf("Public", "Friends Only")
+    val categories = listOf("Formula 1", "24 Hours of Lemans", "World Rally Championship", "NASCAR", "Formula Drift", "GT Championship")
+    val privacyOptions = listOf("Public", "Friends Only", "Only me")
 
     Surface(
         modifier = Modifier.fillMaxSize(),

@@ -75,7 +75,7 @@ fun CreateMarketplaceItemScreen(
     val currentUserId by viewModel.currentUserId.collectAsState()
 
     // Define categories for the dropdown
-    val categories = listOf("Formula 1", "Motorsport Gear", "Memorabilia", "Other")
+    val categories = listOf("Formula 1", "24 Hours of Lemans", "World Rally Championship", "NASCAR", "Formula Drift", "GT Championship")
 
     // Image picker launcher for multiple images
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri>? ->
@@ -107,7 +107,7 @@ fun CreateMarketplaceItemScreen(
                                 onClose()
                             }
                         },
-                        enabled = title.isNotEmpty() && price.isNotEmpty() && currentUserId != null,
+//                        enabled = title.isNotEmpty() && price.isNotEmpty() && currentUserId != null,
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF696666))
                     ) {
                         Text("Publish", color = Color.White)
@@ -195,6 +195,7 @@ fun CreateMarketplaceItemScreen(
                             .fillMaxWidth()
                             .padding(bottom = 8.dp),
                         shape = RoundedCornerShape(8.dp)
+                        ,singleLine = true
                     )
 
                     // Price Field
@@ -207,6 +208,7 @@ fun CreateMarketplaceItemScreen(
                             .fillMaxWidth()
                             .padding(bottom = 8.dp),
                         shape = RoundedCornerShape(8.dp)
+                        ,singleLine = true
                     )
 
                     // Category Dropdown
