@@ -3,12 +3,15 @@ package com.example.raceconnect.view.Screens.Authentication
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -19,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -141,7 +145,21 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-    Log.d("ResetPasswordScreen", "📩 Received Email: $email") // ✅ Logs email received in screen
+    // Password validation states
+    var hasLowerCase by remember { mutableStateOf(false) }
+    var hasUpperCase by remember { mutableStateOf(false) }
+    var hasNumber by remember { mutableStateOf(false) }
+    var hasMinLength by remember { mutableStateOf(false) }
+
+    // Update validation states when password changes
+    LaunchedEffect(newPassword) {
+        hasLowerCase = newPassword.any { it.isLowerCase() }
+        hasUpperCase = newPassword.any { it.isUpperCase() }
+        hasNumber = newPassword.any { it.isDigit() }
+        hasMinLength = newPassword.length >= 8
+    }
+
+    Log.d("ResetPasswordScreen", "📩 Received Email: $email")
 
     Column(
         modifier = Modifier
@@ -154,7 +172,6 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Password Field with Show/Hide Button
         OutlinedTextField(
             value = newPassword,
             onValueChange = {
@@ -171,13 +188,12 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth()
-            ,singleLine = true
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Confirm Password Field with Show/Hide Button
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = {
@@ -207,6 +223,43 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
             )
         }
 
+        // Password requirements display
+        Column(modifier = Modifier.padding(top = 8.dp)) {
+            Text("PASSWORD MUST CONTAIN:", style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasLowerCase) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasLowerCase) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+                Text(" At least one lowercase letter")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasUpperCase) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasUpperCase) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+                Text(" At least one uppercase letter")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasNumber) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasNumber) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+                Text(" At least one number")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasMinLength) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasMinLength) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+                Text(" Minimum 8 characters")
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
@@ -227,7 +280,14 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = passwordsMatch && newPassword.isNotBlank() && confirmPassword.isNotBlank() && !isLoading
+            enabled = passwordsMatch &&
+                    hasLowerCase &&
+                    hasUpperCase &&
+                    hasNumber &&
+                    hasMinLength &&
+                    newPassword.isNotBlank() &&
+                    confirmPassword.isNotBlank() &&
+                    !isLoading
         ) {
             Text("Reset Password")
         }
@@ -241,6 +301,3 @@ fun ResetPasswordScreen(viewModel: AuthenticationViewModel, email: String, onRes
         }
     }
 }
-
-
-

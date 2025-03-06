@@ -5,6 +5,8 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -21,7 +23,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun SignupScreen(
-    onSignupClick: (Context, String, String, String, () -> Unit) -> Unit, // ✅ Added onSignupSuccess callback
+    onSignupClick: (Context, String, String, String, () -> Unit) -> Unit,
     onBackNavigate: () -> Unit
 ) {
     val context = LocalContext.current
@@ -34,6 +36,20 @@ fun SignupScreen(
     // States for toggling password visibility
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+
+    // Password validation states
+    var hasLowerCase by remember { mutableStateOf(false) }
+    var hasUpperCase by remember { mutableStateOf(false) }
+    var hasNumber by remember { mutableStateOf(false) }
+    var hasMinLength by remember { mutableStateOf(false) }
+
+    // Update validation states when password changes
+    LaunchedEffect(password) {
+        hasLowerCase = password.any { it.isLowerCase() }
+        hasUpperCase = password.any { it.isUpperCase() }
+        hasNumber = password.any { it.isDigit() }
+        hasMinLength = password.length >= 8
+    }
 
     Column(
         modifier = Modifier
@@ -50,8 +66,8 @@ fun SignupScreen(
             value = username,
             onValueChange = { username = it },
             label = { Text("Username") },
-            modifier = Modifier.fillMaxWidth()
-            ,singleLine = true
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -60,13 +76,12 @@ fun SignupScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
-            ,singleLine = true
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Password Field with Show/Hide Button
         OutlinedTextField(
             value = password,
             onValueChange = {
@@ -84,13 +99,12 @@ fun SignupScreen(
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth()
-            ,singleLine = true
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Confirm Password Field with Show/Hide Button
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = {
@@ -108,8 +122,8 @@ fun SignupScreen(
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth()
-            ,singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
             isError = !passwordsMatch
         )
 
@@ -118,8 +132,44 @@ fun SignupScreen(
                 "Passwords do not match",
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = 4.dp)
-
             )
+        }
+
+        // Password requirements display
+        Column(modifier = Modifier.padding(top = 8.dp)) {
+            Text("PASSWORD MUST CONTAIN:", style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasLowerCase) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasLowerCase) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+                Text(" At least one lowercase letter")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasUpperCase) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasUpperCase) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+                Text(" At least one uppercase letter")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasNumber) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasNumber) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+                Text(" At least one number")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasMinLength) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasMinLength) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+                Text(" Minimum 8 characters")
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -128,11 +178,18 @@ fun SignupScreen(
             onClick = {
                 onSignupClick(context, username, email, password) {
                     Toast.makeText(context, "Account Created Successfully!", Toast.LENGTH_SHORT).show()
-                    onBackNavigate() // ✅ Redirect to login after signup
+                    onBackNavigate()
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = passwordsMatch && username.isNotBlank() && email.isNotBlank() && password.isNotBlank()
+            enabled = passwordsMatch &&
+                    hasLowerCase &&
+                    hasUpperCase &&
+                    hasNumber &&
+                    hasMinLength &&
+                    username.isNotBlank() &&
+                    email.isNotBlank() &&
+                    password.isNotBlank()
         ) {
             Text("Sign Up")
         }
@@ -140,10 +197,12 @@ fun SignupScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         TextButton(onClick = onBackNavigate) {
-            Text("Already have an account? Login",
-                fontSize = 12.sp,  // Adjust size as needed
-                fontWeight = FontWeight.Medium,  // Optional: make it medium or bold
-                color = MaterialTheme.colorScheme.primary)
+            Text(
+                "Already have an account? Login",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
