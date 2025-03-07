@@ -1,15 +1,11 @@
 package com.example.raceconnect.network
 
-
-
-
 import com.example.raceconnect.model.ApiResponse
 import com.example.raceconnect.model.CreateNotificationResponse
 import com.example.raceconnect.model.ForgotPasswordRequest
 import com.example.raceconnect.model.ForgotPasswordResponse
 import com.example.raceconnect.model.Friend
 import com.example.raceconnect.model.FriendRequest
-
 import com.example.raceconnect.model.LoginRequest
 import com.example.raceconnect.model.LoginResponse
 import com.example.raceconnect.model.LogoutRequest
@@ -32,37 +28,22 @@ import com.example.raceconnect.model.VerifyOtpResponse
 import com.example.raceconnect.model.itemPostRequest
 import com.example.raceconnect.model.itemPostResponse
 import com.example.raceconnect.model.users
+import com.example.raceconnect.model.PostComment
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
-
-
 import retrofit2.Response
-import retrofit2.http.Body
-import retrofit2.http.DELETE
-import retrofit2.http.GET
-import retrofit2.http.Header
-import retrofit2.http.Multipart
-import retrofit2.http.POST
-import retrofit2.http.PUT
-import retrofit2.http.Part
-import retrofit2.http.Path
-import retrofit2.http.Query
+import retrofit2.http.*
 
 interface ApiService {
     @POST("login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
-
     @POST("logout")
     suspend fun logout(@Header("Authorization") authToken: String): Response<LogoutResponse>
 
-
-
     @POST("users")
     suspend fun signup(@Body request: SignupRequest): Response<SignupResponse>
-
-
 
     @GET("users/{id}")
     suspend fun getUser(@Path("id") id: Int): users
@@ -72,19 +53,15 @@ interface ApiService {
         @Body request: ForgotPasswordRequest
     ): Response<ForgotPasswordResponse>
 
-
     @POST("verify-otp")
     suspend fun verifyOtp(
         @Body request: VerifyOtpRequest
     ): Response<VerifyOtpResponse>
 
-
     @PUT("reset-password")
     suspend fun resetPassword(
         @Body request: ResetPasswordRequest
     ): Response<ResetPasswordResponse>
-
-
 
     @GET("posts")
     suspend fun getAllPosts(
@@ -102,14 +79,11 @@ interface ApiService {
         @Part("privacy") privacy: RequestBody,
         @Part("type") type: RequestBody,
         @Part("post_type") postType: RequestBody,
-        @Part image: MultipartBody.Part? // Nullable for text-only posts
+        @Part image: MultipartBody.Part?
     ): Response<PostResponse>
 
-
-
     @GET("posts/{id}/images")
-    suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostResponse>> // ✅ Expect a list
-
+    suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostResponse>>
 
     @POST("post-likes")
     suspend fun likePost(@Body requestBody: Map<String, Int>): Response<ResponseBody>
@@ -119,7 +93,6 @@ interface ApiService {
 
     @GET("post-likes")
     suspend fun getPostLikes(@Query("post_id") postId: Int): Response<List<PostLike>>
-
 
     @GET("marketplace-items")
     suspend fun getAllMarketplaceItems(): List<MarketplaceDataClassItem>
@@ -145,7 +118,7 @@ interface ApiService {
     @POST("friends/add")
     suspend fun sendFriendRequest(@Body request: FriendRequest): Response<Unit>
 
-    @PUT("friends/update") // Already updated
+    @PUT("friends/update")
     suspend fun updateFriendStatus(@Body request: UpdateFriendStatus): Response<Unit>
 
     @DELETE("friends/remove")
@@ -178,7 +151,29 @@ interface ApiService {
     suspend fun deleteNotification(
         @Path("id") id: Int
     ): Response<SimpleResponse>
+
+    @GET("post-comments")
+    suspend fun getCommentsByPostId(
+        @Header("Authorization") authToken: String,
+        @Query("post_id") postId: Int
+    ): Response<List<PostComment>>
+
+    @POST("post-comments")
+    suspend fun addComment(
+        @Header("Authorization") token: String,
+        @Body comment: PostComment
+    ): Response<Unit>
+
+    @PUT("post-comments/{id}")
+    suspend fun updateComment(
+        @Header("Authorization") authToken: String,
+        @Path("id") id: Int,
+        @Body comment: Map<String, String>
+    ): Response<Map<String, String>>
+
+    @DELETE("post-comments/{id}")
+    suspend fun deleteComment(
+        @Header("Authorization") authToken: String,
+        @Path("id") id: Int
+    ): Response<Map<String, String>>
 }
-
-
-

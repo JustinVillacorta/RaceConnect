@@ -1,3 +1,4 @@
+// NewsFeedScreen.kt
 @file:Suppress("DEPRECATION")
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -20,7 +21,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.view.Screens.NewsFeedScreens.AddPostSection
-import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
+import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentSectionScreen // Updated import
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.PostCard
 import com.example.raceconnect.view.ui.theme.Red
@@ -61,12 +62,13 @@ fun NewsFeedScreen(
             sheetState = sheetState,
             onDismissRequest = { showBottomSheet = false }
         ) {
-            CommentScreen(
+            CommentSectionScreen(
                 postId = selectedPostId ?: -1,
                 navController = navController,
+                userPreferences = userPreferences, // Added userPreferences parameter
                 onShowProfileView = {
-                    onShowProfileView() // Trigger ProfileViewScreen overlay
-                    showBottomSheet = false // Close the bottom sheet
+                    onShowProfileView()
+                    showBottomSheet = false
                 }
             )
         }
@@ -83,7 +85,6 @@ fun NewsFeedScreen(
                     )
                 },
                 actions = {
-                    // Search icon
                     IconButton(onClick = { /* Handle search click */ }) {
                         Icon(
                             painter = painterResource(id = com.example.raceconnect.R.drawable.baseline_search_24),
@@ -102,7 +103,7 @@ fun NewsFeedScreen(
         SwipeRefresh(
             state = rememberSwipeRefreshState(isRefreshing),
             onRefresh = { viewModel.refreshPosts() },
-            modifier = Modifier.padding(paddingValues) // Apply padding from Scaffold to avoid overlap with TopAppBar
+            modifier = Modifier.padding(paddingValues)
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -143,10 +144,9 @@ fun NewsFeedScreen(
                             onShowFullScreenImage = { imageUrl -> onShowFullScreenImage(imageUrl, it.id) },
                             onShowProfileView = onShowProfileView,
                             onReportClick = { viewModel.reportPost(it.id) },
-                            onShowRepostScreen = onShowRepostScreen // Pass the callback
+                            onShowRepostScreen = onShowRepostScreen
                         )
                     }
-
                 }
 
                 posts.apply {

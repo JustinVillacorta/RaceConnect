@@ -40,7 +40,7 @@ import com.example.raceconnect.view.Screens.MenuScreens.FavoriteItemsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.ListedItemsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.NewsFeedPreferencesScreen
 import com.example.raceconnect.view.Screens.MenuScreens.SettingsScreen
-import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
+import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentSectionScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.FullScreenImageViewer
 import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
@@ -67,8 +67,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
     var showChatSellerScreen by remember { mutableStateOf<Int?>(null) }
     var showFullScreenImage by remember { mutableStateOf<Pair<String, Int>?>(null) }
-    var showRepostScreen by remember { mutableStateOf<NewsFeedDataClassItem?>(null) } // New state for repost screen
-    // New states for menu option overlays
+    var showRepostScreen by remember { mutableStateOf<NewsFeedDataClassItem?>(null) }
     var showMyProfile by remember { mutableStateOf(false) }
     var showFavoriteItems by remember { mutableStateOf(false) }
     var showNewsFeedPreferences by remember { mutableStateOf(false) }
@@ -101,14 +100,15 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             onShowCreatePost = { showCreatePostScreen = true },
                             onShowFullScreenImage = { imageUrl, postId -> showFullScreenImage = Pair(imageUrl, postId) },
                             onShowProfileView = { navController.navigate(NavRoutes.ProfileView.route) },
-                            onShowRepostScreen = { post -> showRepostScreen = post } // Pass the callback for repost
+                            onShowRepostScreen = { post -> showRepostScreen = post }
                         )
                     }
                     composable(NavRoutes.Comments.route) { backStackEntry ->
                         val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
-                        CommentScreen(
+                        CommentSectionScreen(
                             postId = postId,
                             navController = navController,
+                            userPreferences = userPreferences, // Added userPreferences parameter
                             onShowProfileView = { navController.navigate(NavRoutes.ProfileView.route) }
                         )
                     }
@@ -168,7 +168,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         ChatSellerScreen(
                             itemId = itemId,
                             navController = navController,
-                            onClose = { navController.popBackStack() }
+                            onClose = { showChatSellerScreen = null }
                         )
                     }
                 }

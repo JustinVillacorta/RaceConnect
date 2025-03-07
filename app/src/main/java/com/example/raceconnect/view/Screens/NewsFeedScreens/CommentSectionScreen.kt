@@ -2,15 +2,7 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -18,39 +10,54 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.raceconnect.model.Comment
+import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.PostComment
+import com.example.raceconnect.viewmodel.CommentViewModel
+import com.example.raceconnect.viewmodel.CommentViewModelFactory
+import kotlinx.coroutines.flow.first
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
-fun CommentScreen(postId: Int, navController: NavController, onShowProfileView: () -> Unit) {
+fun CommentSectionScreen(
+    postId: Int,
+    navController: NavController,
+    userPreferences: UserPreferences,
+    onShowProfileView: () -> Unit
+) {
+    val viewModel: CommentViewModel = viewModel(factory = CommentViewModelFactory(userPreferences))
     var commentText by remember { mutableStateOf("") }
-    val comments = remember {
-        mutableStateListOf(
-            Comment("John Cena", "Where?", "25m", 4, Icons.Default.Favorite),
-            Comment("Jennifer Lawrence", "You're not funny.", "14m", 10, Icons.Default.Favorite),
-            Comment("Trish Alexa", "Wow! Congrats!", "1h", 1, Icons.Default.ThumbUp),
-            Comment("Jake Jordan Gyllenhaal", "Yesss! You deserve it!", "1h", 1, Icons.Default.ThumbUp)
-        )
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+
+    // Fetch userId and username from userPreferences.user Flow
+    var userId by remember { mutableStateOf(0) }
+    var username by remember { mutableStateOf("Unknown") }
+
+    LaunchedEffect(Unit) {
+        val user = userPreferences.user.first()
+        if (user != null) {
+            userId = user.id
+            username = user.username
+        } else {
+            // Handle case where user is not logged in
+            // For now, use defaults; ideally, redirect to login screen
+            userId = 0
+            username = "Guest"
+        }
+    }
+
+    LaunchedEffect(postId) {
+        viewModel.fetchComments(postId)
     }
 
     Column(
@@ -58,20 +65,41 @@ fun CommentScreen(postId: Int, navController: NavController, onShowProfileView: 
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Comments List
+        if (viewModel.isLoading.value) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        viewModel.errorMessage.value?.let {
+            Text(
+                text = it,
+                color = Color.Red,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        } ?: run {
+            if (viewModel.comments.isEmpty() && !viewModel.isLoading.value) {
+                Text(
+                    text = "No comments available.",
+                    color = Color.Gray,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
         LazyColumn(
             modifier = Modifier.weight(1f)
         ) {
-            items(comments) { comment ->
+            items(viewModel.comments) { comment ->
                 CommentItem(
                     comment = comment,
                     navController = navController,
-                    onShowProfileView = onShowProfileView // Pass it down
+                    onShowProfileView = onShowProfileView
                 )
             }
         }
 
-        // Add Comment Section
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -88,7 +116,20 @@ fun CommentScreen(postId: Int, navController: NavController, onShowProfileView: 
             Spacer(modifier = Modifier.width(8.dp))
             IconButton(onClick = {
                 if (commentText.isNotEmpty()) {
-                    comments.add(Comment("You", commentText, "Just now", 0, Icons.Default.ThumbUp))
+                    if (userId == 0) {
+                        // Optionally redirect to login screen if user is not logged in
+                        // For now, show a message
+                        viewModel.errorMessage.value = "Please log in to comment."
+                        return@IconButton
+                    }
+                    val newComment = PostComment(
+                        userId = userId, // Use dynamic userId
+                        postId = postId,
+                        comment = commentText,
+                        createdAt = Date(),
+                        username = username // Use dynamic username
+                    )
+                    viewModel.addComment(newComment)
                     commentText = ""
                 }
             }) {
@@ -96,21 +137,23 @@ fun CommentScreen(postId: Int, navController: NavController, onShowProfileView: 
                     imageVector = Icons.Default.Send,
                     contentDescription = "Send",
                     tint = MaterialTheme.colorScheme.primary
-
                 )
-
             }
         }
     }
 }
 
-
 @Composable
 fun CommentItem(
-    comment: Comment,
+    comment: PostComment,
     navController: NavController,
-    onShowProfileView: () -> Unit // New callback to show ProfileViewScreen
+    onShowProfileView: () -> Unit
 ) {
+    val timestamp = comment.createdAt?.let {
+        val formatter = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+        formatter.format(it)
+    } ?: "Just now"
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -123,7 +166,7 @@ fun CommentItem(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(Color.Gray)
-                .clickable { onShowProfileView() } // Use callback instead of navigation
+                .clickable { onShowProfileView() }
         )
 
         Spacer(modifier = Modifier.width(8.dp))
@@ -131,45 +174,40 @@ fun CommentItem(
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = comment.username,
+                    text = comment.username ?: "User ${comment.userId}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = comment.timestamp,
+                    text = timestamp,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
             }
-
             Text(
-                text = comment.text,
+                text = comment.comment ?: comment.text ?: "",
                 style = MaterialTheme.typography.bodyMedium
             )
         }
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = comment.icon,
-                contentDescription = "Reaction Icon",
-                modifier = Modifier.size(20.dp),
-                tint = Color.Gray
-            )
-            Text(
-                text = comment.likes.toString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
+        // Optional: Display likes if you extend the backend to support it
+        if (comment.likes > 0) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = comment.icon ?: Icons.Default.Favorite,
+                    contentDescription = "Reaction Icon",
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.Gray
+                )
+                Text(
+                    text = comment.likes.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
         }
     }
 }
-
-
-//@Preview(showBackground = true)
-//@Composable
-//fun PreviewCommentScreen() {
-//    CommentScreen(postId = 1, navController = NavController(LocalContext.current))
-//}
