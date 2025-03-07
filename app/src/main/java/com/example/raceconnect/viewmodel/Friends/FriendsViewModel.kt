@@ -2,17 +2,21 @@ package com.example.raceconnect.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Friend
-import com.example.raceconnect.model.FriendStatus
+import com.example.raceconnect.model.FriendRequest
+import com.example.raceconnect.model.UpdateFriendStatus
+import com.example.raceconnect.model.RemoveFriendRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.io.IOException
 
 class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel() {
-
     private val _friends = MutableStateFlow<List<Friend>>(emptyList())
     val friends: StateFlow<List<Friend>> = _friends.asStateFlow()
 
@@ -23,65 +27,102 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
         fetchFriends()
     }
 
-    private fun fetchFriends() {
+    fun fetchFriends() {
         viewModelScope.launch {
             _isLoading.value = true
-            // Simulate fetching friends from a data source (e.g., API or database)
-            val currentUserId = userPreferences.user.first()?.id ?: return@launch
-            val friendList = listOf(
-                Friend(1, "Blence Gilly", "https://example.com/blence_profile.jpg", FriendStatus.REQUEST),
-                Friend(2, "Isagi Yoichi", "https://example.com/isagi_profile.jpg", FriendStatus.EXPLORE)
-            )
-            _friends.value = friendList
-            _isLoading.value = false
-        }
-    }
-
-    fun confirmFriendRequest(friendId: Int) {
-        viewModelScope.launch {
-            // Simulate confirming a friend request
-            val updatedFriends = _friends.value.map { friend ->
-                if (friend.id == friendId && friend.status == FriendStatus.REQUEST) {
-                    friend.copy(status = FriendStatus.FRIEND)
+            try {
+                val userId = userPreferences.user.first()?.id ?: return@launch
+                val response = RetrofitInstance.api.getFriendsList(userId = userId.toString())
+                if (response.isSuccessful) {
+                    response.body()?.let { rawFriends ->
+                        val friendsList = rawFriends.mapNotNull { friend ->
+                            val id = friend["friend_id"]?.toString()?.replace(".0", "") ?: return@mapNotNull null
+                            val name = friend["username"]?.toString() ?: return@mapNotNull null
+                            val status = friend["status"]?.toString() ?: return@mapNotNull null
+                            Friend(id, name, status)
+                        }
+                        _friends.value = friendsList
+                    } ?: run {
+                        _friends.value = emptyList()
+                    }
                 } else {
-                    friend
+                    println("Error: ${response.code()} - ${response.message()}")
                 }
+            } catch (e: IOException) {
+                println("Network error: ${e.message}")
+            } catch (e: HttpException) {
+                println("HTTP error: ${e.code()} - ${e.message}")
+            } finally {
+                _isLoading.value = false
             }
-            _friends.value = updatedFriends
-            // Optionally, call backend API to update friend status
         }
     }
 
-    fun cancelFriendRequest(friendId: Int) {
+    fun confirmFriendRequest(friendId: String) {
         viewModelScope.launch {
-            // Simulate canceling a friend request
-            val updatedFriends = _friends.value.filterNot { it.id == friendId && it.status == FriendStatus.REQUEST }
-            _friends.value = updatedFriends
-            // Optionally, call backend API to remove friend request
+            try {
+                val userId = userPreferences.user.first()?.id ?: return@launch
+                val response = RetrofitInstance.api.updateFriendStatus(
+                    UpdateFriendStatus(userId.toString(), friendId, "Accepted")
+                )
+                if (response.isSuccessful) {
+                    fetchFriends()
+                }
+            } catch (e: Exception) {
+                println("Confirm error: ${e.message}")
+            }
         }
     }
 
-    fun addFriend(friendId: Int) {
+    fun addFriend(friendId: String) {
         viewModelScope.launch {
-            // Simulate adding a friend from explore section
-            val updatedFriends = _friends.value.map { friend ->
-                if (friend.id == friendId && friend.status == FriendStatus.EXPLORE) {
-                    friend.copy(status = FriendStatus.FRIEND)
+            try {
+                val userId = userPreferences.user.first()?.id ?: return@launch
+                val response = RetrofitInstance.api.sendFriendRequest(
+                    FriendRequest(userId.toString(), friendId)
+                )
+                if (response.isSuccessful) {
+                    fetchFriends()
                 } else {
-                    friend
+                    println("Add friend failed: ${response.code()} - ${response.message()}")
                 }
+            } catch (e: Exception) {
+                println("Add error: ${e.message}")
             }
-            _friends.value = updatedFriends
-            // Optionally, call backend API to add friend
         }
     }
 
-    fun removeFriend(friendId: Int) {
+    fun cancelFriendRequest(friendId: String) {
         viewModelScope.launch {
-            // Simulate removing a friend or explore suggestion
-            val updatedFriends = _friends.value.filterNot { it.id == friendId }
-            _friends.value = updatedFriends
-            // Optionally, call backend API to remove friend
+            try {
+                val userId = userPreferences.user.first()?.id ?: return@launch
+                val response = RetrofitInstance.api.removeFriend(
+                    userId = userId.toString(), // Pass as query parameter
+                    friendId = friendId
+                )
+                if (response.isSuccessful) {
+                    fetchFriends()
+                }
+            } catch (e: Exception) {
+                println("Cancel error: ${e.message}")
+            }
+        }
+    }
+
+    fun removeFriend(friendId: String) {
+        viewModelScope.launch {
+            try {
+                val userId = userPreferences.user.first()?.id ?: return@launch
+                val response = RetrofitInstance.api.removeFriend(
+                    userId = userId.toString(), // Pass as query parameter
+                    friendId = friendId
+                )
+                if (response.isSuccessful) {
+                    fetchFriends()
+                }
+            } catch (e: Exception) {
+                println("Remove error: ${e.message}")
+            }
         }
     }
 }

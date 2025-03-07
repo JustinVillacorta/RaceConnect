@@ -1,3 +1,5 @@
+package com.example.raceconnect.view
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -5,8 +7,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -20,9 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Friend
-import com.example.raceconnect.model.FriendStatus
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.FriendsViewModel
 import com.example.raceconnect.viewmodel.FriendsViewModelFactory
@@ -48,11 +48,9 @@ fun FriendsScreen(
                     )
                 },
                 actions = {
-
-                    // Search icon
                     IconButton(onClick = { /* Handle search click */ }) {
                         Icon(
-                            painter = painterResource(id = com.example.raceconnect.R.drawable.baseline_search_24),
+                            painter = painterResource(id = R.drawable.baseline_search_24),
                             contentDescription = "Search",
                             tint = Color.White
                         )
@@ -79,7 +77,7 @@ fun FriendsScreen(
                     modifier = Modifier.padding(top = 24.dp, bottom = 12.dp)
                 )
             }
-            items(friends.filter { it.status == FriendStatus.REQUEST }) { friend ->
+            items(friends.filter { it.status == "Pending" }) { friend ->
                 FriendItem(
                     friend = friend,
                     onConfirm = { viewModel.confirmFriendRequest(friend.id) },
@@ -95,7 +93,7 @@ fun FriendsScreen(
                     modifier = Modifier.padding(top = 24.dp, bottom = 12.dp)
                 )
             }
-            items(friends.filter { it.status == FriendStatus.EXPLORE }) { friend ->
+            items(friends.filter { it.status == "NonFriends" }) { friend ->
                 FriendItem(
                     friend = friend,
                     onAdd = { viewModel.addFriend(friend.id) },
@@ -121,15 +119,14 @@ fun FriendItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Left side: Profile image + name
         Row(verticalAlignment = Alignment.CenterVertically) {
             Image(
-                painter = rememberAsyncImagePainter(friend.profileImageUrl),
+                painter = rememberAsyncImagePainter(friend.profileImageUrl ?: ""), // Use actual URL or fallback
                 contentDescription = "Profile Picture",
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color.Gray) // Fallback background if no image is available
+                    .background(Color.Gray)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -138,15 +135,13 @@ fun FriendItem(
             )
         }
 
-        // Right side: Stack buttons vertically
         Column(horizontalAlignment = Alignment.End) {
             when (friend.status) {
-                FriendStatus.REQUEST -> {
+                "Pending" -> {
                     Button(
                         onClick = { onConfirm?.invoke() },
-                        modifier = Modifier
-                            .fillMaxWidth(0.7f), // Adjust width to match the design
-                        shape = RoundedCornerShape(20.dp), // Rounded buttons
+                        modifier = Modifier.fillMaxWidth(0.7f),
+                        shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFFD32F2F),
                             contentColor = Color.White
@@ -157,8 +152,7 @@ fun FriendItem(
                     Spacer(modifier = Modifier.height(4.dp))
                     Button(
                         onClick = { onCancel?.invoke() },
-                        modifier = Modifier
-                            .fillMaxWidth(0.7f), // Match width with the top button
+                        modifier = Modifier.fillMaxWidth(0.7f),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFFE0E0E0),
@@ -168,11 +162,10 @@ fun FriendItem(
                         Text("Cancel")
                     }
                 }
-                FriendStatus.EXPLORE -> {
+                "NonFriends" -> {
                     Button(
                         onClick = { onAdd?.invoke() },
-                        modifier = Modifier
-                            .fillMaxWidth(0.7f),
+                        modifier = Modifier.fillMaxWidth(0.7f),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF9C0C13),
@@ -184,8 +177,7 @@ fun FriendItem(
                     Spacer(modifier = Modifier.height(4.dp))
                     Button(
                         onClick = { onRemove?.invoke() },
-                        modifier = Modifier
-                            .fillMaxWidth(0.7f),
+                        modifier = Modifier.fillMaxWidth(0.7f),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFFE0E0E0),
@@ -195,7 +187,6 @@ fun FriendItem(
                         Text("Remove")
                     }
                 }
-                else -> { /* No action needed */ }
             }
         }
     }

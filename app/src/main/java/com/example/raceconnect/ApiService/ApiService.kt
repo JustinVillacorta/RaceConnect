@@ -6,6 +6,8 @@ package com.example.raceconnect.network
 import com.example.raceconnect.model.ApiResponse
 import com.example.raceconnect.model.ForgotPasswordRequest
 import com.example.raceconnect.model.ForgotPasswordResponse
+import com.example.raceconnect.model.Friend
+import com.example.raceconnect.model.FriendRequest
 
 import com.example.raceconnect.model.LoginRequest
 import com.example.raceconnect.model.LoginResponse
@@ -15,10 +17,12 @@ import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.PostLike
 import com.example.raceconnect.model.PostResponse
+import com.example.raceconnect.model.RemoveFriendRequest
 import com.example.raceconnect.model.ResetPasswordRequest
 import com.example.raceconnect.model.ResetPasswordResponse
 import com.example.raceconnect.model.SignupRequest
 import com.example.raceconnect.model.SignupResponse
+import com.example.raceconnect.model.UpdateFriendStatus
 import com.example.raceconnect.model.VerifyOtpRequest
 import com.example.raceconnect.model.VerifyOtpResponse
 import com.example.raceconnect.model.itemPostRequest
@@ -119,6 +123,32 @@ interface ApiService {
     @POST("marketplace-items")
     suspend fun createMarketplaceItem(@Body item: MarketplaceDataClassItem): Response<itemPostResponse>
 
+    @GET("friends/list")
+    suspend fun getFriendsList(@Query("user_id") userId: String): Response<List<Map<String, Any?>>>
+
+    @GET("friends/pending")
+    suspend fun getPendingRequests(
+        @Query("action") action: String = "pending",
+        @Query("user_id") userId: String
+    ): Response<List<Map<String, Any?>>>
+
+    @GET("friends/nonfriends")
+    suspend fun getNonFriends(
+        @Query("action") string: String = "non_friends",
+        @Query("user_id") userId: String
+    ): Response<List<Map<String, Any?>>>
+
+    @POST("friends/add")
+    suspend fun sendFriendRequest(@Body request: FriendRequest): Response<Unit>
+
+    @PUT("friends/update") // Already updated
+    suspend fun updateFriendStatus(@Body request: UpdateFriendStatus): Response<Unit>
+
+    @DELETE("friends/remove")
+    suspend fun removeFriend(
+        @Query("user_id") userId: String,
+        @Query("friend_id") friendId: String
+    ): Response<Unit>
 }
 
 

@@ -1,6 +1,5 @@
 package com.example.raceconnect.navigation
 
-import FriendsScreen
 import NewsFeedScreen
 import NotificationsScreen
 import ProfileScreen
@@ -43,6 +42,7 @@ import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
+import com.example.raceconnect.view.FriendsScreen
 
 
 @Composable
