@@ -40,14 +40,18 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
             try {
                 _isRefreshing.value = true
                 val response = RetrofitInstance.api.getAllMarketplaceItems()
+
+                println("API Response: $response") // Debugging
+
                 _items.value = response
-            } catch (e: HttpException) {
-                println("Error fetching marketplace items: ${e.message}")
+            } catch (e: Exception) {
+                println("Error fetching marketplace items: ${e.localizedMessage}")
             } finally {
                 _isRefreshing.value = false
             }
         }
     }
+
 
     fun refreshMarketplaceItems() {
         fetchMarketplaceItems()
