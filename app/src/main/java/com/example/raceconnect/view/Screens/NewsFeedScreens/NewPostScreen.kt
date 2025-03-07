@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,14 +30,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-
-
+import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 
 @Composable
 fun AddPostSection(
     navController: NavController,
     onAddPostClick: () -> Unit,
-    onShowProfileView: () -> Unit // New callback to show ProfileViewScreen
+    onShowProfileView: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -51,9 +50,9 @@ fun AddPostSection(
             imageVector = Icons.Default.AccountCircle,
             contentDescription = "Profile Picture",
             modifier = Modifier
-                .size(48.dp) // Adjusted size to account for padding
+                .size(48.dp)
                 .padding(4.dp)
-                .clickable { onShowProfileView() } // Use the new callback
+                .clickable { onShowProfileView() }
         )
         Spacer(modifier = Modifier.width(8.dp))
         Box(
@@ -78,14 +77,15 @@ fun AddPostSection(
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
     val context = LocalContext.current
     var postText by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    var selectedCategory by remember { mutableStateOf("Formula 1") } // Default category
-    var selectedPrivacy by remember { mutableStateOf("Public") } // Default privacy (UI-only)
+    var selectedCategory by remember { mutableStateOf("Formula 1") }
+    var selectedPrivacy by remember { mutableStateOf("Public") }
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         selectedImageUri = uri
@@ -102,13 +102,12 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
         ) {
             // TopBar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp), // Padding inside Row
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -129,192 +128,197 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                         }
                     },
                     enabled = postText.isNotEmpty(),
-                    modifier = Modifier.padding(end = 8.dp)
+                    modifier = Modifier.padding(end = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Red,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text("Post")
                 }
             }
-
-            // Profile Section
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(vertical = 12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Anonymous",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            }
-
-            // Material 3 Dropdowns for Categories and Privacy
-            Row(
+            Divider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                thickness = 1.dp,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Category Dropdown
-                var categoryExpanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = categoryExpanded,
-                    onExpandedChange = { categoryExpanded = !categoryExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    TextField(
-                        value = selectedCategory,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Category", style = MaterialTheme.typography.labelMedium) },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .height(48.dp)
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        textStyle = MaterialTheme.typography.bodySmall,
-                        colors = ExposedDropdownMenuDefaults.textFieldColors(
-                            focusedIndicatorColor = Color.Transparent, // Remove outline when focused
-                            unfocusedIndicatorColor = Color.Transparent // Remove outline when unfocused
-                        )
-                    )
-                    ExposedDropdownMenu(
-                        expanded = categoryExpanded,
-                        onDismissRequest = { categoryExpanded = false },
-                        modifier = Modifier
-                            .width(IntrinsicSize.Min)
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                    ) {
-                        categories.forEach { category ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        category,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                },
-                                onClick = {
-                                    selectedCategory = category
-                                    categoryExpanded = false
-                                },
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                            )
-                        }
-                    }
-                }
-
-                // Privacy Dropdown
-                var privacyExpanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = privacyExpanded,
-                    onExpandedChange = { privacyExpanded = !privacyExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    TextField(
-                        value = selectedPrivacy,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Privacy", style = MaterialTheme.typography.labelMedium) },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = privacyExpanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .height(48.dp)
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        textStyle = MaterialTheme.typography.bodySmall,
-                        colors = ExposedDropdownMenuDefaults.textFieldColors(
-                            focusedIndicatorColor = Color.Transparent, // Remove outline when focused
-                            unfocusedIndicatorColor = Color.Transparent // Remove outline when unfocused
-                        )
-                    )
-                    ExposedDropdownMenu(
-                        expanded = privacyExpanded,
-                        onDismissRequest = { privacyExpanded = false },
-                        modifier = Modifier
-                            .width(IntrinsicSize.Min)
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                    ) {
-                        privacyOptions.forEach { privacy ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        privacy,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                },
-                                onClick = {
-                                    selectedPrivacy = privacy
-                                    privacyExpanded = false
-                                },
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // TextField
-            OutlinedTextField(
-                value = postText,
-                onValueChange = { postText = it },
-                placeholder = { Text("What's on your mind?") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .background(Color.Transparent, shape = RoundedCornerShape(8.dp)), // White background with rounded corners
-                textStyle = MaterialTheme.typography.bodyLarge,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent, // Remove outline when focused
-                    unfocusedBorderColor = Color.Transparent, // Remove outline when unfocused
-                    disabledBorderColor = Color.Transparent // Remove outline when disabled
-                )
+                    .fillMaxWidth() // Spans full screen width
+                    .padding(vertical = 2.dp)
             )
 
-            // Image Preview
-            if (selectedImageUri != null) {
-                Image(
-                    painter = rememberAsyncImagePainter(selectedImageUri),
-                    contentDescription = "Selected Image",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp)
-                        .padding(vertical = 8.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            // Add Photo Button
-            OutlinedButton(
-                onClick = { launcher.launch("image/*") },
+            // Content below with padding
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                contentPadding = PaddingValues(12.dp),
-                shape = RoundedCornerShape(12.dp)
+                    .padding(horizontal = 16.dp) // Padding applied to content only
             ) {
-                Icon(Icons.Default.Image, contentDescription = "Pick Image")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Add Photo")
-            }
+                // Profile Section
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "Profile Picture",
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Anonymous",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                // Dropdowns
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    var categoryExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = categoryExpanded,
+                        onExpandedChange = { categoryExpanded = !categoryExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        TextField(
+                            value = selectedCategory,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Category", style = MaterialTheme.typography.labelMedium) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .height(48.dp)
+                                .fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            textStyle = MaterialTheme.typography.bodySmall,
+                            colors = ExposedDropdownMenuDefaults.textFieldColors(
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = categoryExpanded,
+                            onDismissRequest = { categoryExpanded = false },
+                            modifier = Modifier
+                                .width(IntrinsicSize.Min)
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                        ) {
+                            categories.forEach { category ->
+                                DropdownMenuItem(
+                                    text = { Text(category, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    onClick = {
+                                        selectedCategory = category
+                                        categoryExpanded = false
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    var privacyExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = privacyExpanded,
+                        onExpandedChange = { privacyExpanded = !privacyExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        TextField(
+                            value = selectedPrivacy,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Privacy", style = MaterialTheme.typography.labelMedium) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = privacyExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .height(48.dp)
+                                .fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            textStyle = MaterialTheme.typography.bodySmall,
+                            colors = ExposedDropdownMenuDefaults.textFieldColors(
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = privacyExpanded,
+                            onDismissRequest = { privacyExpanded = false },
+                            modifier = Modifier
+                                .width(IntrinsicSize.Min)
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                        ) {
+                            privacyOptions.forEach { privacy ->
+                                DropdownMenuItem(
+                                    text = { Text(privacy, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    onClick = {
+                                        selectedPrivacy = privacy
+                                        privacyExpanded = false
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // TextField
+                OutlinedTextField(
+                    value = postText,
+                    onValueChange = { postText = it },
+                    placeholder = { Text("What's on your mind?") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .background(Color.Transparent, shape = RoundedCornerShape(8.dp)),
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        disabledBorderColor = Color.Transparent
+                    )
+                )
+                Divider(
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    thickness = 1.dp,
+                    modifier = Modifier
+                        .fillMaxWidth() // Spans full width within padded Column
+                        .padding(vertical = 2.dp)
+                )
+
+                // Image Preview
+                if (selectedImageUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(selectedImageUri),
+                        contentDescription = "Selected Image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .padding(vertical = 8.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                // Add Photo Button
+                OutlinedButton(
+                    onClick = { launcher.launch("image/*") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    contentPadding = PaddingValues(12.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Image, contentDescription = "Pick Image")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add Photo")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 }

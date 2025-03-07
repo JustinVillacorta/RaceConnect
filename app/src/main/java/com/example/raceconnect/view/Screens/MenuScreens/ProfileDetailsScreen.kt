@@ -11,16 +11,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -28,6 +35,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
+import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
 import java.io.File
 import java.text.SimpleDateFormat
@@ -58,7 +66,7 @@ fun MyProfileScreen(onClose: () -> Unit, menuViewModel: MenuViewModel) {
         profileData?.let {
             if (!isEditMode) {
                 username = TextFieldValue(it.username)
-                birthDate = TextFieldValue(it.birthdate ?: "")
+                birthDate = TextFieldValue(it.birthdate?.let { date -> formatDate(date, "yyyy-MM-dd") } ?: "")
                 contactNumber = TextFieldValue(it.number ?: "")
                 address = TextFieldValue(it.address ?: "")
                 bio = TextFieldValue(it.bio ?: "")
@@ -87,7 +95,7 @@ fun MyProfileScreen(onClose: () -> Unit, menuViewModel: MenuViewModel) {
             context,
             { _, year, month, dayOfMonth ->
                 calendar.set(year, month, dayOfMonth)
-                val sdf = SimpleDateFormat("d/M/yyyy", Locale.getDefault())
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 birthDate = TextFieldValue(sdf.format(calendar.time))
             },
             calendar.get(Calendar.YEAR),
@@ -153,129 +161,93 @@ fun MyProfileScreen(onClose: () -> Unit, menuViewModel: MenuViewModel) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Conditionally render editable or read-only fields with labels
-            if (isEditMode) {
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("User Name") },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    leadingIcon = { Icon(painterResource(id = R.drawable.baseline_account_circle_24), "User Icon") }
-                )
-
-                OutlinedTextField(
-                    value = birthDate,
-                    onValueChange = { birthDate = TextFieldValue(it.text) },
-                    label = { Text("Birth Date") },
+            // Profile Details Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp)
+                    .heightIn(min = 400.dp),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .clickable { datePickerDialog.show() },
-                    leadingIcon = { Icon(painterResource(id = R.drawable.baseline_calendar_month_24), "Calendar Icon") },
-                    readOnly = true
-                )
+                        .padding(16.dp)
+                ) {
+                    if (isEditMode) {
+                        OutlinedTextField(
+                            value = username,
+                            onValueChange = { username = it },
+                            label = { Text("User Name") },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            leadingIcon = { Icon(Icons.Default.AccountCircle, "User Icon", tint = Red) }
+                        )
 
-                OutlinedTextField(
-                    value = contactNumber,
-                    onValueChange = { contactNumber = it },
-                    label = { Text("Contact Number") },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    leadingIcon = { Icon(painterResource(id = R.drawable.baseline_phone_24), "Phone Icon") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
+                        OutlinedTextField(
+                            value = birthDate,
+                            onValueChange = { birthDate = TextFieldValue(it.text) },
+                            label = { Text("Birth Date") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp)
+                                .clickable { datePickerDialog.show() },
+                            leadingIcon = { Icon(Icons.Default.CalendarToday, "Calendar Icon", tint = Red) },
+                            readOnly = true
+                        )
 
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = { Text("Address") },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    leadingIcon = { Icon(painterResource(id = R.drawable.baseline_location_pin_24), "Location Icon") }
-                )
+                        OutlinedTextField(
+                            value = contactNumber,
+                            onValueChange = { contactNumber = it },
+                            label = { Text("Contact Number") },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            leadingIcon = { Icon(Icons.Default.Phone, "Phone Icon", tint = Red) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
 
-                OutlinedTextField(
-                    value = bio,
-                    onValueChange = { bio = it },
-                    label = { Text("Bio") },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    leadingIcon = { Icon(painterResource(id = R.drawable.baseline_bio_24), "Edit Icon") }
-                )
-            } else {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "User Name: ",
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyLarge
+                        OutlinedTextField(
+                            value = address,
+                            onValueChange = { address = it },
+                            label = { Text("Address") },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            leadingIcon = { Icon(Icons.Default.LocationOn, "Location Icon", tint = Red) }
                         )
-                        Text(
-                            text = profileData?.username ?: "",
-                            modifier = Modifier.weight(2f),
-                            style = MaterialTheme.typography.bodyLarge
+
+                        OutlinedTextField(
+                            value = bio,
+                            onValueChange = { bio = it },
+                            label = { Text("Bio") },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            leadingIcon = { Icon(Icons.Default.Edit, "Edit Icon", tint = Red) }
                         )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Birth Date: ",
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyLarge
+                    } else {
+                        ProfileField(
+                            label = "User Name",
+                            value = profileData?.username ?: "",
+                            icon = Icons.Default.AccountCircle
                         )
-                        Text(
-                            text = profileData?.birthdate ?: "",
-                            modifier = Modifier.weight(2f),
-                            style = MaterialTheme.typography.bodyLarge
+                        ProfileField(
+                            label = "Birth Date",
+                            value = profileData?.birthdate?.let { formatDate(it, "yyyy-MM-dd") } ?: "",
+                            icon = Icons.Default.CalendarToday
                         )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Contact Number: ",
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyLarge
+                        ProfileField(
+                            label = "Contact Number",
+                            value = profileData?.number ?: "",
+                            icon = Icons.Default.Phone
                         )
-                        Text(
-                            text = profileData?.number ?: "",
-                            modifier = Modifier.weight(2f),
-                            style = MaterialTheme.typography.bodyLarge
+                        ProfileField(
+                            label = "Address",
+                            value = profileData?.address ?: "",
+                            icon = Icons.Default.LocationOn
                         )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Address: ",
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            text = profileData?.address ?: "",
-                            modifier = Modifier.weight(2f),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Bio: ",
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            text = profileData?.bio ?: "",
-                            modifier = Modifier.weight(2f),
-                            style = MaterialTheme.typography.bodyLarge
+                        ProfileField(
+                            label = "Bio",
+                            value = profileData?.bio ?: "",
+                            icon = Icons.Default.Edit
                         )
                     }
                 }
@@ -294,13 +266,13 @@ fun MyProfileScreen(onClose: () -> Unit, menuViewModel: MenuViewModel) {
                             bio.text
                         )
                     } else {
-                        menuViewModel.toggleEditMode() // Switch to edit mode
+                        menuViewModel.toggleEditMode()
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
-                    .height(50.dp),
+                    .height(56.dp), // Increased to 56.dp for better tap target size
                 colors = ButtonDefaults.buttonColors(containerColor = BrandRed),
                 enabled = !isLoading
             ) {
@@ -315,5 +287,47 @@ fun MyProfileScreen(onClose: () -> Unit, menuViewModel: MenuViewModel) {
                 Text(it, color = Color.Red, modifier = Modifier.padding(top = 8.dp))
             }
         }
+    }
+}
+
+// Reusable ProfileField composable for read-only mode
+@Composable
+fun ProfileField(label: String, value: String, icon: ImageVector) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = "$label Icon",
+            modifier = Modifier.padding(end = 12.dp),
+            tint = Red
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+// Helper function to format date
+fun formatDate(dateStr: String, format: String): String {
+    return try {
+        val originalFormat = SimpleDateFormat("d/M/yyyy", Locale.getDefault())
+        val targetFormat = SimpleDateFormat(format, Locale.getDefault())
+        val date = originalFormat.parse(dateStr)
+        date?.let { targetFormat.format(it) } ?: dateStr
+    } catch (e: Exception) {
+        dateStr
     }
 }
