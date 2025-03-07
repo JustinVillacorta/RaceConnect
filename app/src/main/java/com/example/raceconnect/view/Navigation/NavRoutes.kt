@@ -26,4 +26,13 @@ sealed class NavRoutes(val route: String) {
     object ChatSeller : NavRoutes("chatSeller/{itemId}") { // New route for chat seller screen
         fun createRoute(itemId: Int) = "chatSeller/$itemId"
     }
+
+    // New routes for menu options
+    object MyProfile : NavRoutes("myProfile")
+    object FavoriteItems : NavRoutes("favoriteItems")
+    object NewsFeedPreferences : NavRoutes("newsFeedPreferences")
+    object ListedItems : NavRoutes("listedItems")
+    object Settings : NavRoutes("settings")
+
+
 }

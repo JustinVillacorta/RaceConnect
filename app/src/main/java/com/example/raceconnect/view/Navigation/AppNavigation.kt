@@ -3,7 +3,6 @@ package com.example.raceconnect.navigation
 import FriendsScreen
 import NewsFeedScreen
 import NotificationsScreen
-import ProfileScreen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -30,20 +29,26 @@ import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.ui.BottomNavBar
 import com.example.raceconnect.ui.MarketplaceScreen
+import com.example.raceconnect.ui.ProfileScreen
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.Navigation.AuthenticationNavHost
 import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
+import com.example.raceconnect.view.Screens.MenuScreens.FavoriteItemsScreen
+import com.example.raceconnect.view.Screens.MenuScreens.ListedItemsScreen
+import com.example.raceconnect.view.Screens.MenuScreens.MyProfileScreen
+import com.example.raceconnect.view.Screens.MenuScreens.NewsFeedPreferencesScreen
+import com.example.raceconnect.view.Screens.MenuScreens.SettingsScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.FullScreenImageViewer
 import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
+import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
-
 
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {
@@ -51,18 +56,22 @@ fun AppNavigation(userPreferences: UserPreferences) {
     val token = userPreferences.token.collectAsState(initial = null).value
     val context = LocalContext.current
 
-    // State to control screen visibility
+    // State for overlays
     var showCreatePostScreen by remember { mutableStateOf(false) }
     var showCreateListing by remember { mutableStateOf(false) }
     var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
     var showChatSellerScreen by remember { mutableStateOf<Int?>(null) }
     var showFullScreenImage by remember { mutableStateOf<Pair<String, Int>?>(null) }
-    var showProfileViewScreen by remember { mutableStateOf(false) }
+    // New states for menu option overlays
+    var showMyProfile by remember { mutableStateOf(false) }
+    var showFavoriteItems by remember { mutableStateOf(false) }
+    var showNewsFeedPreferences by remember { mutableStateOf(false) }
+    var showListedItems by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
 
-    // Get the current route
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
 
@@ -84,7 +93,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             userPreferences = userPreferences,
                             onShowCreatePost = { showCreatePostScreen = true },
                             onShowFullScreenImage = { imageUrl, postId -> showFullScreenImage = Pair(imageUrl, postId) },
-                            onShowProfileView = { showProfileViewScreen = true }
+                            onShowProfileView = { navController.navigate(NavRoutes.ProfileView.route) }
                         )
                     }
                     composable(NavRoutes.Comments.route) { backStackEntry ->
@@ -92,11 +101,32 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         CommentScreen(
                             postId = postId,
                             navController = navController,
-                            onShowProfileView = { showProfileViewScreen = true }
+                            onShowProfileView = { navController.navigate(NavRoutes.ProfileView.route) }
                         )
                     }
                     composable(NavRoutes.Profile.route) {
-                        ProfileScreen { navController.navigate(NavRoutes.Login.route) }
+                        val authViewModel = viewModel<AuthenticationViewModel>()
+                        ProfileScreen(
+                            viewModel = authViewModel,
+                            onLogoutSuccess = {
+                                navController.navigate(NavRoutes.Login.route) {
+                                    popUpTo(NavRoutes.Login.route) { inclusive = true }
+                                }
+                            },
+                            navController = navController,
+                            onShowMyProfile = { showMyProfile = true },
+                            onShowFavoriteItems = { showFavoriteItems = true },
+                            onShowNewsFeedPreferences = { showNewsFeedPreferences = true },
+                            onShowListedItems = { showListedItems = true },
+                            onShowSettings = { showSettings = true }
+                        )
+                    }
+                    composable(NavRoutes.ProfileView.route) {
+                        ProfileViewScreen(
+                            navController = navController,
+                            context = context,
+                            onClose = { navController.popBackStack() }
+                        )
                     }
                     composable(NavRoutes.Marketplace.route) {
                         MarketplaceScreen(
@@ -115,10 +145,27 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             onClose = { navController.popBackStack() }
                         )
                     }
+                    composable(NavRoutes.MarketplaceItemDetail.route) { backStackEntry ->
+                        val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
+                        MarketplaceItemDetailScreen(
+                            itemId = itemId,
+                            navController = navController,
+                            onClose = { navController.popBackStack() },
+                            onClickChat = { showChatSellerScreen = it }
+                        )
+                    }
+                    composable(NavRoutes.ChatSeller.route) { backStackEntry ->
+                        val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
+                        ChatSellerScreen(
+                            itemId = itemId,
+                            navController = navController,
+                            onClose = { navController.popBackStack() }
+                        )
+                    }
                 }
             }
 
-            // Overlay CreatePostScreen
+            // Overlay for CreatePostScreen
             AnimatedVisibility(
                 visible = showCreatePostScreen,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
@@ -130,7 +177,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 )
             }
 
-            // Overlay CreateMarketplaceItemScreen
+            // Overlay for CreateMarketplaceItemScreen
             AnimatedVisibility(
                 visible = showCreateListing,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
@@ -143,7 +190,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 )
             }
 
-            // Overlay MarketplaceItemDetailScreen
+            // Overlay for MarketplaceItemDetailScreen
             showItemDetailScreen?.let { itemId ->
                 AnimatedVisibility(
                     visible = true,
@@ -159,7 +206,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
-            // Overlay ChatSellerScreen
+            // Overlay for ChatSellerScreen
             showChatSellerScreen?.let { itemId ->
                 AnimatedVisibility(
                     visible = true,
@@ -174,7 +221,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
-            // Overlay FullScreenImageViewer
+            // Overlay for FullScreenImageViewer
             showFullScreenImage?.let { (imageUrl, postId) ->
                 AnimatedVisibility(
                     visible = true,
@@ -193,17 +240,45 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
-            // Overlay ProfileViewScreen
+            // Overlays for menu options
             AnimatedVisibility(
-                visible = showProfileViewScreen,
+                visible = showMyProfile,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
-                ProfileViewScreen(
-                    navController = navController,
-                    context = context,
-                    onClose = { showProfileViewScreen = false }
-                )
+                MyProfileScreen(navController = navController, onClose = { showMyProfile = false })
+            }
+
+            AnimatedVisibility(
+                visible = showFavoriteItems,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+            ) {
+                FavoriteItemsScreen(navController = navController, onClose = { showFavoriteItems = false })
+            }
+
+            AnimatedVisibility(
+                visible = showNewsFeedPreferences,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+            ) {
+                NewsFeedPreferencesScreen(navController = navController, onClose = { showNewsFeedPreferences = false })
+            }
+
+            AnimatedVisibility(
+                visible = showListedItems,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+            ) {
+                ListedItemsScreen(navController = navController, onClose = { showListedItems = false })
+            }
+
+            AnimatedVisibility(
+                visible = showSettings,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+            ) {
+                SettingsScreen(navController = navController, onClose = { showSettings = false })
             }
         }
     }

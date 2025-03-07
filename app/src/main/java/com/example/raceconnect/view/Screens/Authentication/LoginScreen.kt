@@ -37,7 +37,7 @@ fun LoginScreen(
     onLoginClick: (String, String) -> Unit,
     onSignupNavigate: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
     var isPasswordVisible by remember { mutableStateOf(false) }
@@ -99,8 +99,8 @@ fun LoginScreen(
 
                     // Email TextField with red icon
                     OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
+                        value = username,
+                        onValueChange = { username = it },
                         label = { Text("Email") },
                         singleLine = true,
                         leadingIcon = {
@@ -176,7 +176,7 @@ fun LoginScreen(
 
                     // Log in button in red
                     Button(
-                        onClick = { onLoginClick(email, password) },
+                        onClick = { onLoginClick(username, password) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFFC62828),

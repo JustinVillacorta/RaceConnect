@@ -1,206 +1,263 @@
+package com.example.raceconnect.ui
+
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.raceconnect.R
+import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
-import com.example.raceconnect.view.ui.theme.Red
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Your brand's red color
+private val BrandRed = Color(0xFFC62828)
+
 @Composable
 fun ProfileScreen(
-    viewModel: AuthenticationViewModel = viewModel(),
-    onLogoutSuccess: () -> Unit // Callback to navigate after logout
+    viewModel: AuthenticationViewModel,
+    onLogoutSuccess: () -> Unit,
+    navController: NavController,
+    onShowMyProfile: () -> Unit,
+    onShowFavoriteItems: () -> Unit,
+    onShowNewsFeedPreferences: () -> Unit,
+    onShowListedItems: () -> Unit,
+    onShowSettings: () -> Unit
 ) {
     val user by viewModel.loggedInUser.collectAsState()
-    var showLogoutDialog by remember { mutableStateOf(false) } // State for showing logout confirmation dialog
-    var logoutErrorMessage by remember { mutableStateOf<String?>(null) } // State for logout error message
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Menu",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Red,
-                    titleContentColor = Color.White
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(
+    var showMenu by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues) // Apply padding from Scaffold to avoid overlap with TopAppBar
-                .padding(16.dp)
+                .fillMaxWidth()
+                .height(200.dp)
+                .background(BrandRed)
         ) {
-            // Profile Section
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.baseline_account_circle_24), // Placeholder image
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = user?.username ?: "Guest",
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Text(
-                    text = user?.email ?: "Not logged in",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Options List
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                item {
-                    ProfileOptionItem(
-                        iconResId = R.drawable.baseline_account_circle_24,
-                        text = "Personal Details",
-                        onClick = { /* Handle Personal Details Click */ }
-                    )
-                }
-                item {
-                    ProfileOptionItem(
-                        iconResId = R.drawable.baseline_favorite_24,
-                        text = "Favorite Items",
-                        onClick = { /* Handle Favorite Items Click */ }
-                    )
-                }
-                item {
-                    ProfileOptionItem(
-                        iconResId = R.drawable.baseline_home_24,
-                        text = "News Feed Preferences",
-                        onClick = { /* Handle Preferences Click */ }
-                    )
-                }
-                item {
-                    ProfileOptionItem(
-                        iconResId = R.drawable.baseline_sell_24,
-                        text = "Listed Items",
-                        onClick = { /* Handle Settings Click */ }
-                    )
-                }
-                item {
-                    ProfileOptionItem(
-                        iconResId = R.drawable.baseline_settings_24,
-                        text = "Settings",
-                        onClick = { /* Handle FAQ Click */ }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f)) // Push the logout button to the bottom
-
-            // Logout Button with Confirmation Dialog
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { showLogoutDialog = true } // Show confirmation dialog
-                    .padding(vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.ExitToApp,
-                    contentDescription = "Logout",
-                    tint = Color.Red
-                )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Log out",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Red
+                    text = "Menu",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White
                 )
-            }
 
-            // Logout Confirmation Dialog
-            if (showLogoutDialog) {
-                AlertDialog(
-                    onDismissRequest = { showLogoutDialog = false },
-                    title = { Text("Confirm Logout") },
-                    text = { Text("Do you want to log out?") },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                showLogoutDialog = false
-                                viewModel.logout {
-                                    onLogoutSuccess() // Navigate to login screen
-                                }
-                            }
-                        ) {
-                            Text("Yes")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = { showLogoutDialog = false }
-                        ) {
-                            Text("No")
-                        }
+                Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More Options",
+                            tint = Color.White
+                        )
                     }
-                )
-            }
 
-            // Show Logout Error Message
-            logoutErrorMessage?.let { errorMsg ->
-                Text(
-                    text = errorMsg,
-                    color = Color.Red,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        modifier = Modifier
+                            .shadow(8.dp, RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Logout", style = MaterialTheme.typography.labelLarge) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.ExitToApp,
+                                    contentDescription = "Logout"
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                showLogoutDialog = true
+                            }
+                        )
+                    }
+                }
             }
+        }
+
+        Card(
+            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 80.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 16.dp)
+                        .clickable {
+                            navController.navigate(NavRoutes.ProfileView.route)
+                        }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier
+                                .size(70.dp)
+                                .clip(CircleShape)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = user?.username ?: "Guest",
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                        Text(
+                            text = user?.email ?: "Guest",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // GRID OF MENU CARDS
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    // First row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        MenuOptionCard(
+                            iconResId = R.drawable.baseline_account_circle_24,
+                            text = "My Profile",
+                            onClick = onShowMyProfile
+                        )
+                        MenuOptionCard(
+                            iconResId = R.drawable.baseline_favorite_24,
+                            text = "Favorite Items",
+                            onClick = onShowFavoriteItems
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Second row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        MenuOptionCard(
+                            iconResId = R.drawable.baseline_home_24,
+                            text = "News Feed Preferences",
+                            onClick = onShowNewsFeedPreferences
+                        )
+                        MenuOptionCard(
+                            iconResId = R.drawable.baseline_sell_24,
+                            text = "Listed Items",
+                            onClick = onShowListedItems
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Third row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        MenuOptionCard(
+                            iconResId = R.drawable.baseline_settings_24,
+                            text = "Settings",
+                            onClick = onShowSettings
+                        )
+                    }
+                }
+            }
+        }
+
+        if (showLogoutDialog) {
+            AlertDialog(
+                onDismissRequest = { showLogoutDialog = false },
+                title = { Text("Confirm Logout") },
+                text = { Text("Are you sure you want to log out?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showLogoutDialog = false
+                            viewModel.logout {
+                                onLogoutSuccess()
+                            }
+                        }
+                    ) {
+                        Text("Yes")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLogoutDialog = false }) {
+                        Text("No")
+                    }
+                }
+            )
         }
     }
 }
 
 @Composable
-fun ProfileOptionItem(iconResId: Int, text: String, onClick: () -> Unit) {
-    Row(
+fun MenuOptionCard(
+    iconResId: Int,
+    text: String,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(4.dp),
         modifier = Modifier
-            .fillMaxWidth()
+            .size(width = 150.dp, height = 100.dp)
             .clickable { onClick() }
-            .padding(vertical = 12.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            painter = painterResource(id = iconResId),
-            contentDescription = text,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Icon(
+                painter = painterResource(id = iconResId),
+                contentDescription = text,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
     }
 }
