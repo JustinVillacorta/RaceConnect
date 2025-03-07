@@ -36,7 +36,6 @@ import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplace
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
 import com.example.raceconnect.view.Screens.MenuScreens.FavoriteItemsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.ListedItemsScreen
-import com.example.raceconnect.view.Screens.MenuScreens.MyProfileScreen
 import com.example.raceconnect.view.Screens.MenuScreens.NewsFeedPreferencesScreen
 import com.example.raceconnect.view.Screens.MenuScreens.SettingsScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
@@ -49,6 +48,7 @@ import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.example.raceconnect.view.FriendsScreen
+import com.example.raceconnect.view.Screens.ProfileScreens.MyProfileScreen
 
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {

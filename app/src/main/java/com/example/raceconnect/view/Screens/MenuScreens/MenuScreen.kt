@@ -175,7 +175,7 @@ fun ProfileScreen(
                     ) {
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_home_24,
-                            text = "News Feed Preferences",
+                            text = "Preferences",
                             onClick = onShowNewsFeedPreferences
                         )
                         MenuOptionCard(
