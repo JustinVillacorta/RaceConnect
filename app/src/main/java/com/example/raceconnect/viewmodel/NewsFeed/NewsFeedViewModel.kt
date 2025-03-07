@@ -215,6 +215,14 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         }
     }
 
+    fun repostPost(postId: Int, comment: String) {
+        // TODO: Implement repost logic (e.g., API call to repost the post with an optional comment)
+        // Example:
+        // 1. Get the user's token from userPreferences
+        // 2. Make an API call to repost the post
+        // 3. Add the repost to the news feed (e.g., by calling getPosts() again)
+    }
+
 
 
 }

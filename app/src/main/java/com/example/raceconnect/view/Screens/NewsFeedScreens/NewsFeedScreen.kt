@@ -18,6 +18,7 @@ import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.view.Screens.NewsFeedScreens.AddPostSection
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
@@ -34,7 +35,8 @@ fun NewsFeedScreen(
     userPreferences: UserPreferences,
     onShowCreatePost: () -> Unit,
     onShowFullScreenImage: (String, Int) -> Unit,
-    onShowProfileView: () -> Unit
+    onShowProfileView: () -> Unit,
+    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
     val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val posts = viewModel.posts.collectAsLazyPagingItems()
@@ -140,9 +142,11 @@ fun NewsFeedScreen(
                             },
                             onShowFullScreenImage = { imageUrl -> onShowFullScreenImage(imageUrl, it.id) },
                             onShowProfileView = onShowProfileView,
-                            onReportClick = { viewModel.reportPost(it.id) }
+                            onReportClick = { viewModel.reportPost(it.id) },
+                            onShowRepostScreen = onShowRepostScreen // Pass the callback
                         )
                     }
+
                 }
 
                 posts.apply {

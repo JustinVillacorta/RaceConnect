@@ -49,9 +49,6 @@ import coil.compose.AsyncImage
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-
 
 @Composable
 fun PostCard(
@@ -62,14 +59,15 @@ fun PostCard(
     viewModel: NewsFeedViewModel,
     onShowFullScreenImage: (String) -> Unit,
     onShowProfileView: () -> Unit,
-    onReportClick: () -> Unit
+    onReportClick: () -> Unit,
+    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit // Add callback for repost screen
 ) {
     var isLiked by remember { mutableStateOf(post.isLiked) }
     var likeCount by remember { mutableStateOf(post.like_count) }
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: emptyList()
     var showReportDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current // Access the current context for Toast
+    val context = LocalContext.current
 
     LaunchedEffect(post.id) {
         viewModel.getPostImages(post.id)
@@ -83,8 +81,7 @@ fun PostCard(
             .padding(horizontal = 4.dp, vertical = 4.dp)
             .background(Color.White)
     ) {
-        Box(modifier = Modifier.padding(16.dp)) { // Use Box as the root layout for flexible positioning
-            // Main content (profile, post text, image, reactions)
+        Box(modifier = Modifier.padding(16.dp)) {
             Column {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -111,8 +108,6 @@ fun PostCard(
                         )
                     }
                 }
-
-
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -169,27 +164,26 @@ fun PostCard(
                     )
                     ReactionIcon(icon = Icons.Default.ChatBubble, onClick = onCommentClick)
                     Spacer(modifier = Modifier.width(8.dp))
-                    ReactionIcon(icon = Icons.Default.Repeat,
-                    onClick= {
-                        Toast.makeText(context, "You reposted this post", Toast.LENGTH_SHORT).show()
-                    })
+                    ReactionIcon(
+                        icon = Icons.Default.Repeat,
+                        onClick = { onShowRepostScreen(post) } // Navigate to repost screen
+                    )
                 }
             }
 
-            // Freely positioned report icon (e.g., top-right corner of the card)
             Icon(
                 imageVector = Icons.Default.Report,
                 contentDescription = "Report post",
                 modifier = Modifier
                     .size(34.dp)
                     .clickable { showReportDialog = true }
-                    .align(Alignment.TopEnd) // Align to the top-right corner
-                    .padding(8.dp), // Add padding from the edge of the card
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
                 tint = Color.Gray
             )
         }
     }
-// report alert dialog
+
     if (showReportDialog) {
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
@@ -219,13 +213,10 @@ fun PostCard(
                         .padding(8.dp)
                 )
             },
-            shape = RoundedCornerShape(12.dp),
-
+            shape = RoundedCornerShape(12.dp)
         )
     }
 }
-
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -235,6 +226,7 @@ fun FullScreenImageViewer(
     onLikeClick: (Boolean) -> Unit,
     onCommentClick: () -> Unit
 ) {
+    // Existing code (unchanged)
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isAnimating by remember { mutableStateOf(false) }
@@ -242,7 +234,6 @@ fun FullScreenImageViewer(
     val velocityTracker = remember { VelocityTracker() }
     var isDragging by remember { mutableStateOf(false) }
 
-    // Animate scale for double-tap zoom
     val animatedScale by animateFloatAsState(
         targetValue = if (isAnimating) if (scale == 1f) 2.5f else 1f else scale,
         animationSpec = tween(durationMillis = 200),
@@ -251,7 +242,7 @@ fun FullScreenImageViewer(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color.Black // Solid black background
+        containerColor = Color.Black
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -261,8 +252,8 @@ fun FullScreenImageViewer(
                     detectTapGestures(
                         onDoubleTap = { centroid ->
                             isAnimating = true
-                            scale = if (scale <= 1f) 2.5f else 1f // Toggle between 1x and 2.5x on double-tap
-                            offset = Offset.Zero // Reset offset when zooming
+                            scale = if (scale <= 1f) 2.5f else 1f
+                            offset = Offset.Zero
                         },
                         onPress = {
                             velocityTracker.resetTracking()
@@ -274,7 +265,7 @@ fun FullScreenImageViewer(
                         velocityTracker.addPosition(System.currentTimeMillis(), centroid)
                         isDragging = true
                         if (!isAnimating) {
-                            scale = (scale * zoom).coerceIn(0.5f, 5f) // Allow zoom from 0.5x to 5x
+                            scale = (scale * zoom).coerceIn(0.5f, 5f)
                             offset += pan
                             val maxOffsetX = (size.width * (scale - 1)) / 2
                             val maxOffsetY = (size.height * (scale - 1)) / 2
@@ -287,7 +278,7 @@ fun FullScreenImageViewer(
 
                     detectDragGestures(
                         onDrag = { change, dragAmount ->
-                            if (scale == 1f && !isAnimating) { // Only allow swipe dismiss at 1x scale
+                            if (scale == 1f && !isAnimating) {
                                 offset += dragAmount
                                 velocityTracker.addPosition(System.currentTimeMillis(), change.position)
                             }
@@ -297,7 +288,6 @@ fun FullScreenImageViewer(
                             if (isDragging && velocity.y > 1000f && scale == 1f) {
                                 onDismiss()
                             } else {
-                                // Reset offset if not dismissing
                                 if (scale == 1f) offset = Offset.Zero
                             }
                             velocityTracker.resetTracking()
@@ -306,7 +296,6 @@ fun FullScreenImageViewer(
                     )
                 }
         ) {
-            // Full-screen image with automatic scaling
             AsyncImage(
                 model = imageUrl,
                 contentDescription = "Full-screen image",
@@ -318,17 +307,16 @@ fun FullScreenImageViewer(
                         translationX = offset.x,
                         translationY = offset.y
                     ),
-                contentScale = ContentScale.Fit // Scale to fit the screen by default
+                contentScale = ContentScale.Fit
             )
 
-            // Close button (top-right)
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
-                    .size(28.dp) // Slightly larger for better touch target
+                    .size(28.dp)
                     .clip(CircleShape)
                     .background(Color.Black.copy(alpha = 0.6f))
                     .padding(6.dp)
@@ -336,12 +324,11 @@ fun FullScreenImageViewer(
                 tint = Color.White
             )
 
-            // Action buttons (bottom)
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 16.dp)
-                    .background(Color.Black.copy(alpha = 0.8f), shape = RoundedCornerShape(12.dp)) // Slightly more rounded and translucent
+                    .background(Color.Black.copy(alpha = 0.8f), shape = RoundedCornerShape(12.dp))
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
                 Row(
@@ -402,18 +389,12 @@ fun ReactionIcon(icon: ImageVector, isLiked: Boolean = false, onClick: (() -> Un
         imageVector = icon,
         contentDescription = null,
         modifier = Modifier
-            .size(24.dp) // Larger icons like Facebook
+            .size(24.dp)
             .clickable { onClick?.invoke() },
         tint = if (isLiked) Color.Red else Color.Gray
     )
 }
 
-
-
-
-
-
-//preview
 @Preview(showBackground = true)
 @Composable
 fun PreviewPostCard() {
@@ -424,7 +405,7 @@ fun PreviewPostCard() {
         isLiked = false,
         like_count = 10,
         img_url = "https://example.com/image.jpg",
-        title = "Sample Post",
+        title = "Sample Post"
     )
 
     PostCard(
@@ -435,7 +416,7 @@ fun PreviewPostCard() {
         viewModel = NewsFeedViewModel(UserPreferences(LocalContext.current)),
         onShowFullScreenImage = {},
         onShowProfileView = {},
-        onReportClick = {}
+        onReportClick = {},
+        onShowRepostScreen = {} // Add the callback for preview
     )
 }
-

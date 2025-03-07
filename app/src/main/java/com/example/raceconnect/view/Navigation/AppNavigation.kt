@@ -1,7 +1,6 @@
 package com.example.raceconnect.navigation
 
 import NewsFeedScreen
-import com.example.raceconnect.view.NotificationsScreen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -26,11 +25,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.ui.BottomNavBar
 import com.example.raceconnect.ui.MarketplaceScreen
 import com.example.raceconnect.ui.ProfileScreen
-import com.example.raceconnect.view.Navigation.NavRoutes
+import com.example.raceconnect.view.FriendsScreen
 import com.example.raceconnect.view.Navigation.AuthenticationNavHost
+import com.example.raceconnect.view.Navigation.NavRoutes
+import com.example.raceconnect.view.NotificationsScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
@@ -42,13 +44,13 @@ import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.FullScreenImageViewer
 import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
+import com.example.raceconnect.view.Screens.NewsFeedScreens.RepostScreen
+import com.example.raceconnect.view.Screens.ProfileScreens.MyProfileScreen
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
-import com.example.raceconnect.view.FriendsScreen
-import com.example.raceconnect.view.Screens.ProfileScreens.MyProfileScreen
 
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {
@@ -62,6 +64,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
     var showChatSellerScreen by remember { mutableStateOf<Int?>(null) }
     var showFullScreenImage by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    var showRepostScreen by remember { mutableStateOf<NewsFeedDataClassItem?>(null) } // New state for repost screen
     // New states for menu option overlays
     var showMyProfile by remember { mutableStateOf(false) }
     var showFavoriteItems by remember { mutableStateOf(false) }
@@ -93,7 +96,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             userPreferences = userPreferences,
                             onShowCreatePost = { showCreatePostScreen = true },
                             onShowFullScreenImage = { imageUrl, postId -> showFullScreenImage = Pair(imageUrl, postId) },
-                            onShowProfileView = { navController.navigate(NavRoutes.ProfileView.route) }
+                            onShowProfileView = { navController.navigate(NavRoutes.ProfileView.route) },
+                            onShowRepostScreen = { post -> showRepostScreen = post } // Pass the callback for repost
                         )
                     }
                     composable(NavRoutes.Comments.route) { backStackEntry ->
@@ -236,6 +240,22 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             else newsFeedViewModel.unlikePost(postId)
                         },
                         onCommentClick = { navController.navigate(NavRoutes.Comments.createRoute(postId)) }
+                    )
+                }
+            }
+
+            // Overlay for RepostScreen
+            showRepostScreen?.let { post ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                ) {
+                    RepostScreen(
+                        post = post,
+                        navController = navController,
+                        viewModel = newsFeedViewModel,
+                        onClose = { showRepostScreen = null }
                     )
                 }
             }
