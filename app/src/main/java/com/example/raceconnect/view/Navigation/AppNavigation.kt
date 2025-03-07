@@ -54,7 +54,6 @@ import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
 import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModelFactory
 
-
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {
     val navController = rememberNavController()
@@ -76,7 +75,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
-    val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences)) // Add MenuViewModel
+    val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences))
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
@@ -108,7 +107,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         CommentSectionScreen(
                             postId = postId,
                             navController = navController,
-                            userPreferences = userPreferences, // Added userPreferences parameter
+                            userPreferences = userPreferences,
                             onShowProfileView = { navController.navigate(NavRoutes.ProfileView.route) }
                         )
                     }
@@ -116,7 +115,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         val authViewModel = viewModel<AuthenticationViewModel>()
                         ProfileScreen(
                             viewModel = authViewModel,
-                            menuViewModel = menuViewModel, // Pass MenuViewModel
+                            menuViewModel = menuViewModel,
                             onLogoutSuccess = {
                                 navController.navigate(NavRoutes.Login.route) {
                                     popUpTo(NavRoutes.Login.route) { inclusive = true }
@@ -272,8 +271,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
                 MyProfileScreen(
-                    navController = navController,
-                    menuViewModel = menuViewModel, // Pass MenuViewModel
+                    menuViewModel = menuViewModel, // Removed navController
                     onClose = { showMyProfile = false }
                 )
             }
@@ -285,7 +283,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
             ) {
                 FavoriteItemsScreen(
                     navController = navController,
-                    menuViewModel = menuViewModel, // Pass MenuViewModel
+                    menuViewModel = menuViewModel,
                     onClose = { showFavoriteItems = false }
                 )
             }
@@ -297,7 +295,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
             ) {
                 NewsFeedPreferencesScreen(
                     navController = navController,
-                    menuViewModel = menuViewModel, // Pass MenuViewModel
+                    menuViewModel = menuViewModel,
                     onClose = { showNewsFeedPreferences = false }
                 )
             }
@@ -309,7 +307,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
             ) {
                 ListedItemsScreen(
                     navController = navController,
-                    menuViewModel = menuViewModel, // Pass MenuViewModel
+                    menuViewModel = menuViewModel,
                     onClose = { showListedItems = false }
                 )
             }
@@ -321,7 +319,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
             ) {
                 SettingsScreen(
                     navController = navController,
-                    menuViewModel = menuViewModel, // Pass MenuViewModel
+                    menuViewModel = menuViewModel,
                     onClose = { showSettings = false }
                 )
             }

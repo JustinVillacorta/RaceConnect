@@ -32,6 +32,9 @@ import com.example.raceconnect.model.itemPostResponse
 import com.example.raceconnect.model.users
 import com.example.raceconnect.model.PostComment
 import com.example.raceconnect.model.Repost
+import com.example.raceconnect.model.UpdateUserRequest
+import com.example.raceconnect.model.UploadProfilePictureResponse
+import com.example.raceconnect.model.UserSimpleResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -49,7 +52,20 @@ interface ApiService {
     suspend fun signup(@Body request: SignupRequest): Response<SignupResponse>
 
     @GET("users/{id}")
-    suspend fun getUser(@Path("id") id: Int): users
+    suspend fun getUser(@Path("id") id: Int): Response<users>
+
+    @PUT("users/{id}")
+    suspend fun updateUser(
+        @Path("id") id: Int,
+        @Body request: UpdateUserRequest
+    ): Response<UserSimpleResponse>
+
+    @Multipart
+    @POST("upload-profile-picture")
+    suspend fun uploadProfilePicture(
+        @Part("user_id") userId: RequestBody,
+        @Part image: MultipartBody.Part
+    ): Response<UploadProfilePictureResponse>
 
     @POST("forgot-password")
     suspend fun requestOtp(

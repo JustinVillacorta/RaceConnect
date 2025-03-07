@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
@@ -39,7 +40,7 @@ fun ProfileScreen(
     onShowListedItems: () -> Unit,
     onShowSettings: () -> Unit
 ) {
-    val user by viewModel.loggedInUser.collectAsState()
+    val profileData by menuViewModel.profileData.collectAsState() // Use profileData from menuViewModel
 
     var showMenu by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -124,7 +125,8 @@ fun ProfileScreen(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                            painter = profileData?.profilePicture?.let { rememberAsyncImagePainter(model = it) }
+                                ?: painterResource(id = R.drawable.baseline_account_circle_24),
                             contentDescription = "Profile Picture",
                             modifier = Modifier
                                 .size(70.dp)
@@ -132,11 +134,11 @@ fun ProfileScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = user?.username ?: "Guest",
+                            text = profileData?.username ?: "Guest",
                             style = MaterialTheme.typography.headlineSmall,
                         )
                         Text(
-                            text = user?.email ?: "Guest",
+                            text = profileData?.email ?: "Guest",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Gray
                         )

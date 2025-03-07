@@ -26,42 +26,61 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Your brand's red color (matching the image)
 private val BrandRed = Color(0xFFC62828)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyProfileScreen(navController: NavController, onClose: () -> Unit, menuViewModel: MenuViewModel) {
+fun MyProfileScreen(onClose: () -> Unit, menuViewModel: MenuViewModel) {
     val context = LocalContext.current
-    val activity = (context as? Activity) ?: throw IllegalStateException("MyProfileScreen must be used within an Activity context")
+    val activity = context as? Activity ?: throw IllegalStateException("MyProfileScreen must be used within an Activity context")
 
-    // Sample state for input fields (replace with ViewModel state later)
-    var username by remember { mutableStateOf(TextFieldValue("Justine Cuagdan")) }
-    var birthDate by remember { mutableStateOf(TextFieldValue("1/1/1111")) }
-    var contactNumber by remember { mutableStateOf(TextFieldValue("0966794343")) }
-    var address by remember { mutableStateOf(TextFieldValue("Calasiao, Pangasinan")) }
-    var bio by remember { mutableStateOf(TextFieldValue("I like black cars")) }
+    val profileData by menuViewModel.profileData.collectAsState()
+    val isLoading by menuViewModel.isLoading.collectAsState()
+    val errorMessage by menuViewModel.errorMessage.collectAsState()
+    val isEditMode by menuViewModel.isEditMode.collectAsState()
+
+    // State for editable fields
+    var username by remember { mutableStateOf(TextFieldValue(profileData?.username ?: "")) }
+    var birthDate by remember { mutableStateOf(TextFieldValue(profileData?.birthdate ?: "")) }
+    var contactNumber by remember { mutableStateOf(TextFieldValue(profileData?.number ?: "")) }
+    var address by remember { mutableStateOf(TextFieldValue(profileData?.address ?: "")) }
+    var bio by remember { mutableStateOf(TextFieldValue(profileData?.bio ?: "")) }
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Image Picker Launcher
+    LaunchedEffect(profileData) {
+        profileData?.let {
+            if (!isEditMode) {
+                username = TextFieldValue(it.username)
+                birthDate = TextFieldValue(it.birthdate ?: "")
+                contactNumber = TextFieldValue(it.number ?: "")
+                address = TextFieldValue(it.address ?: "")
+                bio = TextFieldValue(it.bio ?: "")
+            }
+        }
+    }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
                 profileImageUri = uri
-                // TODO: Save the URI to ViewModel or storage if needed
+                val file = File(context.cacheDir, "profile_image_${System.currentTimeMillis()}.jpg")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    file.outputStream().use { output -> input.copyTo(output) }
+                }
+                menuViewModel.uploadProfileImage(file)
             }
         }
     }
 
-    // Date Picker State
     val calendar = remember { Calendar.getInstance() }
     val datePickerDialog = remember {
         DatePickerDialog(
@@ -91,9 +110,7 @@ fun MyProfileScreen(navController: NavController, onClose: () -> Unit, menuViewM
                         )
                     }
                 },
-                colors = TopAppBarDefaults.smallTopAppBarColors(
-                    containerColor = BrandRed
-                )
+                colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = BrandRed)
             )
         }
     ) { padding ->
@@ -105,14 +122,14 @@ fun MyProfileScreen(navController: NavController, onClose: () -> Unit, menuViewM
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Profile Image Section
             Box(
                 modifier = Modifier
                     .padding(top = 16.dp)
                     .size(120.dp)
             ) {
                 Image(
-                    painter = profileImageUri?.let { painterResource(id = android.R.drawable.ic_menu_gallery) }
+                    painter = profileImageUri?.let { rememberAsyncImagePainter(model = it) }
+                        ?: profileData?.profilePicture?.let { rememberAsyncImagePainter(model = it) }
                         ?: painterResource(id = R.drawable.baseline_account_circle_24),
                     contentDescription = "Profile Picture",
                     modifier = Modifier
@@ -129,9 +146,7 @@ fun MyProfileScreen(navController: NavController, onClose: () -> Unit, menuViewM
                         .background(BrandRed.copy(alpha = 0.7f))
                         .padding(4.dp)
                         .clickable {
-                            val intent = Intent(Intent.ACTION_PICK).apply {
-                                type = "image/*"
-                            }
+                            val intent = Intent(Intent.ACTION_PICK).apply { type = "image/*" }
                             imagePickerLauncher.launch(intent)
                         },
                     tint = Color.White
@@ -140,97 +155,164 @@ fun MyProfileScreen(navController: NavController, onClose: () -> Unit, menuViewM
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Input Fields
-            OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text("User Name") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.baseline_account_circle_24),
-                        contentDescription = "User Icon"
-                    )
+            // Conditionally render editable or read-only fields with labels
+            if (isEditMode) {
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("User Name") },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    leadingIcon = { Icon(painterResource(id = R.drawable.baseline_account_circle_24), "User Icon") }
+                )
+
+                OutlinedTextField(
+                    value = birthDate,
+                    onValueChange = { birthDate = TextFieldValue(it.text) },
+                    label = { Text("Birth Date") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable { datePickerDialog.show() },
+                    leadingIcon = { Icon(painterResource(id = R.drawable.baseline_calendar_month_24), "Calendar Icon") },
+                    readOnly = true
+                )
+
+                OutlinedTextField(
+                    value = contactNumber,
+                    onValueChange = { contactNumber = it },
+                    label = { Text("Contact Number") },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    leadingIcon = { Icon(painterResource(id = R.drawable.baseline_phone_24), "Phone Icon") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text("Address") },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    leadingIcon = { Icon(painterResource(id = R.drawable.baseline_location_pin_24), "Location Icon") }
+                )
+
+                OutlinedTextField(
+                    value = bio,
+                    onValueChange = { bio = it },
+                    label = { Text("Bio") },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    leadingIcon = { Icon(painterResource(id = R.drawable.baseline_bio_24), "Edit Icon") }
+                )
+            } else {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "User Name: ",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = profileData?.username ?: "",
+                            modifier = Modifier.weight(2f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Birth Date: ",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = profileData?.birthdate ?: "",
+                            modifier = Modifier.weight(2f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Contact Number: ",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = profileData?.number ?: "",
+                            modifier = Modifier.weight(2f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Address: ",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = profileData?.address ?: "",
+                            modifier = Modifier.weight(2f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Bio: ",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = profileData?.bio ?: "",
+                            modifier = Modifier.weight(2f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 }
-            )
-
-            OutlinedTextField(
-                value = birthDate,
-                onValueChange = { birthDate = TextFieldValue(it.text) },
-                label = { Text("Birth Date") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .clickable { datePickerDialog.show() }, // Make the entire field clickable
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.baseline_calendar_month_24),
-                        contentDescription = "Calendar Icon"
-                    )
-                },
-                readOnly = true
-            )
-
-            OutlinedTextField(
-                value = contactNumber,
-                onValueChange = { contactNumber = it },
-                label = { Text("Contact Number") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.baseline_phone_24),
-                        contentDescription = "Phone Icon"
-                    )
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            OutlinedTextField(
-                value = address,
-                onValueChange = { address = it },
-                label = { Text("Address") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.baseline_location_pin_24),
-                        contentDescription = "Location Icon"
-                    )
-                }
-            )
-
-            OutlinedTextField(
-                value = bio,
-                onValueChange = { bio = it },
-                label = { Text("Bio") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.baseline_bio_24),
-                        contentDescription = "Edit Icon"
-                    )
-                }
-            )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Save Changes Button
             Button(
-                onClick = { /* TODO: Handle save logic */ },
+                onClick = {
+                    if (isEditMode) {
+                        menuViewModel.saveProfileChanges(
+                            username.text,
+                            birthDate.text,
+                            contactNumber.text,
+                            address.text,
+                            bio.text
+                        )
+                    } else {
+                        menuViewModel.toggleEditMode() // Switch to edit mode
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
                     .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandRed)
+                colors = ButtonDefaults.buttonColors(containerColor = BrandRed),
+                enabled = !isLoading
             ) {
-                Text("Save Changes", color = Color.White)
+                if (isLoading) CircularProgressIndicator(color = Color.White)
+                else Text(
+                    text = if (isEditMode) "Save Changes" else "Edit Profile",
+                    color = Color.White
+                )
+            }
+
+            errorMessage?.let {
+                Text(it, color = Color.Red, modifier = Modifier.padding(top = 8.dp))
             }
         }
     }
