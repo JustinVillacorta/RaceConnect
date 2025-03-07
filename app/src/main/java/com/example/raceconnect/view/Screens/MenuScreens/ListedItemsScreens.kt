@@ -9,10 +9,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListedItemsScreen(navController: NavController, onClose: () -> Unit) {
+fun ListedItemsScreen(navController: NavController, onClose: () -> Unit, menuViewModel: MenuViewModel) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {

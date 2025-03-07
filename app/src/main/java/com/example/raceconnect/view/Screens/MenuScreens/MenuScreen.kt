@@ -22,6 +22,7 @@ import androidx.navigation.NavController
 import com.example.raceconnect.R
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
+import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
 
 // Your brand's red color
 private val BrandRed = Color(0xFFC62828)
@@ -29,6 +30,7 @@ private val BrandRed = Color(0xFFC62828)
 @Composable
 fun ProfileScreen(
     viewModel: AuthenticationViewModel,
+    menuViewModel: MenuViewModel,
     onLogoutSuccess: () -> Unit,
     navController: NavController,
     onShowMyProfile: () -> Unit,

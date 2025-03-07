@@ -51,6 +51,9 @@ import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
+import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
+import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModelFactory
+
 
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {
@@ -74,6 +77,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
+    val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences)) // Add MenuViewModel
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
@@ -112,6 +116,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         val authViewModel = viewModel<AuthenticationViewModel>()
                         ProfileScreen(
                             viewModel = authViewModel,
+                            menuViewModel = menuViewModel, // Pass MenuViewModel
                             onLogoutSuccess = {
                                 navController.navigate(NavRoutes.Login.route) {
                                     popUpTo(NavRoutes.Login.route) { inclusive = true }
@@ -266,7 +271,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
-                MyProfileScreen(navController = navController, onClose = { showMyProfile = false })
+                MyProfileScreen(
+                    navController = navController,
+                    menuViewModel = menuViewModel, // Pass MenuViewModel
+                    onClose = { showMyProfile = false }
+                )
             }
 
             AnimatedVisibility(
@@ -274,7 +283,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
-                FavoriteItemsScreen(navController = navController, onClose = { showFavoriteItems = false })
+                FavoriteItemsScreen(
+                    navController = navController,
+                    menuViewModel = menuViewModel, // Pass MenuViewModel
+                    onClose = { showFavoriteItems = false }
+                )
             }
 
             AnimatedVisibility(
@@ -282,7 +295,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
-                NewsFeedPreferencesScreen(navController = navController, onClose = { showNewsFeedPreferences = false })
+                NewsFeedPreferencesScreen(
+                    navController = navController,
+                    menuViewModel = menuViewModel, // Pass MenuViewModel
+                    onClose = { showNewsFeedPreferences = false }
+                )
             }
 
             AnimatedVisibility(
@@ -290,7 +307,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
-                ListedItemsScreen(navController = navController, onClose = { showListedItems = false })
+                ListedItemsScreen(
+                    navController = navController,
+                    menuViewModel = menuViewModel, // Pass MenuViewModel
+                    onClose = { showListedItems = false }
+                )
             }
 
             AnimatedVisibility(
@@ -298,7 +319,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
-                SettingsScreen(navController = navController, onClose = { showSettings = false })
+                SettingsScreen(
+                    navController = navController,
+                    menuViewModel = menuViewModel, // Pass MenuViewModel
+                    onClose = { showSettings = false }
+                )
             }
         }
     }

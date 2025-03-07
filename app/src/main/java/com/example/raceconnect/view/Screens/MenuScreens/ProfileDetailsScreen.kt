@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.raceconnect.R
+import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,7 +37,7 @@ private val BrandRed = Color(0xFFC62828)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyProfileScreen(navController: NavController, onClose: () -> Unit) {
+fun MyProfileScreen(navController: NavController, onClose: () -> Unit, menuViewModel: MenuViewModel) {
     val context = LocalContext.current
     val activity = (context as? Activity) ?: throw IllegalStateException("MyProfileScreen must be used within an Activity context")
 
