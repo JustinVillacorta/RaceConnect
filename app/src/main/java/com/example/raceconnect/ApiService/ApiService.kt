@@ -2,6 +2,8 @@ package com.example.raceconnect.network
 
 import com.example.raceconnect.model.ApiResponse
 import com.example.raceconnect.model.CreateNotificationResponse
+import com.example.raceconnect.model.CreateRepostRequest
+import com.example.raceconnect.model.CreateRepostResponse
 import com.example.raceconnect.model.ForgotPasswordRequest
 import com.example.raceconnect.model.ForgotPasswordResponse
 import com.example.raceconnect.model.Friend
@@ -29,6 +31,7 @@ import com.example.raceconnect.model.itemPostRequest
 import com.example.raceconnect.model.itemPostResponse
 import com.example.raceconnect.model.users
 import com.example.raceconnect.model.PostComment
+import com.example.raceconnect.model.Repost
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -176,4 +179,20 @@ interface ApiService {
         @Header("Authorization") authToken: String,
         @Path("id") id: Int
     ): Response<Map<String, String>>
+
+    // Add new repost endpoints
+    @POST("post-reposts")
+    suspend fun createRepost(
+        @Body request: CreateRepostRequest
+    ): Response<CreateRepostResponse>
+
+    @GET("post-reposts")
+    suspend fun getRepostsByPostId(
+        @Query("post_id") postId: Int
+    ): Response<List<Repost>>
+
+    @DELETE("post-reposts/{id}")
+    suspend fun deleteRepost(
+        @Path("id") repostId: Int
+    ): Response<SimpleResponse>
 }
