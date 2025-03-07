@@ -25,7 +25,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.Response
 
 
-class AuthenticationViewModel(application: Application) : AndroidViewModel(application) {
+open class AuthenticationViewModel(application: Application) : AndroidViewModel(application) {
     private val userPreferences = UserPreferences(application)
 
     val isLoading = MutableStateFlow(false)
