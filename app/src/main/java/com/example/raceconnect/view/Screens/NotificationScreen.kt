@@ -1,5 +1,6 @@
 package com.example.raceconnect.view
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -9,10 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,16 +21,47 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.raceconnect.R
+import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Notification
+import com.example.raceconnect.model.users
 import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NotificationViewModel
 import com.example.raceconnect.viewmodel.NotificationViewModelFactory
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationsScreen(userId: Int = 1) {
+fun NotificationsScreen(context: Context) {
+    val userPreferences = UserPreferences(context)
+    val scope = rememberCoroutineScope()
+    var userId by remember { mutableStateOf<Int?>(null) }
+
+    // Launch a coroutine to fetch the userId from DataStore
+    LaunchedEffect(Unit) {
+        scope.launch {
+            val user = userPreferences.user.first() // Blocking call to get the first value
+            userId = user?.id
+        }
+    }
+
+    // If userId is null, show a message or redirect to login
+    if (userId == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Please log in to view notifications",
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center
+            )
+        }
+        return
+    }
+
     val viewModel: NotificationViewModel = viewModel(
         factory = NotificationViewModelFactory(RetrofitInstance.api)
     )
@@ -40,8 +69,8 @@ fun NotificationsScreen(userId: Int = 1) {
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    LaunchedEffect(Unit) {
-        viewModel.fetchNotifications(userId)
+    LaunchedEffect(userId) {
+        userId?.let { viewModel.fetchNotifications(it) }
         Log.d("NotificationsScreen", "Initial notifications: $notifications")
     }
 
@@ -91,7 +120,6 @@ fun NotificationsScreen(userId: Int = 1) {
     }
 }
 
-// Rest of the file (NotificationItem and formatTimestamp) remains the same
 @Composable
 fun NotificationItem(
     notification: Notification,
@@ -115,24 +143,15 @@ fun NotificationItem(
 
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Remove "User ${notification.userId}" and keep only the content
                 Text(
-                    text = "User ${notification.userId}",
+                    text = notification.content,
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = notification.content,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
             }
-            Text(
-                text = "Type: ${notification.type}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Remove the "Type: ${notification.type}" text
         }
 
         Column(horizontalAlignment = Alignment.End) {

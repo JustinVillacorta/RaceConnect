@@ -137,7 +137,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         )
                     }
                     composable(NavRoutes.Notifications.route) {
-                        NotificationsScreen()
+                        NotificationsScreen(context = context)
                     }
                     composable(NavRoutes.Friends.route) {
                         FriendsScreen(
