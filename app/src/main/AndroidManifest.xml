@@ -20,7 +20,7 @@
 
         <!-- ✅ Main Activity - Handles Navigation -->
         <activity
-            android:name=".view.Navigation.MainActivity"
+            android:name=".view.navigation.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.RaceConnect">
             <intent-filter>

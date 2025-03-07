@@ -105,6 +105,11 @@ dependencies {
     implementation ("androidx.compose.ui:ui-text-google-fonts:1.6.0")
 
 
+
+    implementation ("androidx.media3:media3-exoplayer:1.3.1")
+    implementation ("androidx.media3:media3-ui:1.3.1")
+
+
 }
 
 
