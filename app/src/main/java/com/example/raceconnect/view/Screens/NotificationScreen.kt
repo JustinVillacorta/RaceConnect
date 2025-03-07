@@ -1,11 +1,18 @@
+package com.example.raceconnect.view
+
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -14,150 +21,145 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.raceconnect.model.Notification
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.raceconnect.R
+import com.example.raceconnect.model.Notification
+import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.view.ui.theme.Red
-
+import com.example.raceconnect.viewmodel.NotificationViewModel
+import com.example.raceconnect.viewmodel.NotificationViewModelFactory
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationsScreen() {
-    // Sample notifications (you can move this to a ViewModel or data source if needed)
-    val notifications = listOf(
-        Notification(
-            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
-            userName = "testing",
-            action = "liked your post.",
-            timestamp = "2h"
-        ),
-        Notification(
-            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
-            userName = "Jake Jordan Gyllenhaal",
-            action = "liked your report.",
-            timestamp = "4h"
-        ),
-        Notification(
-            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
-            userName = "Mark Zuckerberg",
-            action = "reposted the same post.",
-            timestamp = "5h"
-        ),
-        Notification(
-            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
-            userName = "John Cena",
-            action = "commented on your post.",
-            timestamp = "1d"
-        ),
-        Notification(
-            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
-            userName = "Earl Parra",
-            action = "commented on your post.",
-            timestamp = "1d"
-        ),
-        Notification(
-            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
-            userName = "Isaac Yuichi",
-            action = "commented on your report.",
-            timestamp = "1d"
-        ),
-        Notification(
-            profilePic = R.drawable.baseline_account_circle_24, // Replace with actual drawable
-            userName = "Renee Olly",
-            action = "liked your post.",
-            timestamp = "2d"
-        )
+fun NotificationsScreen(userId: Int = 1) {
+    val viewModel: NotificationViewModel = viewModel(
+        factory = NotificationViewModelFactory(RetrofitInstance.api)
     )
+    val notifications by viewModel.notifications.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchNotifications(userId)
+        Log.d("NotificationsScreen", "Initial notifications: $notifications")
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "Notifications", // Changed from "Friends" to "Notifications" to match the screen name
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White
-                    )
-                },
+                title = { Text("Notifications", color = Color.White, style = MaterialTheme.typography.headlineMedium) },
                 actions = {
-                    // Search icon
-                    IconButton(onClick = { /* Handle search click */ }) {
-                        Icon(
-                            painter = painterResource(id = com.example.raceconnect.R.drawable.baseline_search_24),
-                            contentDescription = "Search",
-                            tint = Color.White
-                        )
+                    IconButton(onClick = { /* Handle search */ }) {
+                        Icon(painterResource(id = R.drawable.baseline_search_24), contentDescription = "Search", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Red,
-                    titleContentColor = Color.White
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Red, titleContentColor = Color.White)
             )
         }
     ) { paddingValues ->
-        // Notifications List
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues) // Apply padding from Scaffold to avoid overlap with TopAppBar
-                .padding(top = 16.dp), // Additional padding below the AppBar
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(notifications) { notification ->
-                NotificationItem(notification = notification)
+        when {
+            isLoading -> {
+                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            error != null -> {
+                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                    Text(text = error ?: "Unknown error", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(items = notifications, key = { it.id }) { notification ->
+                        Log.d("NotificationsScreen", "Rendering notification: $notification")
+                        NotificationItem(
+                            notification = notification,
+                            onMarkAsRead = { viewModel.markAsRead(notification.id) },
+                            onDelete = { viewModel.deleteNotification(notification.id) }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+// Rest of the file (NotificationItem and formatTimestamp) remains the same
 @Composable
-fun NotificationItem(notification: Notification) {
+fun NotificationItem(
+    notification: Notification,
+    onMarkAsRead: () -> Unit,
+    onDelete: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFFFEAEA)) // Light pink background
+            .background(if (notification.isRead) Color(0xFFF5F5F5) else Color(0xFFFFEAEA))
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Profile Picture
         Image(
-            painter = painterResource(id = notification.profilePic),
+            painter = painterResource(id = R.drawable.baseline_account_circle_24),
             contentDescription = "Profile Picture",
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
+            modifier = Modifier.size(48.dp).clip(CircleShape)
         )
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // Notification Details
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = notification.userName,
+                    text = "User ${notification.userId}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = notification.action,
+                    text = notification.content,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
+            Text(
+                text = "Type: ${notification.type}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
-        // Timestamp
-        Text(
-            text = notification.timestamp,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.End
-        )
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = formatTimestamp(notification.createdAt),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End
+            )
+            if (!notification.isRead) {
+                TextButton(onClick = onMarkAsRead) {
+                    Text("Mark as Read")
+                }
+            }
+            TextButton(onClick = onDelete) {
+                Text("Delete")
+            }
+        }
+    }
+}
+
+private fun formatTimestamp(date: Date): String {
+    val diff = Date().time - date.time
+    return when {
+        diff < 60_000 -> "Just now"
+        diff < 3_600_000 -> "${diff / 60_000}m"
+        diff < 86_400_000 -> "${diff / 3_600_000}h"
+        else -> "${diff / 86_400_000}d"
     }
 }

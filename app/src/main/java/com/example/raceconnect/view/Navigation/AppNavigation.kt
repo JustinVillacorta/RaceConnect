@@ -1,7 +1,7 @@
 package com.example.raceconnect.navigation
 
 import NewsFeedScreen
-import NotificationsScreen
+import com.example.raceconnect.view.NotificationsScreen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn

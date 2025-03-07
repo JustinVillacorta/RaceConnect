@@ -4,6 +4,7 @@ package com.example.raceconnect.network
 
 
 import com.example.raceconnect.model.ApiResponse
+import com.example.raceconnect.model.CreateNotificationResponse
 import com.example.raceconnect.model.ForgotPasswordRequest
 import com.example.raceconnect.model.ForgotPasswordResponse
 import com.example.raceconnect.model.Friend
@@ -15,6 +16,8 @@ import com.example.raceconnect.model.LogoutRequest
 import com.example.raceconnect.model.LogoutResponse
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.model.Notification
+import com.example.raceconnect.model.NotificationRequest
 import com.example.raceconnect.model.PostLike
 import com.example.raceconnect.model.PostResponse
 import com.example.raceconnect.model.RemoveFriendRequest
@@ -22,6 +25,7 @@ import com.example.raceconnect.model.ResetPasswordRequest
 import com.example.raceconnect.model.ResetPasswordResponse
 import com.example.raceconnect.model.SignupRequest
 import com.example.raceconnect.model.SignupResponse
+import com.example.raceconnect.model.SimpleResponse
 import com.example.raceconnect.model.UpdateFriendStatus
 import com.example.raceconnect.model.VerifyOtpRequest
 import com.example.raceconnect.model.VerifyOtpResponse
@@ -149,8 +153,32 @@ interface ApiService {
         @Query("user_id") userId: String,
         @Query("friend_id") friendId: String
     ): Response<Unit>
-}
 
+    @GET("notifications")
+    suspend fun getAllNotifications(
+        @Query("user_id") userId: Int
+    ): Response<List<Notification>>
+
+    @GET("notifications/{id}")
+    suspend fun getNotificationById(
+        @Path("id") id: Int
+    ): Response<Notification>
+
+    @POST("notifications")
+    suspend fun createNotification(
+        @Body notification: NotificationRequest
+    ): Response<CreateNotificationResponse>
+
+    @PUT("notifications/{id}")
+    suspend fun markAsRead(
+        @Path("id") id: Int
+    ): Response<SimpleResponse>
+
+    @DELETE("notifications/{id}")
+    suspend fun deleteNotification(
+        @Path("id") id: Int
+    ): Response<SimpleResponse>
+}
 
 
 
