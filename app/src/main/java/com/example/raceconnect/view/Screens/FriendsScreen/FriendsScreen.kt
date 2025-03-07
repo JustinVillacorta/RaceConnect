@@ -141,13 +141,14 @@ fun FriendItem(
                     Button(
                         onClick = { onConfirm?.invoke() },
                         modifier = Modifier.fillMaxWidth(0.7f),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFFD32F2F),
                             contentColor = Color.White
                         )
                     ) {
                         Text("Confirm")
+
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Button(

@@ -16,6 +16,7 @@ import com.example.raceconnect.model.VerifyOtpRequest
 import com.example.raceconnect.model.users
 import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
+import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -149,22 +150,20 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
     }
 
 
-    fun logout(onLogoutResult: () -> Unit) {
+    fun logout(menuViewModel: MenuViewModel, onLogoutResult: () -> Unit) {
         viewModelScope.launch {
             try {
                 val token = withContext(Dispatchers.IO) { userPreferences.getToken() }
-
                 if (!token.isNullOrEmpty()) {
                     val authHeader = "Bearer $token"
                     Log.d("AuthenticationViewModel", "Sending logout request with Authorization: $authHeader")
-
                     val response = RetrofitInstance.api.logout(authHeader)
-
                     if (response.isSuccessful) {
-                        userPreferences.clearUser()
+                        userPreferences.clearUser() // Ensure clearUser() clears all stored data
                         loggedInUser.value = null
+                        menuViewModel.clearData() // Clear MenuViewModel cached state
                         Log.d("AuthenticationViewModel", "✅ User logged out successfully")
-                        onLogoutResult() // ✅ Trigger navigation
+                        onLogoutResult() // Trigger navigation
                     } else {
                         val errorResponse = response.errorBody()?.string() ?: "Unknown error"
                         Log.e("AuthenticationViewModel", "❌ Logout failed: $errorResponse")
@@ -173,13 +172,15 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                     Log.d("AuthenticationViewModel", "⚠️ No token found, clearing session")
                     userPreferences.clearUser()
                     loggedInUser.value = null
-                    onLogoutResult() // ✅ Trigger navigation
+                    menuViewModel.clearData()
+                    onLogoutResult() // Trigger navigation
                 }
             } catch (e: Exception) {
                 Log.e("AuthenticationViewModel", "❌ Error during logout", e)
             }
         }
     }
+
 
 
 

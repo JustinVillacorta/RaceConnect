@@ -34,8 +34,17 @@ class MenuViewModel(private val userPreferences: UserPreferences) : ViewModel() 
     val isEditMode: StateFlow<Boolean> = _isEditMode
 
     init {
-        loadProfileData()
+        viewModelScope.launch {
+            userPreferences.user.collect { newUser ->
+                if (newUser != null) {
+                    loadProfileData()  // Fetch data for the newly logged-in user
+                } else {
+                    clearData()        // Clear if user becomes null (e.g., on logout)
+                }
+            }
+        }
     }
+
 
     private fun loadProfileData() {
         viewModelScope.launch {
@@ -55,6 +64,13 @@ class MenuViewModel(private val userPreferences: UserPreferences) : ViewModel() 
                 _isLoading.value = false
             }
         }
+    }
+
+    fun clearData() {
+        _profileData.value = null
+        _errorMessage.value = null
+        _isEditMode.value = false
+        // Optionally, cancel any ongoing operations if needed.
     }
 
     fun saveProfileChanges(
@@ -113,4 +129,8 @@ class MenuViewModel(private val userPreferences: UserPreferences) : ViewModel() 
     fun clearError() {
         _errorMessage.value = null
     }
+
+
+
+
 }

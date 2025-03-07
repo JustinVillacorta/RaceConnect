@@ -215,7 +215,7 @@ fun ProfileScreen(
                     TextButton(
                         onClick = {
                             showLogoutDialog = false
-                            viewModel.logout {
+                            viewModel.logout(menuViewModel) {
                                 onLogoutSuccess()
                             }
                         }
