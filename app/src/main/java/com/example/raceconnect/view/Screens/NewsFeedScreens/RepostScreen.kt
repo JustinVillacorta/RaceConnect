@@ -29,7 +29,7 @@ fun RepostScreen(
 ) {
     val context = LocalContext.current
     var repostComment by remember { mutableStateOf("") }
-    val brandRed = Color(0xFFC62828) // Your brand's red color
+    val brandRed = Color(0xFFC62828)
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -59,7 +59,6 @@ fun RepostScreen(
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Optional comment input
             BasicTextField(
                 value = repostComment,
                 onValueChange = { repostComment = it },
@@ -86,7 +85,6 @@ fun RepostScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Display the original post using PostCard
             PostCard(
                 post = post,
                 navController = navController,
@@ -95,16 +93,14 @@ fun RepostScreen(
                 viewModel = viewModel,
                 onShowFullScreenImage = { /* Disabled in repost screen */ },
                 onShowProfileView = { /* Disabled in repost screen */ },
-                onReportClick = { /* No-op implementation */ }, // Added to satisfy the parameter
+                onReportClick = { /* No-op implementation */ },
                 onShowRepostScreen = { /* Disabled in repost screen */ }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Repost button
             Button(
                 onClick = {
-                    // TODO: Implement repost logic in the ViewModel
                     viewModel.repostPost(post.id, repostComment)
                     Toast.makeText(context, "Reposted successfully!", Toast.LENGTH_SHORT).show()
                     onClose()
