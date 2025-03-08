@@ -6,7 +6,6 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.raceconnect.datastore.UserPreferences
-import com.example.raceconnect.model.ApiResponse
 import com.example.raceconnect.model.ForgotPasswordRequest
 import com.example.raceconnect.model.LoginRequest
 import com.example.raceconnect.model.LoginResponse
@@ -14,7 +13,6 @@ import com.example.raceconnect.model.ResetPasswordRequest
 import com.example.raceconnect.model.SignupRequest
 import com.example.raceconnect.model.VerifyOtpRequest
 import com.example.raceconnect.model.users
-import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
 import kotlinx.coroutines.Dispatchers
@@ -23,8 +21,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.Response
-
 
 open class AuthenticationViewModel(application: Application) : AndroidViewModel(application) {
     private val userPreferences = UserPreferences(application)
@@ -59,18 +55,25 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                     loggedInUser.value = response.user
                     Log.d("AuthenticationViewModel", "Login successful: ${loggedInUser.value}")
 
-                    // Save user data to DataStore
+                    // Save all user data to DataStore
                     userPreferences.saveUser(
-                        response.user.id,
-                        response.user.username,
-                        response.user.email,
-                        response.token
+                        userId = response.user.id,
+                        username = response.user.username,
+                        email = response.user.email,
+                        token = response.token,
+                        birthdate = response.user.birthdate,
+                        number = response.user.number,
+                        address = response.user.address,
+                        age = response.user.age,
+                        profilePicture = response.user.profilePicture,
+                        bio = response.user.bio,
+                        favoriteCategories = response.user.favoriteCategories?.joinToString(","),
+                        favoriteMarketplaceItems = response.user.favoriteMarketplaceItems?.joinToString(",")
                     )
                 } else {
                     ErrorMessage.value = response.message ?: "Login failed"
                     Log.d("AuthenticationViewModel", "Login failed: ${response.message}")
                 }
-
             } catch (e: Exception) {
                 ErrorMessage.value = e.message ?: "An unexpected error occurred"
                 Log.e("AuthenticationViewModel", "Error during login", e)
@@ -87,41 +90,48 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
             Log.d("AuthenticationViewModel", "Loaded user: ${loggedInUser.value}")
         }
     }
-    // sign up
 
+    // Sign up
     fun signUp(context: Context, username: String, email: String, password: String, onToast: (String) -> Unit) {
         viewModelScope.launch {
             isLoading.value = true
             ErrorMessage.value = null
             try {
                 val signupRequest = SignupRequest(username, email, password)
-                val response = RetrofitInstance.api.signup(signupRequest) // Expecting Response<SignupResponse>
+                val response = RetrofitInstance.api.signup(signupRequest)
 
                 Log.d("AuthenticationViewModel", "Server response code: ${response.code()}")
                 Log.d("AuthenticationViewModel", "Raw response: ${response.raw()}")
 
-                if (response.isSuccessful || response.code() == 201) { // ✅ Handle HTTP 201
+                if (response.isSuccessful || response.code() == 201) {
                     val userResponse = response.body()
                     Log.d("AuthenticationViewModel", "Response body: $userResponse")
 
-                    if (userResponse?.token != null) { // Ensure response is valid
+                    if (userResponse?.token != null) {
                         loggedInUser.value = userResponse.user
                         Log.d("AuthenticationViewModel", "Signup successful: ${loggedInUser.value}")
 
                         // Save user data to DataStore
                         userPreferences.saveUser(
-                            userResponse.user!!.id,
-                            userResponse.user!!.username,
-                            userResponse.user!!.email,
-                            userResponse.token
+                            userId = userResponse.user!!.id,
+                            username = userResponse.user!!.username,
+                            email = userResponse.user!!.email,
+                            token = userResponse.token,
+                            birthdate = userResponse.user!!.birthdate,
+                            number = userResponse.user!!.number,
+                            address = userResponse.user!!.address,
+                            age = userResponse.user!!.age,
+                            profilePicture = userResponse.user!!.profilePicture,
+                            bio = userResponse.user!!.bio,
+                            favoriteCategories = userResponse.user!!.favoriteCategories?.joinToString(","),
+                            favoriteMarketplaceItems = userResponse.user!!.favoriteMarketplaceItems?.joinToString(",")
                         )
 
                         onToast("Account Created Successfully!")
                     } else {
                         Log.e("AuthenticationViewModel", "Error: response.body() is null despite 201 status")
-                        onToast("Account Created Successfully!") // ✅ Show success even if body is null
+                        onToast("Account Created Successfully!")
                     }
-
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "Signup failed"
                     Log.e("AuthenticationViewModel", "Signup failed: $errorBody")
@@ -137,7 +147,6 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                     ErrorMessage.value = detailedMsg
                     onToast(detailedMsg)
                 }
-
             } catch (e: Exception) {
                 val errorMsg = e.message ?: "An unexpected error occurred. Please try again."
                 ErrorMessage.value = errorMsg
@@ -149,7 +158,6 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
         }
     }
 
-
     fun logout(menuViewModel: MenuViewModel, onLogoutResult: () -> Unit) {
         viewModelScope.launch {
             try {
@@ -159,11 +167,11 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                     Log.d("AuthenticationViewModel", "Sending logout request with Authorization: $authHeader")
                     val response = RetrofitInstance.api.logout(authHeader)
                     if (response.isSuccessful) {
-                        userPreferences.clearUser() // Ensure clearUser() clears all stored data
+                        userPreferences.clearUser()
                         loggedInUser.value = null
-                        menuViewModel.clearData() // Clear MenuViewModel cached state
+                        menuViewModel.clearData()
                         Log.d("AuthenticationViewModel", "✅ User logged out successfully")
-                        onLogoutResult() // Trigger navigation
+                        onLogoutResult()
                     } else {
                         val errorResponse = response.errorBody()?.string() ?: "Unknown error"
                         Log.e("AuthenticationViewModel", "❌ Logout failed: $errorResponse")
@@ -173,7 +181,7 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                     userPreferences.clearUser()
                     loggedInUser.value = null
                     menuViewModel.clearData()
-                    onLogoutResult() // Trigger navigation
+                    onLogoutResult()
                 }
             } catch (e: Exception) {
                 Log.e("AuthenticationViewModel", "❌ Error during logout", e)
@@ -181,13 +189,7 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
         }
     }
 
-
-
-
-
-
-    //forgot password
-
+    // Forgot Password
     fun requestOtp(email: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             Log.d("AuthenticationViewModel", "🔄 Requesting OTP for email: $email")
@@ -200,7 +202,7 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                 if (response.isSuccessful) {
                     _otpSent.value = true
                     Log.d("AuthenticationViewModel", "✅ OTP sent successfully to $email")
-                    onResult(true, email) // ✅ Pass email forward
+                    onResult(true, email)
                 } else {
                     _otpSent.value = false
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
@@ -214,7 +216,6 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
             }
         }
     }
-
 
     fun verifyOtp(email: String, otp: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
@@ -231,7 +232,7 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                 if (response.isSuccessful && (responseBody?.verified == true || responseBody?.message?.contains("OTP verified", ignoreCase = true) == true)) {
                     _otpVerified.value = true
                     Log.d("AuthenticationViewModel", "✅ OTP verification successful for email: $email")
-                    onResult(true, email) // ✅ Pass email forward to resetPassword
+                    onResult(true, email)
                 } else {
                     _otpVerified.value = false
                     Log.e("AuthenticationViewModel", "❌ OTP verification failed: ${responseBody?.message ?: "Invalid response format"}")
@@ -244,9 +245,6 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
             }
         }
     }
-
-
-
 
     fun resetPassword(email: String, password: String, confirmPassword: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
@@ -277,9 +275,4 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
     fun clearError() {
         _errorMessage.value = null
     }
-
-
-
-
 }
-

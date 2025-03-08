@@ -95,6 +95,9 @@ fun ProfileHeaderSection(user: users?) {
                 .background(Color.Gray)
         ) {
             val profilePictureUrl = user?.profilePicture
+            // Add logging to debug
+            println("Profile picture URL: $profilePictureUrl")
+
             if (profilePictureUrl != null && profilePictureUrl.isNotEmpty()) {
                 Image(
                     painter = rememberAsyncImagePainter(profilePictureUrl),

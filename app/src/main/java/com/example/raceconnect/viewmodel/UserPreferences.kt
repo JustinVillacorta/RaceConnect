@@ -1,6 +1,7 @@
 package com.example.raceconnect.datastore
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.raceconnect.model.users
@@ -12,26 +13,26 @@ private val Context.dataStore by preferencesDataStore(name = "user_prefs")
 
 class UserPreferences(private val context: Context) {
     companion object {
-        val USER_ID = intPreferencesKey("user_id")
-        val USERNAME = stringPreferencesKey("username")
-        val EMAIL = stringPreferencesKey("email")
-        val TOKEN = stringPreferencesKey("token")
-        val BIRTHDATE = stringPreferencesKey("birthdate")
-        val NUMBER = stringPreferencesKey("number")
-        val ADDRESS = stringPreferencesKey("address")
-        val AGE = intPreferencesKey("age")
-        val PROFILE_PICTURE = stringPreferencesKey("profile_picture")
-        val BIO = stringPreferencesKey("bio")
-        val FAVORITE_CATEGORIES = stringPreferencesKey("favorite_categories")
-        val FAVORITE_MARKETPLACE_ITEMS = stringPreferencesKey("favorite_marketplace_items")
-        val FRIENDS_LIST = stringPreferencesKey("friends_list")
-        val FRIEND_PRIVACY = stringPreferencesKey("friend_privacy")
-        val LAST_ONLINE = stringPreferencesKey("last_online")
-        val STATUS = stringPreferencesKey("status")
-        val REPORT = stringPreferencesKey("report")
-        val SUSPENSION_END_DATE = stringPreferencesKey("suspension_end_date")
-        val CREATED_AT = stringPreferencesKey("created_at")
-        val UPDATED_AT = stringPreferencesKey("updated_at")
+        private val USER_ID = intPreferencesKey("user_id")
+        private val USERNAME = stringPreferencesKey("username")
+        private val EMAIL = stringPreferencesKey("email")
+        private val TOKEN = stringPreferencesKey("token")
+        private val BIRTHDATE = stringPreferencesKey("birthdate")
+        private val NUMBER = stringPreferencesKey("number")
+        private val ADDRESS = stringPreferencesKey("address")
+        private val AGE = intPreferencesKey("age")
+        private val PROFILE_PICTURE = stringPreferencesKey("profile_picture")
+        private val BIO = stringPreferencesKey("bio")
+        private val FAVORITE_CATEGORIES = stringPreferencesKey("favorite_categories")
+        private val FAVORITE_MARKETPLACE_ITEMS = stringPreferencesKey("favorite_marketplace_items")
+        private val FRIENDS_LIST = stringPreferencesKey("friends_list")
+        private val FRIEND_PRIVACY = stringPreferencesKey("friend_privacy")
+        private val LAST_ONLINE = stringPreferencesKey("last_online")
+        private val STATUS = stringPreferencesKey("status")
+        private val REPORT = stringPreferencesKey("report")
+        private val SUSPENSION_END_DATE = stringPreferencesKey("suspension_end_date")
+        private val CREATED_AT = stringPreferencesKey("created_at")
+        private val UPDATED_AT = stringPreferencesKey("updated_at")
     }
 
     suspend fun saveUser(
@@ -65,7 +66,10 @@ class UserPreferences(private val context: Context) {
             number?.let { preferences[NUMBER] = it }
             address?.let { preferences[ADDRESS] = it }
             age?.let { preferences[AGE] = it }
-            profilePicture?.let { preferences[PROFILE_PICTURE] = it }
+            profilePicture?.let {
+                preferences[PROFILE_PICTURE] = it
+                Log.d("UserPreferences", "Saving profile picture: $it")
+            } ?: Log.d("UserPreferences", "Profile picture is null, not saving")
             bio?.let { preferences[BIO] = it }
             favoriteCategories?.let { preferences[FAVORITE_CATEGORIES] = it }
             favoriteMarketplaceItems?.let { preferences[FAVORITE_MARKETPLACE_ITEMS] = it }
@@ -82,21 +86,25 @@ class UserPreferences(private val context: Context) {
 
     val user: Flow<users?> = context.dataStore.data.map { preferences ->
         val id = preferences[USER_ID] ?: return@map null
-        val name = preferences[USERNAME] ?: return@map null
+        val username = preferences[USERNAME] ?: return@map null
         val email = preferences[EMAIL] ?: return@map null
+        val profilePicture = preferences[PROFILE_PICTURE]
+
+        Log.d("UserPreferences", "Retrieved profile picture: $profilePicture")
+
         users(
             id = id,
-            username = name,
+            username = username,
             email = email,
             birthdate = preferences[BIRTHDATE],
             number = preferences[NUMBER],
             address = preferences[ADDRESS],
             age = preferences[AGE],
-            profilePicture = preferences[PROFILE_PICTURE],
+            profilePicture = profilePicture,
             bio = preferences[BIO],
-            favoriteCategories = preferences[FAVORITE_CATEGORIES]?.let { listOf(it) } ?: emptyList(),
-            favoriteMarketplaceItems = preferences[FAVORITE_MARKETPLACE_ITEMS]?.let { listOf(it) } ?: emptyList(),
-            friendsList = preferences[FRIENDS_LIST]?.let { listOf(it.toInt()) } ?: emptyList(),
+            favoriteCategories = preferences[FAVORITE_CATEGORIES]?.split(",")?.filter { it.isNotEmpty() } ?: emptyList(),
+            favoriteMarketplaceItems = preferences[FAVORITE_MARKETPLACE_ITEMS]?.split(",")?.filter { it.isNotEmpty() } ?: emptyList(),
+            friendsList = preferences[FRIENDS_LIST]?.split(",")?.mapNotNull { it.toIntOrNull() } ?: emptyList(),
             friendPrivacy = preferences[FRIEND_PRIVACY],
             lastOnline = preferences[LAST_ONLINE],
             status = preferences[STATUS],
@@ -114,6 +122,7 @@ class UserPreferences(private val context: Context) {
     suspend fun clearUser() {
         context.dataStore.edit { preferences ->
             preferences.clear()
+            Log.d("UserPreferences", "User data cleared")
         }
     }
 
