@@ -9,37 +9,51 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChatBubble
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.paging.compose.collectAsLazyPagingItems
+import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.users
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileViewScreen(
     navController: NavController,
     context: Context,
-    onClose: () -> Unit // Add onClose callback to dismiss the screen
+    onClose: () -> Unit
 ) {
     val userPreferences = remember { UserPreferences(context) }
     val user by userPreferences.user.collectAsState(initial = null)
+    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
+
+    // Collect posts as LazyPagingItems without 'by'
+    val posts = viewModel.posts.collectAsLazyPagingItems()
+    val postImages by viewModel.postImages.collectAsState()
+
+    // Fetch user's posts and images when user is available
+    LaunchedEffect(user) {
+        user?.id?.let { userId ->
+            viewModel.getPostsByUserId(userId) // Fetch user's posts
+            viewModel.refreshPosts() // Ensure fresh data
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background // Use theme background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -47,7 +61,6 @@ fun ProfileViewScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // Back button (top-left)
             IconButton(
                 onClick = onClose,
                 modifier = Modifier
@@ -63,11 +76,12 @@ fun ProfileViewScreen(
 
             ProfileHeaderSection(user)
             Spacer(modifier = Modifier.height(16.dp))
-            ProfileTabsWithContent()
+            ProfileTabsWithContent(user, posts, postImages)
         }
     }
 }
 
+// Rest of the code remains unchanged
 @Composable
 fun ProfileHeaderSection(user: users?) {
     Column(
@@ -80,12 +94,22 @@ fun ProfileHeaderSection(user: users?) {
                 .clip(CircleShape)
                 .background(Color.Gray)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.baseline_account_circle_24),
-                contentDescription = "Profile Picture",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            val profilePictureUrl = user?.profilePicture
+            if (profilePictureUrl != null && profilePictureUrl.isNotEmpty()) {
+                Image(
+                    painter = rememberAsyncImagePainter(profilePictureUrl),
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                    contentDescription = "Default Profile Picture",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -103,9 +127,13 @@ fun ProfileHeaderSection(user: users?) {
 }
 
 @Composable
-fun ProfileTabsWithContent() {
+fun ProfileTabsWithContent(
+    user: users?,
+    posts: androidx.paging.compose.LazyPagingItems<com.example.raceconnect.model.NewsFeedDataClassItem>,
+    postImages: Map<Int, List<String>>
+) {
     var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabTitles = listOf("Posts", "Photos",)
+    val tabTitles = listOf("Posts", "Photos")
 
     TabRow(
         selectedTabIndex = selectedTabIndex,
@@ -124,31 +152,38 @@ fun ProfileTabsWithContent() {
     Spacer(modifier = Modifier.height(16.dp))
 
     when (selectedTabIndex) {
-        0 -> PostsSection()
-        1 -> PhotosSection()
-
+        0 -> PostsSection(user?.id, posts, postImages)
+        1 -> PhotosSection(user?.id, postImages)
     }
 }
 
 @Composable
-fun PostsSection() {
+fun PostsSection(
+    userId: Int?,
+    posts: androidx.paging.compose.LazyPagingItems<com.example.raceconnect.model.NewsFeedDataClassItem>,
+    postImages: Map<Int, List<String>>
+) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        items(5) {
-            PostItem(
-                username = "Junnifer Lawrence",
-                content = "Life is as simple as it is with my car.",
-                timestamp = "1hr",
-                imageRes = R.drawable.baseline_ondemand_video_24
-            )
+        items(posts.itemCount) { index ->
+            posts[index]?.let { post ->
+                if (post.user_id == userId) { // Filter posts by user ID
+                    PostItem(
+                        username = "Anonymous", // Replace with actual username if available
+                        content = post.content ?: "",
+                        timestamp = post.created_at ?: "Just now",
+                        imageUrl = postImages[post.id]?.firstOrNull()
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun PostItem(username: String, content: String, timestamp: String, imageRes: Int) {
+fun PostItem(username: String, content: String, timestamp: String, imageUrl: String?) {
     Card(
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier
@@ -179,45 +214,42 @@ fun PostItem(username: String, content: String, timestamp: String, imageRes: Int
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = content)
-            Spacer(modifier = Modifier.height(8.dp))
-            Image(
-                painter = painterResource(id = imageRes),
-                contentDescription = "Post Image",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                horizontalArrangement = Arrangement.SpaceAround,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ReactionIcon(Icons.Default.ThumbUp, "100")
-                ReactionIcon(Icons.Default.ChatBubble, "1")
-                ReactionIcon(Icons.Default.Share, "1")
+            imageUrl?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Image(
+                    painter = rememberAsyncImagePainter(it),
+                    contentDescription = "Post Image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
             }
         }
     }
 }
 
 @Composable
-fun ReactionIcon(icon: ImageVector, count: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = Color.Gray)
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(text = count, color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-@Composable
-fun PhotosSection() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+fun PhotosSection(userId: Int?, postImages: Map<Int, List<String>>) {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Text("Photos Section")
+        postImages.forEach { (postId, images) ->
+            images.forEach { imageUrl ->
+                item {
+                    Image(
+                        painter = rememberAsyncImagePainter(imageUrl),
+                        contentDescription = "User Photo",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+        }
     }
 }
-

@@ -88,6 +88,13 @@ interface ApiService {
         @Query("offset") offset: Int
     ): List<NewsFeedDataClassItem>
 
+    @GET("posts")
+    suspend fun getPostsByUserId(
+        @Query("user_id") userId: Int,
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int
+    ): Response<List<NewsFeedDataClassItem>>
+
     @Multipart
     @POST("posts")
     suspend fun createPostWithImage(

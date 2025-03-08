@@ -62,6 +62,30 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         _newPostTrigger.value = false
     }
 
+    // Add StateFlow for user-specific posts
+    private val _userPosts = MutableStateFlow<List<NewsFeedDataClassItem>>(emptyList())
+    val userPosts: StateFlow<List<NewsFeedDataClassItem>> = _userPosts.asStateFlow()
+
+    // Add method to fetch posts by user ID
+    fun getPostsByUserId(userId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitInstance.api.getPostsByUserId(userId, limit = 10, offset = 0)
+                if (response.isSuccessful) {
+                    _userPosts.value = response.body() ?: emptyList()
+                    // Fetch images for each post
+                    response.body()?.forEach { post ->
+                        getPostImages(post.id)
+                    }
+                } else {
+                    Log.e("NewsFeedViewModel", "Failed to fetch user posts: ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "Error fetching posts by user ID", e)
+            }
+        }
+    }
+
     fun addPost(context: Context, content: String, imageUri: Uri?, category: String, privacy: String) {
         viewModelScope.launch {
             val userId = userPreferences.user.first()?.id ?: return@launch
@@ -112,7 +136,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
     }
 
     private val _postImages = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
-    val postImages: StateFlow<Map<Int, List<String>>> = _postImages
+    val postImages: StateFlow<Map<Int, List<String>>> = _postImages.asStateFlow() // Changed to asStateFlow()
 
     fun getPostImages(postId: Int) {
         viewModelScope.launch {
@@ -214,7 +238,6 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         }
     }
 
-    // Updated repost function with proper API integration
     fun repostPost(postId: Int, comment: String) {
         viewModelScope.launch {
             val userId = userPreferences.user.first()?.id ?: return@launch
