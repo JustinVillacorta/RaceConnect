@@ -159,6 +159,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             itemId = itemId,
                             navController = navController,
                             onClose = { navController.popBackStack() },
+                            viewModel = (viewModel()), // Pass ViewMode
                             onClickChat = { showChatSellerScreen = it }
                         )
                     }
@@ -208,6 +209,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     MarketplaceItemDetailScreen(
                         itemId = itemId,
                         navController = navController,
+                        viewModel = (viewModel()), // Pass ViewMode
                         onClose = { showItemDetailScreen = null },
                         onClickChat = { showChatSellerScreen = it }
                     )

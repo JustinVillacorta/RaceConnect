@@ -13,6 +13,7 @@ import com.example.raceconnect.model.LoginResponse
 import com.example.raceconnect.model.LogoutRequest
 import com.example.raceconnect.model.LogoutResponse
 import com.example.raceconnect.model.MarketplaceDataClassItem
+import com.example.raceconnect.model.MarketplaceImageResponse
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.Notification
 import com.example.raceconnect.model.NotificationRequest
@@ -27,7 +28,6 @@ import com.example.raceconnect.model.SimpleResponse
 import com.example.raceconnect.model.UpdateFriendStatus
 import com.example.raceconnect.model.VerifyOtpRequest
 import com.example.raceconnect.model.VerifyOtpResponse
-import com.example.raceconnect.model.itemPostRequest
 import com.example.raceconnect.model.itemPostResponse
 import com.example.raceconnect.model.users
 import com.example.raceconnect.model.PostComment
@@ -111,6 +111,8 @@ interface ApiService {
     @GET("posts/{id}/images")
     suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostResponse>>
 
+
+
     @POST("post-likes")
     suspend fun likePost(@Body requestBody: Map<String, Int>): Response<ResponseBody>
 
@@ -120,11 +122,36 @@ interface ApiService {
     @GET("post-likes")
     suspend fun getPostLikes(@Query("post_id") postId: Int): Response<List<PostLike>>
 
+    //Marketplace
+    @GET("marketplace-items/{id}/images")
+    suspend fun GetMarketplaceImage(@Path("id") itemId: Int): Response<List<MarketplaceImageResponse>>
+
+
+
+
+    @Multipart
+    @POST("marketplace-items")
+    suspend fun MarketplacePostImage(
+        @Part("seller_id") seller_id: RequestBody,
+        @Part("description") description: RequestBody,
+        @Part("title") title: RequestBody,
+        @Part("category") category: RequestBody,
+        @Part("price") price: RequestBody,
+        @Part("status") status: RequestBody,
+        @Part images: List<MultipartBody.Part>?
+    ): Response<MarketplaceImageResponse>
     @GET("marketplace-items")
     suspend fun getAllMarketplaceItems(): List<MarketplaceDataClassItem>
 
     @POST("marketplace-items")
     suspend fun createMarketplaceItem(@Body item: MarketplaceDataClassItem): Response<itemPostResponse>
+
+
+
+
+
+
+
 
     @GET("friends/list")
     suspend fun getFriendsList(@Query("user_id") userId: String): Response<List<Map<String, Any?>>>

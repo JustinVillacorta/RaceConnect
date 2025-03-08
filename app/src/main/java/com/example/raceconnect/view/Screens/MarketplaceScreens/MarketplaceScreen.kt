@@ -94,6 +94,7 @@ fun MarketplaceScreen(
                             MarketplaceItemCard(
                                 item = item,
                                 navController = navController,
+                                viewModel = (viewModel()), // Pass ViewMode
                                 onClick = { onShowItemDetail(item.id) } // Trigger callback
                             )
                         }

@@ -95,19 +95,18 @@ fun CreateMarketplaceItemScreen(
                     Button(
                         onClick = {
                             if (title.isNotEmpty() && price.isNotEmpty() && currentUserId != null) {
-                                // Convert list of URIs to a comma-separated string of URLs
-                                val imageUrls = selectedImageUris?.joinToString(",") { it.toString() } ?: ""
-                                viewModel.addMarketplaceItem(
+                                // Call the new function that supports multiple image uploads
+                                viewModel.addMarketplaceItemWithImages(
+                                    context = context,
                                     title = title,
                                     price = price,
                                     description = description,
                                     category = category,
-                                    imageUrl = imageUrls // Pass as a single string or adjust ViewModel to handle List<String>
+                                    imageUris = selectedImageUris // Pass the list of URIs directly
                                 )
                                 onClose()
                             }
                         },
-//                        enabled = title.isNotEmpty() && price.isNotEmpty() && currentUserId != null,
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF696666))
                     ) {
                         Text("Publish", color = Color.White)
@@ -152,7 +151,7 @@ fun CreateMarketplaceItemScreen(
                             .fillMaxWidth()
                             .clickable { launcher.launch("image/*") }
                             .padding(bottom = 8.dp),
-                        enabled = false, // Make it non-editable but clickable for image selection
+                        enabled = false, // Non-editable but clickable for image selection
                         trailingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Image,
@@ -163,7 +162,7 @@ fun CreateMarketplaceItemScreen(
                         shape = RoundedCornerShape(8.dp)
                     )
 
-                    // Image Previews (using LazyRow for horizontal scrolling, like Facebook Marketplace)
+                    // Image Previews (using LazyRow for horizontal scrolling)
                     selectedImageUris?.let { uris ->
                         LazyRow(
                             modifier = Modifier
@@ -177,7 +176,7 @@ fun CreateMarketplaceItemScreen(
                                     painter = rememberAsyncImagePainter(uri),
                                     contentDescription = "Selected Image",
                                     modifier = Modifier
-                                        .size(120.dp) // Uniform size for clean UI
+                                        .size(120.dp)
                                         .clip(RoundedCornerShape(8.dp))
                                         .clickable { /* Optional: Handle image removal or preview */ },
                                     contentScale = ContentScale.Crop
@@ -194,8 +193,8 @@ fun CreateMarketplaceItemScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp),
-                        shape = RoundedCornerShape(8.dp)
-                        ,singleLine = true
+                        shape = RoundedCornerShape(8.dp),
+                        singleLine = true
                     )
 
                     // Price Field
@@ -207,8 +206,8 @@ fun CreateMarketplaceItemScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp),
-                        shape = RoundedCornerShape(8.dp)
-                        ,singleLine = true
+                        shape = RoundedCornerShape(8.dp),
+                        singleLine = true
                     )
 
                     // Category Dropdown

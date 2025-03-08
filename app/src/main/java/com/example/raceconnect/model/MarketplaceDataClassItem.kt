@@ -20,3 +20,10 @@ data class MarketplaceDataClassItem(
 data class itemPostResponse(
     val message: String
     )
+
+
+data class MarketplaceImageResponse(
+    val message: String,
+    val marketplace_item_id: String,
+    val image_url: String
+)
