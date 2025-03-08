@@ -52,7 +52,10 @@ interface ApiService {
     suspend fun signup(@Body request: SignupRequest): Response<SignupResponse>
 
     @GET("users/{id}")
-    suspend fun getUser(@Path("id") id: Int): Response<users>
+    suspend fun getUser(
+        @Path("id") id: Int,
+        @Query("status") status: String = "Active"
+    ): Response<users>
 
     @PUT("users/{id}")
     suspend fun updateUser(
