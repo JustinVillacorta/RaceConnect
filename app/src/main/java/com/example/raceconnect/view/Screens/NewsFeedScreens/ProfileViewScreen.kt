@@ -1,6 +1,7 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,6 +26,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.users
+import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
+import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 
@@ -36,18 +39,18 @@ fun ProfileViewScreen(
     onClose: () -> Unit
 ) {
     val userPreferences = remember { UserPreferences(context) }
-    val user by userPreferences.user.collectAsState(initial = null)
-    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
+    val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences))
+    val user by menuViewModel.profileData.collectAsState(initial = null)
+    val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
 
-    // Collect posts as LazyPagingItems without 'by'
-    val posts = viewModel.posts.collectAsLazyPagingItems()
-    val postImages by viewModel.postImages.collectAsState()
+    val posts = newsFeedViewModel.posts.collectAsLazyPagingItems()
+    val postImages by newsFeedViewModel.postImages.collectAsState()
 
-    // Fetch user's posts and images when user is available
     LaunchedEffect(user) {
+        Log.d("ProfileViewScreen", "User data from MenuViewModel: $user")
         user?.id?.let { userId ->
-            viewModel.getPostsByUserId(userId) // Fetch user's posts
-            viewModel.refreshPosts() // Ensure fresh data
+            newsFeedViewModel.getPostsByUserId(userId)
+            newsFeedViewModel.refreshPosts()
         }
     }
 
@@ -74,14 +77,17 @@ fun ProfileViewScreen(
                 )
             }
 
-            ProfileHeaderSection(user)
-            Spacer(modifier = Modifier.height(16.dp))
-            ProfileTabsWithContent(user, posts, postImages)
+            if (user == null) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            } else {
+                ProfileHeaderSection(user)
+                Spacer(modifier = Modifier.height(16.dp))
+                ProfileTabsWithContent(user, posts, postImages)
+            }
         }
     }
 }
 
-// Rest of the code remains unchanged
 @Composable
 fun ProfileHeaderSection(user: users?) {
     Column(
@@ -95,17 +101,23 @@ fun ProfileHeaderSection(user: users?) {
                 .background(Color.Gray)
         ) {
             val profilePictureUrl = user?.profilePicture
-            // Add logging to debug
-            println("Profile picture URL: $profilePictureUrl")
+            Log.d("ProfileHeaderSection", "Profile picture URL: $profilePictureUrl")
 
             if (profilePictureUrl != null && profilePictureUrl.isNotEmpty()) {
+                val painter = rememberAsyncImagePainter(
+                    model = profilePictureUrl,
+                    onLoading = { Log.d("ProfileHeaderSection", "Loading profile picture...") },
+                    onSuccess = { Log.d("ProfileHeaderSection", "Profile picture loaded successfully") },
+                    onError = { error -> Log.e("ProfileHeaderSection", "Error loading profile picture: ${error.result.throwable}") }
+                )
                 Image(
-                    painter = rememberAsyncImagePainter(profilePictureUrl),
+                    painter = painter,
                     contentDescription = "Profile Picture",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
             } else {
+                Log.d("ProfileHeaderSection", "Using default profile picture because URL is null or empty")
                 Image(
                     painter = painterResource(id = R.drawable.baseline_account_circle_24),
                     contentDescription = "Default Profile Picture",
@@ -129,6 +141,7 @@ fun ProfileHeaderSection(user: users?) {
     }
 }
 
+// Rest of the code (ProfileTabsWithContent, PostsSection, PostItem, PhotosSection) remains unchanged
 @Composable
 fun ProfileTabsWithContent(
     user: users?,
@@ -172,9 +185,9 @@ fun PostsSection(
     ) {
         items(posts.itemCount) { index ->
             posts[index]?.let { post ->
-                if (post.user_id == userId) { // Filter posts by user ID
+                if (post.user_id == userId) {
                     PostItem(
-                        username = "Anonymous", // Replace with actual username if available
+                        username = "Anonymous",
                         content = post.content ?: "",
                         timestamp = post.created_at ?: "Just now",
                         imageUrl = postImages[post.id]?.firstOrNull()

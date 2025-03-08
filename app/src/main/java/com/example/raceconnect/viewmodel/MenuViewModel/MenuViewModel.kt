@@ -30,21 +30,20 @@ class MenuViewModel(private val userPreferences: UserPreferences) : ViewModel() 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
-    private val _isEditMode = MutableStateFlow(false) // New state for edit mode
+    private val _isEditMode = MutableStateFlow(false)
     val isEditMode: StateFlow<Boolean> = _isEditMode
 
     init {
         viewModelScope.launch {
             userPreferences.user.collect { newUser ->
                 if (newUser != null) {
-                    loadProfileData()  // Fetch data for the newly logged-in user
+                    loadProfileData()
                 } else {
-                    clearData()        // Clear if user becomes null (e.g., on logout)
+                    clearData()
                 }
             }
         }
     }
-
 
     private fun loadProfileData() {
         viewModelScope.launch {
@@ -54,7 +53,7 @@ class MenuViewModel(private val userPreferences: UserPreferences) : ViewModel() 
                 val response: Response<users> = RetrofitInstance.api.getUser(userId)
                 if (response.isSuccessful) {
                     _profileData.value = response.body()
-                    _isEditMode.value = false // Reset to view mode after loading
+                    _isEditMode.value = false
                 } else {
                     _errorMessage.value = "Failed to load profile: ${response.errorBody()?.string() ?: response.message()}"
                 }
@@ -70,16 +69,9 @@ class MenuViewModel(private val userPreferences: UserPreferences) : ViewModel() 
         _profileData.value = null
         _errorMessage.value = null
         _isEditMode.value = false
-        // Optionally, cancel any ongoing operations if needed.
     }
 
-    fun saveProfileChanges(
-        username: String,
-        birthDate: String,
-        contactNumber: String,
-        address: String,
-        bio: String
-    ) {
+    fun saveProfileChanges(username: String, birthDate: String, contactNumber: String, address: String, bio: String) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -87,7 +79,7 @@ class MenuViewModel(private val userPreferences: UserPreferences) : ViewModel() 
                 val request = UpdateUserRequest(username, birthDate, contactNumber, address, bio)
                 val response: Response<UserSimpleResponse> = RetrofitInstance.api.updateUser(userId, request)
                 if (response.isSuccessful) {
-                    loadProfileData() // Refresh profile data and switch to view mode
+                    loadProfileData()
                 } else {
                     _errorMessage.value = "Failed to update profile: ${response.errorBody()?.string() ?: response.message()}"
                 }
@@ -110,7 +102,7 @@ class MenuViewModel(private val userPreferences: UserPreferences) : ViewModel() 
 
                 val response: Response<UploadProfilePictureResponse> = RetrofitInstance.api.uploadProfilePicture(userIdBody, imagePart)
                 if (response.isSuccessful) {
-                    loadProfileData() // Refresh profile with new image URL
+                    loadProfileData()
                 } else {
                     _errorMessage.value = "Failed to upload image: ${response.errorBody()?.string() ?: response.message()}"
                 }
@@ -123,14 +115,10 @@ class MenuViewModel(private val userPreferences: UserPreferences) : ViewModel() 
     }
 
     fun toggleEditMode() {
-        _isEditMode.value = !_isEditMode.value // Toggle between edit and view mode
+        _isEditMode.value = !_isEditMode.value
     }
 
     fun clearError() {
         _errorMessage.value = null
     }
-
-
-
-
 }
