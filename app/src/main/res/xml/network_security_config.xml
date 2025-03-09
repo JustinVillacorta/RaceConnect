@@ -9,7 +9,9 @@
         <domain includeSubdomains="true">192.168.75.13</domain>
         <domain includeSubdomains="true">192.168.5.53</domain>
         <domain includeSubdomains="true">192.168.5.157</domain>
+        <domain includeSubdomains="true">192.168.1.127</domain>
         <domain includeSubdomains="true">192.168.156.129</domain>
+        <domain includeSubdomains="true">192.168.1.7</domain>
     </domain-config>
 </network-security-config>
 

@@ -4,15 +4,18 @@ import android.app.Activity
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
@@ -28,15 +31,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
+import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.ui.theme.Red
-import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
+import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModel
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -45,22 +51,26 @@ private val BrandRed = Color(0xFFC62828)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyProfileScreen(onClose: () -> Unit, menuViewModel: MenuViewModel) {
+fun MyProfileScreen(
+    onClose: () -> Unit,
+    profileDetailsViewModel: ProfileDetailsViewModel,
+    userPreferences: UserPreferences
+) {
     val context = LocalContext.current
     val activity = context as? Activity ?: throw IllegalStateException("MyProfileScreen must be used within an Activity context")
 
-    val profileData by menuViewModel.profileData.collectAsState()
-    val isLoading by menuViewModel.isLoading.collectAsState()
-    val errorMessage by menuViewModel.errorMessage.collectAsState()
-    val isEditMode by menuViewModel.isEditMode.collectAsState()
+    val profileData by profileDetailsViewModel.profileData.collectAsState()
+    val isLoading by profileDetailsViewModel.isLoading.collectAsState()
+    val errorMessage by profileDetailsViewModel.errorMessage.collectAsState()
+    val isEditMode by profileDetailsViewModel.isEditMode.collectAsState()
 
-    // State for editable fields
     var username by remember { mutableStateOf(TextFieldValue(profileData?.username ?: "")) }
     var birthDate by remember { mutableStateOf(TextFieldValue(profileData?.birthdate ?: "")) }
     var contactNumber by remember { mutableStateOf(TextFieldValue(profileData?.number ?: "")) }
     var address by remember { mutableStateOf(TextFieldValue(profileData?.address ?: "")) }
     var bio by remember { mutableStateOf(TextFieldValue(profileData?.bio ?: "")) }
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(profileData) {
         profileData?.let {
@@ -71,6 +81,7 @@ fun MyProfileScreen(onClose: () -> Unit, menuViewModel: MenuViewModel) {
                 address = TextFieldValue(it.address ?: "")
                 bio = TextFieldValue(it.bio ?: "")
             }
+            Log.d("MyProfileScreen", "Profile data updated: profilePicture=${it.profilePicture}")
         }
     }
 
@@ -84,31 +95,48 @@ fun MyProfileScreen(onClose: () -> Unit, menuViewModel: MenuViewModel) {
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     file.outputStream().use { output -> input.copyTo(output) }
                 }
-                menuViewModel.uploadProfileImage(file)
+                profileDetailsViewModel.uploadProfileImage(file)
             }
         }
     }
 
+    // Initialize the DatePickerDialog with the current date or the user's birthdate
     val calendar = remember { Calendar.getInstance() }
-    val datePickerDialog = remember {
-        DatePickerDialog(
-            context,
-            { _, year, month, dayOfMonth ->
-                calendar.set(year, month, dayOfMonth)
-                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                birthDate = TextFieldValue(sdf.format(calendar.time))
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        )
+    profileData?.birthdate?.let { dateStr ->
+        try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val date = sdf.parse(dateStr)
+            date?.let { calendar.time = it }
+        } catch (e: Exception) {
+            Log.e("MyProfileScreen", "Error parsing birthdate: ${e.message}")
+        }
+    }
+
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            calendar.set(year, month, dayOfMonth)
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            birthDate = TextFieldValue(sdf.format(calendar.time))
+            showDatePicker = false
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
+
+    // Show DatePicker when triggered
+    LaunchedEffect(showDatePicker) {
+        if (showDatePicker) {
+            datePickerDialog.show()
+        }
     }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Personal Details", color = Color.White) },
+                title = { Text("Personal Details", color = Color.White, fontSize = 20.sp) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(
@@ -130,197 +158,286 @@ fun MyProfileScreen(onClose: () -> Unit, menuViewModel: MenuViewModel) {
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Profile Image Section
             Box(
                 modifier = Modifier
-                    .padding(top = 16.dp)
-                    .size(120.dp)
+                    .padding(top = 32.dp)
+                    .size(140.dp)
+                    .clip(CircleShape)
+                    .background(Color.LightGray)
+                    .clickable(enabled = isEditMode) {
+                        val intent = Intent(Intent.ACTION_PICK).apply { type = "image/*" }
+                        imagePickerLauncher.launch(intent)
+                    }
             ) {
+                val imagePainter = profileImageUri?.let { uri ->
+                    Log.d("MyProfileScreen", "Loading temporary profile picture from URI: $uri")
+                    rememberAsyncImagePainter(
+                        model = uri,
+                        onError = { error ->
+                            Log.e("MyProfileScreen", "Error loading temporary image: ${error.result.throwable.message}")
+                        }
+                    )
+                } ?: profileData?.profilePicture?.let { url ->
+                    Log.d("MyProfileScreen", "Loading profile picture from URL: $url")
+                    rememberAsyncImagePainter(
+                        model = url,
+                        onError = { error ->
+                            Log.e("MyProfileScreen", "Error loading profile picture: ${error.result.throwable.message}")
+                        }
+                    )
+                } ?: painterResource(id = R.drawable.baseline_account_circle_24)
+
                 Image(
-                    painter = profileImageUri?.let { rememberAsyncImagePainter(model = it) }
-                        ?: profileData?.profilePicture?.let { rememberAsyncImagePainter(model = it) }
-                        ?: painterResource(id = R.drawable.baseline_account_circle_24),
+                    painter = imagePainter,
                     contentDescription = "Profile Picture",
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(CircleShape)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Change Profile Picture",
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(BrandRed.copy(alpha = 0.7f))
-                        .padding(4.dp)
-                        .clickable {
-                            val intent = Intent(Intent.ACTION_PICK).apply { type = "image/*" }
-                            imagePickerLauncher.launch(intent)
-                        },
-                    tint = Color.White
-                )
+                if (isEditMode) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Change Profile Picture",
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(BrandRed.copy(alpha = 0.8f))
+                            .padding(6.dp),
+                        tint = Color.White
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Profile Details Card
-            Card(
+            // Content based on edit mode
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp)
-                    .heightIn(min = 400.dp),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    .fillMaxSize()
+                    .weight(1f)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    if (isEditMode) {
-                        OutlinedTextField(
-                            value = username,
-                            onValueChange = { username = it },
-                            label = { Text("User Name") },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            leadingIcon = { Icon(Icons.Default.AccountCircle, "User Icon", tint = Red) }
-                        )
-
-                        OutlinedTextField(
-                            value = birthDate,
-                            onValueChange = { birthDate = TextFieldValue(it.text) },
-                            label = { Text("Birth Date") },
+                if (!isEditMode) { // View-only mode
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
+                            .weight(1f, fill = false)
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 12.dp)
-                                .clickable { datePickerDialog.show() },
-                            leadingIcon = { Icon(Icons.Default.CalendarToday, "Calendar Icon", tint = Red) },
-                            readOnly = true
-                        )
+                                .padding(16.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            ProfileField(
+                                label = "User Name",
+                                value = profileData?.username ?: "Not set",
+                                icon = Icons.Default.AccountCircle
+                            )
+                            ProfileField(
+                                label = "Birth Date",
+                                value = profileData?.birthdate?.let { formatDate(it, "yyyy-MM-dd") } ?: "0000-00-00",
+                                icon = Icons.Default.CalendarToday
+                            )
+                            ProfileField(
+                                label = "Contact Number",
+                                value = profileData?.number ?: "Not set",
+                                icon = Icons.Default.Phone
+                            )
+                            ProfileField(
+                                label = "Address",
+                                value = profileData?.address ?: "Not set",
+                                icon = Icons.Default.LocationOn
+                            )
+                            ProfileField(
+                                label = "Bio",
+                                value = profileData?.bio ?: "Not set",
+                                icon = Icons.Default.Edit
+                            )
+                        }
+                    }
+                } else { // Edit mode
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
+                            .weight(1f, fill = false)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            OutlinedTextField(
+                                value = username,
+                                onValueChange = { username = it.copy(text = it.text.trim()) },
+                                label = { Text("User Name", fontSize = 16.sp) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp),
+                                leadingIcon = { Icon(Icons.Default.AccountCircle, "User Icon", tint = Red) },
+                                isError = username.text.isBlank(),
+                                supportingText = {
+                                    if (username.text.isBlank()) {
+                                        Text("Username cannot be empty", color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            )
 
-                        OutlinedTextField(
-                            value = contactNumber,
-                            onValueChange = { contactNumber = it },
-                            label = { Text("Contact Number") },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            leadingIcon = { Icon(Icons.Default.Phone, "Phone Icon", tint = Red) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
+                            OutlinedTextField(
+                                value = birthDate,
+                                onValueChange = { /* No direct editing allowed */ },
+                                label = { Text("Birth Date", fontSize = 16.sp) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                                    .clickable(enabled = isEditMode) {
+                                        showDatePicker = true
+                                    },
+                                leadingIcon = { Icon(Icons.Default.CalendarToday, "Calendar Icon", tint = Red) },
+                                readOnly = true,
+                                enabled = false, // Prevents keyboard from appearing
+                                isError = birthDate.text.isBlank(),
+                                supportingText = {
+                                    if (birthDate.text.isBlank()) {
+                                        Text("Birth date is required", color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            )
 
-                        OutlinedTextField(
-                            value = address,
-                            onValueChange = { address = it },
-                            label = { Text("Address") },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            leadingIcon = { Icon(Icons.Default.LocationOn, "Location Icon", tint = Red) }
-                        )
+                            OutlinedTextField(
+                                value = contactNumber,
+                                onValueChange = { contactNumber = it.copy(text = it.text.filter { char -> char.isDigit() }) },
+                                label = { Text("Contact Number", fontSize = 16.sp) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp),
+                                leadingIcon = { Icon(Icons.Default.Phone, "Phone Icon", tint = Red) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                isError = contactNumber.text.length !in 10..15,
+                                supportingText = {
+                                    if (contactNumber.text.length !in 10..15) {
+                                        Text("Enter a valid phone number (10-15 digits)", color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            )
 
-                        OutlinedTextField(
-                            value = bio,
-                            onValueChange = { bio = it },
-                            label = { Text("Bio") },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            leadingIcon = { Icon(Icons.Default.Edit, "Edit Icon", tint = Red) }
-                        )
-                    } else {
-                        ProfileField(
-                            label = "User Name",
-                            value = profileData?.username ?: "",
-                            icon = Icons.Default.AccountCircle
-                        )
-                        ProfileField(
-                            label = "Birth Date",
-                            value = profileData?.birthdate?.let { formatDate(it, "yyyy-MM-dd") } ?: "",
-                            icon = Icons.Default.CalendarToday
-                        )
-                        ProfileField(
-                            label = "Contact Number",
-                            value = profileData?.number ?: "",
-                            icon = Icons.Default.Phone
-                        )
-                        ProfileField(
-                            label = "Address",
-                            value = profileData?.address ?: "",
-                            icon = Icons.Default.LocationOn
-                        )
-                        ProfileField(
-                            label = "Bio",
-                            value = profileData?.bio ?: "",
-                            icon = Icons.Default.Edit
-                        )
+                            OutlinedTextField(
+                                value = address,
+                                onValueChange = { address = it },
+                                label = { Text("Address", fontSize = 16.sp) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp),
+                                leadingIcon = { Icon(Icons.Default.LocationOn, "Location Icon", tint = Red) }
+                            )
+
+                            OutlinedTextField(
+                                value = bio,
+                                onValueChange = { bio = it },
+                                label = { Text("Bio", fontSize = 16.sp) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp),
+                                leadingIcon = { Icon(Icons.Default.Edit, "Edit Icon", tint = Red) },
+                                maxLines = 3
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
-
+            // Action Button (always visible at the bottom, text changes based on mode)
             Button(
                 onClick = {
                     if (isEditMode) {
-                        menuViewModel.saveProfileChanges(
-                            username.text,
-                            birthDate.text,
-                            contactNumber.text,
-                            address.text,
-                            bio.text
-                        )
+                        if (username.text.isNotBlank() && birthDate.text.isNotBlank() && contactNumber.text.length in 10..15) {
+                            profileDetailsViewModel.saveProfileChanges(
+                                username.text,
+                                birthDate.text,
+                                contactNumber.text,
+                                address.text,
+                                bio.text,
+                                userPreferences
+                            )
+                            profileDetailsViewModel.toggleEditMode() // Switch back to view mode
+                            onClose()
+                        } else {
+                            profileDetailsViewModel.setErrorMessage("Please fill all required fields with valid data")
+                        }
                     } else {
-                        menuViewModel.toggleEditMode()
+                        profileDetailsViewModel.toggleEditMode() // Enter edit mode
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
-                    .height(56.dp), // Increased to 56.dp for better tap target size
-                colors = ButtonDefaults.buttonColors(containerColor = BrandRed),
-                enabled = !isLoading
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BrandRed, disabledContainerColor = BrandRed.copy(alpha = 0.5f)),
+                enabled = !isLoading && (!isEditMode || (username.text.isNotBlank() && birthDate.text.isNotBlank() && contactNumber.text.length in 10..15))
             ) {
-                if (isLoading) CircularProgressIndicator(color = Color.White)
+                if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 else Text(
-                    text = if (isEditMode) "Save Changes" else "Edit Profile",
-                    color = Color.White
+                    text = if (isEditMode) "Save Profile" else "Edit Profile",
+                    color = Color.White,
+                    fontSize = 16.sp
                 )
             }
 
+            // Error Message
             errorMessage?.let {
-                Text(it, color = Color.Red, modifier = Modifier.padding(top = 8.dp))
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 14.sp,
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .align(Alignment.CenterHorizontally)
+                )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
-// Reusable ProfileField composable for read-only mode
 @Composable
 fun ProfileField(label: String, value: String, icon: ImageVector) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 16.dp),
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = "$label Icon",
-            modifier = Modifier.padding(end = 12.dp),
+            modifier = Modifier
+                .padding(end = 16.dp)
+                .size(24.dp),
             tint = Red
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp
             )
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
             )
         }
     }
 }
 
-// Helper function to format date
 fun formatDate(dateStr: String, format: String): String {
     return try {
         val originalFormat = SimpleDateFormat("d/M/yyyy", Locale.getDefault())

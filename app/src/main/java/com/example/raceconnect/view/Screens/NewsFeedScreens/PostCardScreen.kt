@@ -49,6 +49,7 @@ import coil.compose.AsyncImage
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
+import kotlin.String
 
 @Composable
 fun PostCard(

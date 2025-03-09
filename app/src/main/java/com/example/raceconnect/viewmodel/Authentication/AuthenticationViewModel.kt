@@ -16,7 +16,7 @@ import com.example.raceconnect.model.VerifyOtpRequest
 import com.example.raceconnect.model.users
 import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
-import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
+import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,12 +59,28 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                     loggedInUser.value = response.user
                     Log.d("AuthenticationViewModel", "Login successful: ${loggedInUser.value}")
 
-                    // Save user data to DataStore
+                    // Save user data to DataStore with all relevant fields
                     userPreferences.saveUser(
-                        response.user.id,
-                        response.user.username,
-                        response.user.email,
-                        response.token
+                        userId = response.user.id,
+                        username = response.user.username,
+                        email = response.user.email,
+                        token = response.token,
+                        birthdate = response.user.birthdate,
+                        number = response.user.number,
+                        address = response.user.address,
+                        age = response.user.age,
+                        profilePicture = response.user.profilePicture,
+                        bio = response.user.bio,
+                        favoriteCategories = response.user.favoriteCategories?.joinToString(","),
+                        favoriteMarketplaceItems = response.user.favoriteMarketplaceItems?.joinToString(","),
+                        friendsList = response.user.friendsList?.joinToString(","),
+                        friendPrivacy = response.user.friendPrivacy,
+                        lastOnline = response.user.lastOnline,
+                        status = response.user.status,
+                        report = response.user.report,
+                        suspensionEndDate = response.user.suspensionEndDate,
+                        createdAt = response.user.createdAt,
+                        updatedAt = response.user.updatedAt
                     )
                 } else {
                     ErrorMessage.value = response.message ?: "Login failed"

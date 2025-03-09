@@ -69,7 +69,8 @@ class UserPreferences(private val context: Context) {
             profilePicture?.let {
                 preferences[PROFILE_PICTURE] = it
                 Log.d("UserPreferences", "Saving profile picture: $it")
-            } ?: Log.d("UserPreferences", "Profile picture is null, not saving")
+            }
+            Log.d("UserPreferences", "Retrieved profile picture: $profilePicture")
             bio?.let { preferences[BIO] = it }
             favoriteCategories?.let { preferences[FAVORITE_CATEGORIES] = it }
             favoriteMarketplaceItems?.let { preferences[FAVORITE_MARKETPLACE_ITEMS] = it }
@@ -119,14 +120,18 @@ class UserPreferences(private val context: Context) {
         preferences[TOKEN]
     }
 
+    suspend fun getUserId(): Int? {
+        return user.first()?.id
+    }
+
+    suspend fun getToken(): String? {
+        return token.first()
+    }
+
     suspend fun clearUser() {
         context.dataStore.edit { preferences ->
             preferences.clear()
             Log.d("UserPreferences", "User data cleared")
         }
-    }
-
-    suspend fun getToken(): String? {
-        return token.first()
     }
 }

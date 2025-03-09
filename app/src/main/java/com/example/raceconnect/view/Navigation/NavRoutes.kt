@@ -23,16 +23,12 @@ sealed class NavRoutes(val route: String) {
     object MarketplaceItemDetail : NavRoutes("marketplaceItemDetail/{itemId}") {
         fun createRoute(itemId: Int) = "marketplaceItemDetail/$itemId"
     }
-    object ChatSeller : NavRoutes("chatSeller/{itemId}") { // New route for chat seller screen
+    object ChatSeller : NavRoutes("chatSeller/{itemId}") {
         fun createRoute(itemId: Int) = "chatSeller/$itemId"
     }
-
-    // New routes for menu options
     object MyProfile : NavRoutes("myProfile")
     object FavoriteItems : NavRoutes("favoriteItems")
     object NewsFeedPreferences : NavRoutes("newsFeedPreferences")
     object ListedItems : NavRoutes("listedItems")
     object Settings : NavRoutes("settings")
-
-
 }

@@ -43,16 +43,18 @@ import com.example.raceconnect.view.Screens.MenuScreens.SettingsScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentSectionScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.FullScreenImageViewer
-import com.example.raceconnect.view.Screens.NewsFeedScreens.ProfileViewScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.RepostScreen
+import com.example.raceconnect.view.Screens.NewsFeedScreens.UserProfileScreen
 import com.example.raceconnect.view.Screens.ProfileScreens.MyProfileScreen
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
-import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
-import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModelFactory
+import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
+import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModelFactory
+import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModel
+import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModelFactory
 
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {
@@ -76,6 +78,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
     val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences))
+    val profileDetailsViewModel: ProfileDetailsViewModel = viewModel(factory = ProfileDetailsViewModelFactory(userPreferences))
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
@@ -93,7 +96,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     modifier = Modifier.padding(paddingValues)
                 ) {
                     composable(NavRoutes.NewsFeed.route) {
-                        NewsFeedScreen(
+                        NewsFeedScreen( // Changed to NewsFeedScreen
                             navController = navController,
                             userPreferences = userPreferences,
                             onShowCreatePost = { showCreatePostScreen = true },
@@ -112,7 +115,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         )
                     }
                     composable(NavRoutes.Profile.route) {
-                        val authViewModel = viewModel<AuthenticationViewModel>()
+                        val authViewModel: AuthenticationViewModel = viewModel()
                         ProfileScreen(
                             viewModel = authViewModel,
                             menuViewModel = menuViewModel,
@@ -126,11 +129,12 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             onShowFavoriteItems = { showFavoriteItems = true },
                             onShowNewsFeedPreferences = { showNewsFeedPreferences = true },
                             onShowListedItems = { showListedItems = true },
-                            onShowSettings = { showSettings = true }
+                            onShowSettings = { showSettings = true },
+                            profileDetailsViewModel = profileDetailsViewModel
                         )
                     }
                     composable(NavRoutes.ProfileView.route) {
-                        ProfileViewScreen(
+                        UserProfileScreen(
                             navController = navController,
                             context = context,
                             onClose = { navController.popBackStack() }
@@ -159,7 +163,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             itemId = itemId,
                             navController = navController,
                             onClose = { navController.popBackStack() },
-                            viewModel = (viewModel()), // Pass ViewMode
+                            viewModel = marketplaceViewModel,
                             onClickChat = { showChatSellerScreen = it }
                         )
                     }
@@ -209,7 +213,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     MarketplaceItemDetailScreen(
                         itemId = itemId,
                         navController = navController,
-                        viewModel = (viewModel()), // Pass ViewMode
+                        viewModel = marketplaceViewModel,
                         onClose = { showItemDetailScreen = null },
                         onClickChat = { showChatSellerScreen = it }
                     )
@@ -267,14 +271,19 @@ fun AppNavigation(userPreferences: UserPreferences) {
             }
 
             // Overlays for menu options
+            // Inside AppNavigation.kt
             AnimatedVisibility(
                 visible = showMyProfile,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
                 MyProfileScreen(
-                    menuViewModel = menuViewModel, // Removed navController
-                    onClose = { showMyProfile = false }
+                    onClose = {
+                        showMyProfile = false // Close the overlay and return to ProfileScreen
+                        profileDetailsViewModel.loadProfileData() // Refresh profile data after saving
+                    },
+                    profileDetailsViewModel = profileDetailsViewModel,
+                    userPreferences = userPreferences
                 )
             }
 

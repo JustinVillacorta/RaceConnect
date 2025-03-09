@@ -34,6 +34,7 @@ data class UpdateUserRequest(
 )
 
 data class UploadProfilePictureResponse(
+    val success: Boolean,
     val message: String,
     @SerializedName("image_url") val imageUrl: String?
 )
@@ -43,7 +44,10 @@ data class ProfileImage(
     @SerializedName("image_url") val imageUrl: String
 )
 
-data class UserSimpleResponse(val message: String) // Single definition
+data class UserSimpleResponse(
+    val success: Boolean,
+    val message: String
+)
 
 // Data class for login request
 data class LoginRequest(

@@ -8,7 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.raceconnect.viewmodel.MenuViewModel.MenuViewModel
+import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

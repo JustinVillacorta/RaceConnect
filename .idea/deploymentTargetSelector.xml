@@ -2,12 +2,12 @@
 <project version="4">
   <component name="deploymentTargetSelector">
     <selectionStates>
-      <SelectionState runConfigName="RaceConnect">
+      <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-03-08T01:10:15.530426500Z">
+        <DropdownSelection timestamp="2025-03-09T17:52:59.981992Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=10944373AK101625" />
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=ZXGQOBAUJRJVEYBQ" />
             </handle>
           </Target>
         </DropdownSelection>
