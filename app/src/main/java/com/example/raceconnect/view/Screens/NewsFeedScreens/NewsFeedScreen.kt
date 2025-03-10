@@ -1,16 +1,31 @@
-// NewsFeedScreen.kt
-@file:Suppress("DEPRECATION")
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.*
+package com.example.raceconnect.view.Screens.NewsFeedScreens
+
+import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -20,14 +35,12 @@ import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
-import com.example.raceconnect.view.Screens.NewsFeedScreens.AddPostSection
-import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentSectionScreen // Updated import
-import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
-import com.example.raceconnect.view.Screens.NewsFeedScreens.PostCard
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
-import com.google.accompanist.swiperefresh.*
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.example.raceconnect.view.Screens.NewsFeedScreens.PostCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,20 +53,40 @@ fun NewsFeedScreen(
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
     val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
-    val posts = viewModel.posts.collectAsLazyPagingItems()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val posts = viewModel.postsFlow.collectAsLazyPagingItems()
+    var isRefreshing by remember { mutableStateOf(false) } // Local state for refresh control
     val postLikes by viewModel.postLikes.collectAsState()
     val likeCounts by viewModel.likeCounts.collectAsState()
-    val newPostTrigger by viewModel.newPostTrigger.collectAsState()
+    val newPostTriggerState by viewModel.newPostTrigger.collectAsState()
+    val user by userPreferences.user.collectAsState(initial = null)
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    LaunchedEffect(newPostTrigger) {
-        if (newPostTrigger) {
+    // Log user ID for debugging
+    LaunchedEffect(user?.id) {
+        Log.d("NewsFeedScreen", "Logged-in user ID: ${user?.id}")
+    }
+
+    // Trigger initial refresh
+    LaunchedEffect(Unit) {
+        if (!viewModel.isInitialRefreshDone) {
+            isRefreshing = true
             viewModel.refreshPosts()
+            posts.refresh()
+            viewModel.isInitialRefreshDone = true
+        }
+    }
+
+    // Handle new post trigger
+    LaunchedEffect(newPostTriggerState) {
+        if (newPostTriggerState) {
+            isRefreshing = true
+            viewModel.refreshPosts()
+            posts.refresh()
             viewModel.resetNewPostTrigger()
+            Log.d("NewsFeedScreen", "Refreshed due to new post trigger")
         }
     }
 
@@ -65,7 +98,7 @@ fun NewsFeedScreen(
             CommentSectionScreen(
                 postId = selectedPostId ?: -1,
                 navController = navController,
-                userPreferences = userPreferences, // Added userPreferences parameter
+                userPreferences = userPreferences,
                 onShowProfileView = {
                     onShowProfileView()
                     showBottomSheet = false
@@ -80,7 +113,7 @@ fun NewsFeedScreen(
                 title = {
                     Text(
                         text = "RaceConnect",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
                         color = Color.White
                     )
                 },
@@ -102,7 +135,11 @@ fun NewsFeedScreen(
     ) { paddingValues ->
         SwipeRefresh(
             state = rememberSwipeRefreshState(isRefreshing),
-            onRefresh = { viewModel.refreshPosts() },
+            onRefresh = {
+                isRefreshing = true
+                viewModel.refreshPosts()
+                posts.refresh()
+            },
             modifier = Modifier.padding(paddingValues)
         ) {
             LazyColumn(
@@ -120,12 +157,14 @@ fun NewsFeedScreen(
                 }
 
                 items(posts.itemCount) { index ->
-                    val post = posts[posts.itemCount - 1 - index]
+                    val post = posts[index] // Latest first (no reversal)
                     post?.let {
                         LaunchedEffect(it.id) {
                             viewModel.fetchPostLikes(it.id)
+                            Log.d("NewsFeedScreen", "Post ID: ${it.id}, Created At: ${it.created_at}, Content: ${it.content}")
                         }
 
+                        // Directly call PostCard without nesting a @Composable function
                         PostCard(
                             post = it.copy(
                                 isLiked = postLikes[it.id] ?: false,
@@ -142,22 +181,62 @@ fun NewsFeedScreen(
                                 else viewModel.unlikePost(it.id)
                             },
                             onShowFullScreenImage = { imageUrl -> onShowFullScreenImage(imageUrl, it.id) },
-                            onShowProfileView = onShowProfileView,
+                            userPreferences = userPreferences,
                             onReportClick = { viewModel.reportPost(it.id) },
                             onShowRepostScreen = onShowRepostScreen
                         )
                     }
                 }
 
+                // Handle initial and append load states
                 posts.apply {
+                    when (loadState.refresh) {
+                        is LoadState.Loading -> {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                        }
+
+                        is LoadState.Error -> {
+                            item {
+                                Text(
+                                    text = "Error loading posts: ${(loadState.refresh as LoadState.Error).error.message}",
+                                    color = Color.Red,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        }
+
+                        is LoadState.NotLoading -> {
+                            if (posts.itemCount == 0) {
+                                item {
+                                    Text(
+                                        text = "No posts available",
+                                        color = Color.Gray,
+                                        modifier = Modifier.padding(16.dp)
+                                    )
+                                }
+                            }
+                            // Stop refreshing when loading is complete
+                            /**LaunchedEffect(Unit) {
+                                isRefreshing = false
+                            }**/
+                        }
+                    }
                     when (loadState.append) {
                         is LoadState.Loading -> {
-                            item { CircularProgressIndicator(modifier = Modifier.fillMaxWidth().padding(16.dp)) }
+                            item {
+                                CircularProgressIndicator(modifier = Modifier.fillMaxWidth().padding(16.dp))
+                            }
                         }
                         is LoadState.Error -> {
-                            item { Text(text = "Error loading posts", color = Color.Red) }
+                            item {
+                                Text(text = "Error loading more posts", color = Color.Red, modifier = Modifier.padding(16.dp))
+                            }
                         }
-                        is LoadState.NotLoading -> {}
+                        else -> {}
                     }
                 }
             }

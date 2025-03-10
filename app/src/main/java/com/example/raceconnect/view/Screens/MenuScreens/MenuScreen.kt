@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
+import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
@@ -59,18 +61,30 @@ private val BrandRed = Color(0xFFC62828)
 fun ProfileScreen(
     viewModel: AuthenticationViewModel,
     menuViewModel: MenuViewModel,
-    profileDetailsViewModel: ProfileDetailsViewModel, // Add ProfileDetailsViewModel
+    profileDetailsViewModel: ProfileDetailsViewModel,
     onLogoutSuccess: () -> Unit,
     navController: NavController,
-    onShowMyProfile: () -> Unit,
     onShowFavoriteItems: () -> Unit,
     onShowNewsFeedPreferences: () -> Unit,
     onShowListedItems: () -> Unit,
-    onShowSettings: () -> Unit
+    onShowSettings: () -> Unit,
+    userPreferences: UserPreferences // Added to get loggedInUserId
 ) {
-    val profileData by profileDetailsViewModel.profileData.collectAsState() // Switch to ProfileDetailsViewModel
+    val profileData by profileDetailsViewModel.profileData.collectAsState()
     var showMenu by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    // Correctly collect the user Flow into a State
+    val userState by userPreferences.user.collectAsState(initial = null)
+    val loggedInUserId = userState?.id ?: 0 // Safely access id from the State
+
+    // Load profile data when the screen is composed
+    LaunchedEffect(Unit) {
+        if (profileData == null) {
+            Log.d("ProfileScreen", "Loading profile data on screen start")
+            profileDetailsViewModel.loadProfileData()
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -141,7 +155,9 @@ fun ProfileScreen(
                         .padding(horizontal = 16.dp)
                         .padding(top = 16.dp)
                         .clickable {
-                            navController.navigate(NavRoutes.ProfileView.route)
+                            if (loggedInUserId != 0) {
+                                navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) // Navigate to UserProfileScreen
+                            }
                         }
                 ) {
                     Column(
@@ -204,8 +220,8 @@ fun ProfileScreen(
                     ) {
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_account_circle_24,
-                            text = "My Profile",
-                            onClick = onShowMyProfile
+                            text = "Profile Details",
+                            onClick = { navController.navigate(NavRoutes.ProfileDetails.route) } // Still for editing
                         )
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_favorite_24,

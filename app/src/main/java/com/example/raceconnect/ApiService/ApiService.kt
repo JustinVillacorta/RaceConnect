@@ -1,40 +1,6 @@
 package com.example.raceconnect.network
 
-import com.example.raceconnect.model.ApiResponse
-import com.example.raceconnect.model.CreateNotificationResponse
-import com.example.raceconnect.model.CreateRepostRequest
-import com.example.raceconnect.model.CreateRepostResponse
-import com.example.raceconnect.model.ForgotPasswordRequest
-import com.example.raceconnect.model.ForgotPasswordResponse
-import com.example.raceconnect.model.Friend
-import com.example.raceconnect.model.FriendRequest
-import com.example.raceconnect.model.LoginRequest
-import com.example.raceconnect.model.LoginResponse
-import com.example.raceconnect.model.LogoutRequest
-import com.example.raceconnect.model.LogoutResponse
-import com.example.raceconnect.model.MarketplaceDataClassItem
-import com.example.raceconnect.model.MarketplaceImageResponse
-import com.example.raceconnect.model.NewsFeedDataClassItem
-import com.example.raceconnect.model.Notification
-import com.example.raceconnect.model.NotificationRequest
-import com.example.raceconnect.model.PostLike
-import com.example.raceconnect.model.PostResponse
-import com.example.raceconnect.model.RemoveFriendRequest
-import com.example.raceconnect.model.ResetPasswordRequest
-import com.example.raceconnect.model.ResetPasswordResponse
-import com.example.raceconnect.model.SignupRequest
-import com.example.raceconnect.model.SignupResponse
-import com.example.raceconnect.model.SimpleResponse
-import com.example.raceconnect.model.UpdateFriendStatus
-import com.example.raceconnect.model.VerifyOtpRequest
-import com.example.raceconnect.model.VerifyOtpResponse
-import com.example.raceconnect.model.itemPostResponse
-import com.example.raceconnect.model.users
-import com.example.raceconnect.model.PostComment
-import com.example.raceconnect.model.Repost
-import com.example.raceconnect.model.UpdateUserRequest
-import com.example.raceconnect.model.UploadProfilePictureResponse
-import com.example.raceconnect.model.UserSimpleResponse
+import com.example.raceconnect.model.*
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -86,11 +52,11 @@ interface ApiService {
     suspend fun getAllPosts(
         @Query("limit") limit: Int,
         @Query("offset") offset: Int
-    ): List<NewsFeedDataClassItem>
+    ): Response<List<NewsFeedDataClassItem>>
 
-    @GET("posts")
+    @GET("posts/{userId}")
     suspend fun getPostsByUserId(
-        @Query("user_id") userId: Int,
+        @Path("userId") userId: Int,
         @Query("limit") limit: Int,
         @Query("offset") offset: Int
     ): Response<List<NewsFeedDataClassItem>>
@@ -111,8 +77,6 @@ interface ApiService {
     @GET("posts/{id}/images")
     suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostResponse>>
 
-
-
     @POST("post-likes")
     suspend fun likePost(@Body requestBody: Map<String, Int>): Response<ResponseBody>
 
@@ -122,12 +86,9 @@ interface ApiService {
     @GET("post-likes")
     suspend fun getPostLikes(@Query("post_id") postId: Int): Response<List<PostLike>>
 
-    //Marketplace
+    // Marketplace
     @GET("marketplace-items/{id}/images")
     suspend fun GetMarketplaceImage(@Path("id") itemId: Int): Response<List<MarketplaceImageResponse>>
-
-
-
 
     @Multipart
     @POST("marketplace-items")
@@ -140,18 +101,12 @@ interface ApiService {
         @Part("status") status: RequestBody,
         @Part images: List<MultipartBody.Part>?
     ): Response<MarketplaceImageResponse>
+
     @GET("marketplace-items")
     suspend fun getAllMarketplaceItems(): List<MarketplaceDataClassItem>
 
     @POST("marketplace-items")
     suspend fun createMarketplaceItem(@Body item: MarketplaceDataClassItem): Response<itemPostResponse>
-
-
-
-
-
-
-
 
     @GET("friends/list")
     suspend fun getFriendsList(@Query("user_id") userId: String): Response<List<Map<String, Any?>>>

@@ -16,7 +16,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,11 +27,11 @@ fun RepostScreen(
     post: NewsFeedDataClassItem,
     navController: NavController,
     viewModel: NewsFeedViewModel,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    userPreferences: UserPreferences // Added to pass to PostCard
 ) {
     val context = LocalContext.current
     var repostComment by remember { mutableStateOf("") }
-    val brandRed = Color(0xFFC62828)
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -45,8 +47,8 @@ fun RepostScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.smallTopAppBarColors(
-                    containerColor = brandRed
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Red // Use theme Red color
                 )
             )
         }
@@ -85,14 +87,15 @@ fun RepostScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Use the updated PostCard composable
             PostCard(
                 post = post,
                 navController = navController,
                 onCommentClick = { /* Disabled in repost screen */ },
-                onLikeClick = { /* Disabled in repost screen */ },
+                onLikeClick = { _ -> /* Disabled in repost screen */ },
                 viewModel = viewModel,
                 onShowFullScreenImage = { /* Disabled in repost screen */ },
-                onShowProfileView = { /* Disabled in repost screen */ },
+                userPreferences = userPreferences,
                 onReportClick = { /* No-op implementation */ },
                 onShowRepostScreen = { /* Disabled in repost screen */ }
             )
@@ -108,7 +111,7 @@ fun RepostScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = brandRed)
+                colors = ButtonDefaults.buttonColors(containerColor = Red) // Use theme Red color
             ) {
                 Text("Repost", color = Color.White)
             }

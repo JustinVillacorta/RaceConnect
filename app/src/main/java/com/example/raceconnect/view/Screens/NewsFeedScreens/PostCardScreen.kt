@@ -12,7 +12,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,7 +40,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,12 +61,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
-import kotlin.String
 
 @Composable
 fun PostCard(
@@ -59,19 +77,22 @@ fun PostCard(
     onLikeClick: (Boolean) -> Unit,
     viewModel: NewsFeedViewModel,
     onShowFullScreenImage: (String) -> Unit,
-    onShowProfileView: () -> Unit,
+    userPreferences: UserPreferences,
     onReportClick: () -> Unit,
-    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit // Add callback for repost screen
+    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
     var isLiked by remember { mutableStateOf(post.isLiked) }
     var likeCount by remember { mutableStateOf(post.like_count) }
     val postImagesMap by viewModel.postImages.collectAsState()
-    val imageUrls = postImagesMap[post.id] ?: emptyList()
+    val imageUrls = postImagesMap[post.id] ?: post.images ?: emptyList()
     var showReportDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val user by userPreferences.user.collectAsState(initial = null)
+    val loggedInUserId = user?.id
 
     LaunchedEffect(post.id) {
         viewModel.getPostImages(post.id)
+        Log.d("PostCard", "Post ID: ${post.id}, Image URLs: $imageUrls")
     }
 
     Card(
@@ -93,17 +114,32 @@ fun PostCard(
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(Color.Gray)
-                            .clickable { onShowProfileView() }
-                    )
+                            .clickable {
+                                val destination = if (loggedInUserId != null && loggedInUserId == post.user_id) {
+                                    NavRoutes.ProfileView.createRoute(loggedInUserId)
+                                } else {
+                                    NavRoutes.ProfileView.createRoute(post.user_id)
+                                }
+                                Log.d("PostCard", "Navigating to $destination")
+                                navController.navigate(destination)
+                            }
+                    ) {
+                        AsyncImage(
+                            model = "https://via.placeholder.com/40",
+                            contentDescription = "User Profile",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Anonymous",
+                            text = post.username ?: "Anonymous",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Just now",
+                            text = post.created_at ?: "Just now",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
@@ -167,7 +203,7 @@ fun PostCard(
                     Spacer(modifier = Modifier.width(8.dp))
                     ReactionIcon(
                         icon = Icons.Default.Repeat,
-                        onClick = { onShowRepostScreen(post) } // Navigate to repost screen
+                        onClick = { onShowRepostScreen(post) }
                     )
                 }
             }
@@ -227,7 +263,6 @@ fun FullScreenImageViewer(
     onLikeClick: (Boolean) -> Unit,
     onCommentClick: () -> Unit
 ) {
-    // Existing code (unchanged)
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isAnimating by remember { mutableStateOf(false) }
@@ -405,19 +440,24 @@ fun PreviewPostCard() {
         content = "This is a sample post for preview purposes.",
         isLiked = false,
         like_count = 10,
-        img_url = "https://example.com/image.jpg",
-        title = "Sample Post"
+        title = "Sample Post",
+        images = listOf("https://via.placeholder.com/300") // Use images instead of img_url
     )
+
+    val mockViewModel = NewsFeedViewModel(UserPreferences(LocalContext.current))
+    LaunchedEffect(Unit) {
+        mockViewModel.getPostImages(dummyPost.id)
+    }
 
     PostCard(
         post = dummyPost,
         navController = NavController(LocalContext.current),
         onCommentClick = {},
         onLikeClick = {},
-        viewModel = NewsFeedViewModel(UserPreferences(LocalContext.current)),
+        viewModel = mockViewModel,
         onShowFullScreenImage = {},
-        onShowProfileView = {},
+        userPreferences = UserPreferences(LocalContext.current),
         onReportClick = {},
-        onShowRepostScreen = {} // Add the callback for preview
+        onShowRepostScreen = {}
     )
 }

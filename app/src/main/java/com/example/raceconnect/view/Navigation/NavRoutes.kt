@@ -18,7 +18,9 @@ sealed class NavRoutes(val route: String) {
     object CreatePost : NavRoutes("createPost")
     object Marketplace : NavRoutes("marketplace")
     object Notifications : NavRoutes("notifications")
-    object ProfileView : NavRoutes("profileView")
+    object ProfileView : NavRoutes("profileView/{userId}") {
+        fun createRoute(userId: Int) = "profileView/$userId"
+    }
     object Friends : NavRoutes("friends")
     object MarketplaceItemDetail : NavRoutes("marketplaceItemDetail/{itemId}") {
         fun createRoute(itemId: Int) = "marketplaceItemDetail/$itemId"
@@ -26,7 +28,7 @@ sealed class NavRoutes(val route: String) {
     object ChatSeller : NavRoutes("chatSeller/{itemId}") {
         fun createRoute(itemId: Int) = "chatSeller/$itemId"
     }
-    object MyProfile : NavRoutes("myProfile")
+    object ProfileDetails : NavRoutes("profileDetails") // Renamed from MyProfile
     object FavoriteItems : NavRoutes("favoriteItems")
     object NewsFeedPreferences : NavRoutes("newsFeedPreferences")
     object ListedItems : NavRoutes("listedItems")

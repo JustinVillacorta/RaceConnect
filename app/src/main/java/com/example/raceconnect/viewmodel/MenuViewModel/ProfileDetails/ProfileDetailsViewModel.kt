@@ -11,7 +11,6 @@ import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -27,7 +26,7 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    internal val _errorMessage = MutableStateFlow<String?>(null)
+    private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
     private val _isEditMode = MutableStateFlow(false)
@@ -35,27 +34,23 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
 
     private val apiService: ApiService = RetrofitInstance.api
 
-    init {
-        viewModelScope.launch {
-            userPreferences.user.collect { newUser ->
-                Log.d("ProfileDetailsViewModel", "User data collected: $newUser, Profile Picture: ${newUser?.profilePicture}")
-                _profileData.value = newUser
-            }
-        }
-    }
-
     fun loadProfileData() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val userId = userPreferences.getUserId() ?: return@launch
-                Log.d("ProfileDetailsViewModel", "Loading profile data for userId: $userId")
+                val userId = userPreferences.getUserId() ?: run {
+                    _errorMessage.value = "No user ID found in preferences"
+                    Log.w("ProfileDetailsViewModel", "No user ID found in preferences")
+                    _isLoading.value = false
+                    return@launch
+                }
+                Log.d("ProfileDetailsViewModel", "Loading profile data for logged-in userId: $userId")
                 val response = apiService.getUser(userId)
                 if (response.isSuccessful) {
                     val user = response.body()
                     Log.d("ProfileDetailsViewModel", "Profile data loaded: $user, Profile Picture: ${user?.profilePicture}")
                     _profileData.value = user
-                    user?.let { syncWithUserPreferences(it) } // Sync with UserPreferences
+                    user?.let { syncWithUserPreferences(it) }
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value = "Failed to load profile: ${response.message()}"
@@ -81,10 +76,14 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val userId = _profileData.value?.id ?: return@launch
+                val userId = _profileData.value?.id ?: run {
+                    _errorMessage.value = "No user ID available to update profile"
+                    Log.w("ProfileDetailsViewModel", "No user ID available to update profile")
+                    _isLoading.value = false
+                    return@launch
+                }
                 val token = userPreferences.getToken() ?: ""
 
-                // Prepare update request
                 val updateRequest = UpdateUserRequest(
                     username = username,
                     birthdate = birthDate,
@@ -93,10 +92,8 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
                     bio = bio
                 )
 
-                // Update user data on the server
                 val response = apiService.updateUser(userId, updateRequest)
                 if (response.isSuccessful && response.body()?.success == true) {
-                    // Sync with local data and UserPreferences
                     val updatedUser = _profileData.value?.copy(
                         username = username,
                         birthdate = birthDate,
@@ -106,7 +103,7 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
                     )
                     updatedUser?.let {
                         _profileData.value = it
-                        syncWithUserPreferences(it) // Update UserPreferences
+                        syncWithUserPreferences(it)
                         Log.d("ProfileDetailsViewModel", "Profile updated: $updatedUser, Profile Picture: ${it.profilePicture}")
                     }
                     _isEditMode.value = false
@@ -128,21 +125,24 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val userId = _profileData.value?.id?.toString() ?: return@launch
+                val userId = _profileData.value?.id?.toString() ?: run {
+                    _errorMessage.value = "No user ID available to upload image"
+                    Log.w("ProfileDetailsViewModel", "No user ID available to upload image")
+                    _isLoading.value = false
+                    return@launch
+                }
                 val token = userPreferences.getToken() ?: ""
 
-                // Convert file to MultipartBody.Part
                 val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
                 val imagePart = MultipartBody.Part.createFormData("image", file.name, requestFile)
                 val userIdPart = userId.toRequestBody("text/plain".toMediaTypeOrNull())
 
-                // Upload image to the server
                 val response = apiService.uploadProfilePicture(userIdPart, imagePart)
                 if (response.isSuccessful && response.body()?.success == true) {
                     val newProfilePictureUrl = response.body()?.imageUrl ?: ""
                     val currentUser = _profileData.value?.copy(profilePicture = newProfilePictureUrl) ?: return@launch
                     _profileData.value = currentUser
-                    syncWithUserPreferences(currentUser) // Update UserPreferences with new profile picture
+                    syncWithUserPreferences(currentUser)
                     Log.d("ProfileDetailsViewModel", "Profile picture uploaded: $newProfilePictureUrl")
                     _errorMessage.value = null
                 } else {
@@ -166,9 +166,6 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
         _errorMessage.value = message
     }
 
-    /**
-     * Syncs the provided user data with UserPreferences
-     */
     private suspend fun syncWithUserPreferences(user: users) {
         userPreferences.saveUser(
             userId = user.id,

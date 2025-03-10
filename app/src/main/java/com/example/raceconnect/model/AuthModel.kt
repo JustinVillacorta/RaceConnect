@@ -1,6 +1,11 @@
 package com.example.raceconnect.model
 
 import com.google.gson.annotations.SerializedName
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.annotations.JsonAdapter
+import java.lang.reflect.Type
 
 // Data class representing a User object
 data class users(
@@ -13,8 +18,12 @@ data class users(
     val age: Int?,
     @SerializedName("profile_picture") val profilePicture: String?,
     val bio: String?,
-    @SerializedName("favorite_categories") val favoriteCategories: List<String>?,
-    @SerializedName("favorite_marketplace_items") val favoriteMarketplaceItems: List<String>?,
+    @SerializedName("favorite_categories")
+    @JsonAdapter(FavoriteCategoriesAdapter::class)
+    val favoriteCategories: List<String>?,
+    @SerializedName("favorite_marketplace_items")
+    @JsonAdapter(FavoriteMarketplaceItemsAdapter::class)
+    val favoriteMarketplaceItems: List<String>?,
     @SerializedName("friends_list") val friendsList: List<Int>?,
     @SerializedName("friend_privacy") val friendPrivacy: String?,
     @SerializedName("last_online") val lastOnline: String?,
@@ -25,6 +34,41 @@ data class users(
     @SerializedName("updated_at") val updatedAt: String?
 )
 
+class FavoriteCategoriesAdapter : JsonDeserializer<List<String>> {
+    override fun deserialize(
+        json: JsonElement?,
+        typeOfT: Type?,
+        context: JsonDeserializationContext?
+    ): List<String> {
+        return if (json?.isJsonArray == true) {
+            // If it's an array, deserialize it as a list
+            context?.deserialize<List<String>>(json, typeOfT) ?: emptyList()
+        } else if (json?.isJsonPrimitive == true && json.asJsonPrimitive.isString) {
+            // If it's a string, wrap it into a single-item list
+            listOf(json.asString)
+        } else {
+            emptyList() // Default to empty list if neither
+        }
+    }
+}
+
+class FavoriteMarketplaceItemsAdapter : JsonDeserializer<List<String>> {
+    override fun deserialize(
+        json: JsonElement?,
+        typeOfT: Type?,
+        context: JsonDeserializationContext?
+    ): List<String> {
+        return if (json?.isJsonArray == true) {
+            context?.deserialize<List<String>>(json, typeOfT) ?: emptyList()
+        } else if (json?.isJsonPrimitive == true && json.asJsonPrimitive.isString) {
+            listOf(json.asString)
+        } else {
+            emptyList()
+        }
+    }
+}
+
+// Rest of the data classes remain unchanged
 data class UpdateUserRequest(
     val username: String,
     val birthdate: String?,
@@ -49,13 +93,11 @@ data class UserSimpleResponse(
     val message: String
 )
 
-// Data class for login request
 data class LoginRequest(
     val username: String,
     val password: String
 )
 
-// Data class for login response
 data class LoginResponse(
     val success: Boolean,
     val message: String,
@@ -63,7 +105,6 @@ data class LoginResponse(
     val token: String?
 )
 
-// Sign up
 data class SignupRequest(
     val username: String,
     val email: String,
@@ -76,11 +117,9 @@ data class SignupResponse(
     val message: String?
 )
 
-// Logout
 data class LogoutRequest(val token: String)
 data class LogoutResponse(val message: String)
 
-// Forgot password
 data class ForgotPasswordRequest(val email: String)
 data class ForgotPasswordResponse(val message: String)
 
