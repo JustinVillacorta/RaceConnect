@@ -24,6 +24,7 @@ data class users(
     @SerializedName("favorite_marketplace_items")
     @JsonAdapter(FavoriteMarketplaceItemsAdapter::class)
     val favoriteMarketplaceItems: List<String>?,
+    @JsonAdapter(FriendsListDeserializer::class)
     @SerializedName("friends_list") val friendsList: List<Int>?,
     @SerializedName("friend_privacy") val friendPrivacy: String?,
     @SerializedName("last_online") val lastOnline: String?,
@@ -33,6 +34,8 @@ data class users(
     @SerializedName("created_at") val createdAt: String?,
     @SerializedName("updated_at") val updatedAt: String?
 )
+
+
 
 class FavoriteCategoriesAdapter : JsonDeserializer<List<String>> {
     override fun deserialize(
@@ -64,6 +67,25 @@ class FavoriteMarketplaceItemsAdapter : JsonDeserializer<List<String>> {
             listOf(json.asString)
         } else {
             emptyList()
+        }
+    }
+}
+
+class FriendsListDeserializer : JsonDeserializer<List<Int>?> {
+    override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): List<Int>? {
+        return when {
+            json == null || json.isJsonNull -> null  // Handle null case
+            json.isJsonArray -> json.asJsonArray.mapNotNull { it.asIntOrNull() } // Handle List<Int>
+            json.isJsonPrimitive && json.asJsonPrimitive.isString -> emptyList() // Handle String case
+            else -> null
+        }
+    }
+
+    private fun JsonElement.asIntOrNull(): Int? {
+        return try {
+            this.asInt
+        } catch (e: Exception) {
+            null
         }
     }
 }
