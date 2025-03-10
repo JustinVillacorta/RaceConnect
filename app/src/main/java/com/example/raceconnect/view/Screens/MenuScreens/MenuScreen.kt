@@ -4,39 +4,14 @@ import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.ExitToApp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,7 +29,6 @@ import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModel
 
-// Your brand's red color
 private val BrandRed = Color(0xFFC62828)
 
 @Composable
@@ -68,19 +42,19 @@ fun ProfileScreen(
     onShowNewsFeedPreferences: () -> Unit,
     onShowListedItems: () -> Unit,
     onShowSettings: () -> Unit,
-    userPreferences: UserPreferences // Added to get loggedInUserId
+    userPreferences: UserPreferences
 ) {
     val profileData by profileDetailsViewModel.profileData.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     var showMenu by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    // Correctly collect the user Flow into a State
     val userState by userPreferences.user.collectAsState(initial = null)
-    val loggedInUserId = userState?.id ?: 0 // Safely access id from the State
+    val loggedInUserId = userState?.id ?: 0
 
-    // Load profile data when the screen is composed
     LaunchedEffect(Unit) {
-        if (profileData == null) {
+        if (profileData == null && loggedInUserId != 0) {
             Log.d("ProfileScreen", "Loading profile data on screen start")
             profileDetailsViewModel.loadProfileData()
         }
@@ -156,7 +130,7 @@ fun ProfileScreen(
                         .padding(top = 16.dp)
                         .clickable {
                             if (loggedInUserId != 0) {
-                                navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) // Navigate to UserProfileScreen
+                                navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId))
                             }
                         }
                 ) {
@@ -207,13 +181,11 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // GRID OF MENU CARDS
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                 ) {
-                    // First row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
@@ -221,7 +193,7 @@ fun ProfileScreen(
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_account_circle_24,
                             text = "Profile Details",
-                            onClick = { navController.navigate(NavRoutes.ProfileDetails.route) } // Still for editing
+                            onClick = { navController.navigate(NavRoutes.ProfileDetails.route) }
                         )
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_favorite_24,
@@ -232,7 +204,6 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Second row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
@@ -251,7 +222,6 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Third row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
@@ -275,8 +245,17 @@ fun ProfileScreen(
                     TextButton(
                         onClick = {
                             showLogoutDialog = false
-                            viewModel.logout(menuViewModel) {
-                                onLogoutSuccess()
+                            viewModel.logout(menuViewModel) { success, error ->
+                                if (success) {
+                                    profileDetailsViewModel.apply {
+                                        _profileData.value = null
+                                        _isEditMode.value = false
+                                    }
+                                    onLogoutSuccess()
+                                } else {
+                                    Log.e("ProfileScreen", "Logout failed: $error")
+                                    // Optionally show a snackbar or toast with the error
+                                }
                             }
                         }
                     ) {
@@ -288,6 +267,23 @@ fun ProfileScreen(
                         Text("No")
                     }
                 }
+            )
+        }
+
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center),
+                color = BrandRed
+            )
+        }
+
+        errorMessage?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
             )
         }
     }

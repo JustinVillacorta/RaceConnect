@@ -166,33 +166,49 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
     }
 
 
-    fun logout(menuViewModel: MenuViewModel, onLogoutResult: () -> Unit) {
+    fun logout(menuViewModel: MenuViewModel, onLogoutResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             try {
+                isLoading.value = true
+                ErrorMessage.value = null
+
                 val token = withContext(Dispatchers.IO) { userPreferences.getToken() }
-                if (!token.isNullOrEmpty()) {
+                val logoutSuccessful = if (!token.isNullOrEmpty()) {
                     val authHeader = "Bearer $token"
                     Log.d("AuthenticationViewModel", "Sending logout request with Authorization: $authHeader")
                     val response = RetrofitInstance.api.logout(authHeader)
                     if (response.isSuccessful) {
-                        userPreferences.clearUser() // Ensure clearUser() clears all stored data
-                        loggedInUser.value = null
-                        menuViewModel.clearData() // Clear MenuViewModel cached state
-                        Log.d("AuthenticationViewModel", "✅ User logged out successfully")
-                        onLogoutResult() // Trigger navigation
+                        Log.d("AuthenticationViewModel", "✅ Server logout successful")
+                        true
                     } else {
                         val errorResponse = response.errorBody()?.string() ?: "Unknown error"
                         Log.e("AuthenticationViewModel", "❌ Logout failed: $errorResponse")
+                        ErrorMessage.value = "Logout failed: $errorResponse"
+                        false
                     }
                 } else {
-                    Log.d("AuthenticationViewModel", "⚠️ No token found, clearing session")
+                    Log.d("AuthenticationViewModel", "⚠️ No token found, proceeding with local cleanup")
+                    true // Treat as successful if no token exists (already logged out)
+                }
+
+                if (logoutSuccessful) {
+                    // Clear UserPreferences
                     userPreferences.clearUser()
+                    // Clear local state
                     loggedInUser.value = null
+                    // Clear MenuViewModel data
                     menuViewModel.clearData()
-                    onLogoutResult() // Trigger navigation
+                    Log.d("AuthenticationViewModel", "✅ User session fully cleared")
+                    onLogoutResult(true, null) // Success, no error message
+                } else {
+                    onLogoutResult(false, ErrorMessage.value) // Failure with error message
                 }
             } catch (e: Exception) {
                 Log.e("AuthenticationViewModel", "❌ Error during logout", e)
+                ErrorMessage.value = "Logout error: ${e.message}"
+                onLogoutResult(false, ErrorMessage.value)
+            } finally {
+                isLoading.value = false
             }
         }
     }

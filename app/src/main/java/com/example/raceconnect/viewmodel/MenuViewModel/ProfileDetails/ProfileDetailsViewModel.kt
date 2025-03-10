@@ -20,7 +20,7 @@ import java.io.File
 
 class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : ViewModel() {
 
-    private val _profileData = MutableStateFlow<users?>(null)
+    internal val _profileData = MutableStateFlow<users?>(null)
     val profileData: StateFlow<users?> = _profileData
 
     private val _isLoading = MutableStateFlow(false)
@@ -29,22 +29,38 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
-    private val _isEditMode = MutableStateFlow(false)
+    internal val _isEditMode = MutableStateFlow(false)
     val isEditMode: StateFlow<Boolean> = _isEditMode
 
     private val apiService: ApiService = RetrofitInstance.api
+
+    init {
+        // Automatically sync with UserPreferences.user Flow
+        viewModelScope.launch {
+            userPreferences.user.collect { user ->
+                _profileData.value = user
+                if (user == null) {
+                    _isEditMode.value = false
+                    Log.d("ProfileDetailsViewModel", "User logged out, profile data cleared")
+                } else {
+                    Log.d("ProfileDetailsViewModel", "Profile data synced from preferences: $user")
+                }
+            }
+        }
+    }
 
     fun loadProfileData() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val userId = userPreferences.getUserId() ?: run {
-                    _errorMessage.value = "No user ID found in preferences"
-                    Log.w("ProfileDetailsViewModel", "No user ID found in preferences")
-                    _isLoading.value = false
+                val userId = userPreferences.getUserId()
+                if (userId == null) {
+                    _profileData.value = null
+                    _errorMessage.value = "No user logged in"
+                    Log.w("ProfileDetailsViewModel", "No user ID found, cannot load profile")
                     return@launch
                 }
-                Log.d("ProfileDetailsViewModel", "Loading profile data for logged-in userId: $userId")
+                Log.d("ProfileDetailsViewModel", "Loading profile data for userId: $userId")
                 val response = apiService.getUser(userId)
                 if (response.isSuccessful) {
                     val user = response.body()
