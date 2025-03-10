@@ -74,9 +74,9 @@ class FavoriteMarketplaceItemsAdapter : JsonDeserializer<List<String>> {
 class FriendsListDeserializer : JsonDeserializer<List<Int>?> {
     override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): List<Int>? {
         return when {
-            json == null || json.isJsonNull -> null  // Handle null case
-            json.isJsonArray -> json.asJsonArray.mapNotNull { it.asIntOrNull() } // Handle List<Int>
-            json.isJsonPrimitive && json.asJsonPrimitive.isString -> emptyList() // Handle String case
+            json == null || json.isJsonNull -> null  // If null, return null
+            json.isJsonArray -> json.asJsonArray.mapNotNull { it.asIntOrNull() } // If array, parse it
+            json.isJsonPrimitive && json.asJsonPrimitive.isString -> emptyList() // If string, return empty list
             else -> null
         }
     }
