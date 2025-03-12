@@ -1,7 +1,6 @@
 package com.example.raceconnect.view
 
 import android.content.Context
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,11 +21,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Notification
-import com.example.raceconnect.model.users
 import com.example.raceconnect.network.RetrofitInstance
+import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NotificationViewModel
 import com.example.raceconnect.viewmodel.NotificationViewModelFactory
@@ -34,7 +36,7 @@ import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationsScreen(context: Context) {
+fun NotificationsScreen(context: Context, navController: NavController) {
     val userPreferences = UserPreferences(context)
     val scope = rememberCoroutineScope()
     var userId by remember { mutableStateOf<Int?>(null) }
@@ -71,7 +73,6 @@ fun NotificationsScreen(context: Context) {
 
     LaunchedEffect(userId) {
         userId?.let { viewModel.fetchNotifications(it) }
-        Log.d("NotificationsScreen", "Initial notifications: $notifications")
     }
 
     Scaffold(
@@ -107,11 +108,26 @@ fun NotificationsScreen(context: Context) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(items = notifications, key = { it.id }) { notification ->
-                        Log.d("NotificationsScreen", "Rendering notification: $notification")
                         NotificationItem(
                             notification = notification,
-                            onMarkAsRead = { viewModel.markAsRead(notification.id) },
-                            onDelete = { viewModel.deleteNotification(notification.id) }
+                            onMarkAsRead = {
+                                viewModel.markAsRead(notification.id)
+                            },
+                            onDelete = { viewModel.deleteNotification(notification.id) },
+                            onClick = {
+                                if (!notification.isRead) {
+                                    viewModel.markAsRead(notification.id)
+                                }
+                                notification.postId?.let { postId ->
+                                    if (notification.repostId != null) {
+                                        // Navigate to repost route
+                                        navController.navigate(NavRoutes.Repost.createRoute(postId, notification.repostId!!))
+                                    } else {
+                                        // Navigate to regular post route
+                                        navController.navigate(NavRoutes.Post.createRoute(postId))
+                                    }
+                                }
+                            }
                         )
                     }
                 }
@@ -124,12 +140,14 @@ fun NotificationsScreen(context: Context) {
 fun NotificationItem(
     notification: Notification,
     onMarkAsRead: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(if (notification.isRead) Color(0xFFF5F5F5) else Color(0xFFFFEAEA))
+            .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -142,16 +160,12 @@ fun NotificationItem(
         Spacer(modifier = Modifier.width(16.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Remove "User ${notification.userId}" and keep only the content
-                Text(
-                    text = notification.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-            // Remove the "Type: ${notification.type}" text
+            Text(
+                text = notification.content,
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            )
         }
 
         Column(horizontalAlignment = Alignment.End) {
@@ -161,19 +175,20 @@ fun NotificationItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.End
             )
-            if (!notification.isRead) {
-                TextButton(onClick = onMarkAsRead) {
-                    Text("Mark as Read")
+            Row {
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
-            }
-            TextButton(onClick = onDelete) {
-                Text("Delete")
             }
         }
     }
 }
 
-private fun formatTimestamp(date: Date): String {
+internal fun formatTimestamp(date: Date): String {
     val diff = Date().time - date.time
     return when {
         diff < 60_000 -> "Just now"

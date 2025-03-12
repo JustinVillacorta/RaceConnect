@@ -20,6 +20,9 @@ class NotificationViewModel(private val apiService: ApiService = RetrofitInstanc
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _selectedPost = MutableStateFlow<NewsFeedDataClassItem?>(null)
+    val selectedPost: StateFlow<NewsFeedDataClassItem?> = _selectedPost.asStateFlow()
+
     fun fetchNotifications(userId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -65,7 +68,7 @@ class NotificationViewModel(private val apiService: ApiService = RetrofitInstanc
             try {
                 val response = apiService.createNotification(request)
                 if (response.isSuccessful) {
-                    fetchNotifications(request.userId) // Refresh notifications after creation
+                    fetchNotifications(request.userId)
                     _error.value = null
                 } else {
                     _error.value = "Failed to create notification: ${response.errorBody()?.string()}"
@@ -82,7 +85,7 @@ class NotificationViewModel(private val apiService: ApiService = RetrofitInstanc
                 val response = apiService.markAsRead(notificationId)
                 if (response.isSuccessful) {
                     _notifications.value = _notifications.value.map {
-                        if (it.id == notificationId) it.copy(isReadInt = 1) else it // Update isReadInt
+                        if (it.id == notificationId) it.copy(isReadInt = 1) else it
                     }
                     _error.value = null
                 } else {
@@ -106,6 +109,25 @@ class NotificationViewModel(private val apiService: ApiService = RetrofitInstanc
                 }
             } catch (e: Exception) {
                 _error.value = "Error: ${e.message}"
+            }
+        }
+    }
+
+    fun fetchPost(postId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val response = apiService.getPostById(postId)
+                if (response.isSuccessful) {
+                    _selectedPost.value = response.body()
+                    _error.value = null
+                } else {
+                    _error.value = "Failed to fetch post: ${response.code()} - ${response.errorBody()?.string()}"
+                }
+            } catch (e: Exception) {
+                _error.value = "Error fetching post: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }

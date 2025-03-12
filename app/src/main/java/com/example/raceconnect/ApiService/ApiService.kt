@@ -1,6 +1,7 @@
 package com.example.raceconnect.network
 
 import com.example.raceconnect.model.*
+import okhttp3.Call
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -54,12 +55,17 @@ interface ApiService {
         @Query("offset") offset: Int
     ): Response<List<NewsFeedDataClassItem>>
 
-    @GET("posts/{userId}")
+    @GET("posts")
     suspend fun getPostsByUserId(
-        @Path("userId") userId: Int,
-        @Query("limit") limit: Int,
-        @Query("offset") offset: Int
+        @Query("user_id") userId: Int,
+        @Query("limit") limit: Int = 10,
+        @Query("offset") offset: Int = 0
     ): Response<List<NewsFeedDataClassItem>>
+
+    @GET("posts/{id}")
+    suspend fun getPostById(
+        @Path("id") id: Int
+    ): Response<NewsFeedDataClassItem>
 
     @Multipart
     @POST("posts")
@@ -80,8 +86,8 @@ interface ApiService {
     @POST("post-likes")
     suspend fun likePost(@Body requestBody: Map<String, Int>): Response<ResponseBody>
 
-    @DELETE("post-likes/{id}")
-    suspend fun unlikePost(@Path("id") postLikeId: Int): Response<ResponseBody>
+    @DELETE("likes/{id}")
+    suspend fun unlikePost(@Path("id") likeId: Int): Response<ResponseBody>
 
     @GET("post-likes")
     suspend fun getPostLikes(@Query("post_id") postId: Int): Response<List<PostLike>>
@@ -199,6 +205,9 @@ interface ApiService {
         @Query("limit") limit: Int,
         @Query("offset") offset: Int
     ): Response<List<Repost>>
+
+    @GET("reposts/{postId}")
+    suspend fun getRepostsByPostId(@Path("postId") postId: Int): Response<List<Repost>>
 
     @DELETE("post-reposts/{id}")
     suspend fun deleteRepost(

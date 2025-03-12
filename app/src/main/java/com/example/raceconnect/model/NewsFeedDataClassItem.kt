@@ -9,7 +9,7 @@ data class NewsFeedDataClassItem(
     val username: String? = null,
     val title: String?,
     val content: String,
-    @SerializedName("img_url") val imgUrl: String? = null, // Kept for backward compatibility if API uses it
+    @SerializedName("img_url") val imgUrl: String? = null,
     val like_count: Int = 0,
     val comment_count: Int = 0,
     val repost_count: Int = 0,
@@ -17,12 +17,17 @@ data class NewsFeedDataClassItem(
     val privacy: String = "Public",
     val type: String = "text",
     @SerializedName("post_type") val postType: String = "normal",
+    val status: String? = null, // Added
     val created_at: String = "",
     val updated_at: String = "",
+    val report: String? = null, // Added
+    val archived_at: String? = null, // Added
+    val profile_picture: String? = null, // Added
+    val images: List<String>? = null,
     val isLiked: Boolean = false,
-    val images: List<String>? = null, // Added to match API response
-    val isRepost: Boolean? = false,  // Default to false if null
-    val original_post_id: Int? = null
+    val isRepost: Boolean? = false,
+    val original_post_id: Int? = null,
+    val quote: String? = null
 )
 
 data class PostResponse(
