@@ -193,7 +193,8 @@ interface ApiService {
 
     @GET("post-reposts")
     suspend fun getRepostsByPostId(
-
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int
     ): Response<List<Repost>>
 
     @DELETE("post-reposts/{id}")

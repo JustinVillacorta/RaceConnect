@@ -8,18 +8,19 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.CreateRepostRequest
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.network.RetrofitInstance
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -43,19 +44,21 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
     private val apiService = RetrofitInstance.api
     var isInitialRefreshDone = false
 
-    // Store the paging source factory to allow invalidation
-    private val pagingSourceFactory: () -> PagingSource<Int, NewsFeedDataClassItem> = { NewsFeedPagingSourceAllPosts(apiService) }
-    private val pager = Pager(
-        config = PagingConfig(pageSize = 10, prefetchDistance = 2, enablePlaceholders = false),
-        pagingSourceFactory = pagingSourceFactory
-    )
+    // Get the current user's ID once during initialization
+    private val currentUserId: Int by lazy {
+        runBlocking { userPreferences.user.first()?.id ?: -1 }
+    }
 
-    val postsFlow = pager.flow.cachedIn(viewModelScope)
+    // Main news feed flow for the current user
+    val postsFlow: Flow<PagingData<NewsFeedDataClassItem>> = Pager(
+        config = PagingConfig(pageSize = 10, prefetchDistance = 2, enablePlaceholders = false),
+        pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService, currentUserId) }
+    ).flow.cachedIn(viewModelScope)
 
     init {
         viewModelScope.launch {
             postsFlow.collect { pagingData ->
-                Log.d("NewsFeedViewModel", "Collected new PagingData with ${pagingData.toString().length} items")
+                Log.d("NewsFeedViewModel", "Collected new PagingData with items")
             }
         }
     }
@@ -64,8 +67,11 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         viewModelScope.launch {
             _isRefreshing.value = true
             Log.d("NewsFeedViewModel", "✅ Refresh triggered")
-            // Invalidate the current PagingSource to trigger a refresh
-            pagingSourceFactory.invoke().invalidate()
+            // Invalidate the PagingSource to trigger a refresh
+            Pager(
+                config = PagingConfig(pageSize = 10, prefetchDistance = 2, enablePlaceholders = false),
+                pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService, currentUserId) }
+            ).flow.cachedIn(viewModelScope) // This recreates the Pager, effectively refreshing
             _isRefreshing.value = false
         }
     }
@@ -242,7 +248,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
             try {
                 val pager = Pager(
                     config = PagingConfig(pageSize = 10, enablePlaceholders = false),
-                    pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService)}
+                    pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService, userId) }
                 )
                 pager.flow.cachedIn(viewModelScope).collect { pagingData ->
                     userPostsFlow.value = pagingData
