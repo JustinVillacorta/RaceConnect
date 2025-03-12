@@ -18,11 +18,13 @@ import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 import okhttp3.Response
 
 
@@ -44,6 +46,61 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
 
     init {
         loadUser()
+        startUserStatusCheck()
+    }
+
+    // Periodically check user status
+    private fun startUserStatusCheck() {
+        viewModelScope.launch {
+            while (true) {
+                val user = loggedInUser.value
+                if (user != null) {
+                    checkUserStatus(user.id)
+                }
+                delay(TimeUnit.MINUTES.toMillis(1)) // Check every 5 minutes
+            }
+        }
+    }
+
+    // Check user status from server
+    private suspend fun checkUserStatus(userId: Int) {
+        try {
+            val response = RetrofitInstance.api.getUser(userId)
+            if (response.isSuccessful) {
+                val updatedUser = response.body()
+                if (updatedUser?.status == "Banned") {
+                    Log.d("AuthenticationViewModel", "User $userId is banned. Logging out.")
+                    forceLogoutDueToBan(updatedUser)
+                }
+            } else {
+                Log.e("AuthenticationViewModel", "Failed to fetch user status: ${response.errorBody()?.string()}")
+            }
+        } catch (e: Exception) {
+            Log.e("AuthenticationViewModel", "Error checking user status", e)
+        }
+    }
+
+    // Force logout when user is banned
+    private fun forceLogoutDueToBan(user: users) {
+        viewModelScope.launch {
+            val suspensionEndDate = user.suspensionEndDate
+            val message = if (suspensionEndDate != null) {
+                "Your account is suspended until $suspensionEndDate."
+            } else {
+                "Your account is permanently banned."
+            }
+            ErrorMessage.value = message
+            logout(
+                menuViewModel = null, // If not available, adjust accordingly
+                onLogoutResult = { success, error ->
+                    if (success) {
+                        Log.d("AuthenticationViewModel", "User logged out due to ban: $message")
+                    } else {
+                        Log.e("AuthenticationViewModel", "Logout failed: $error")
+                    }
+                }
+            )
+        }
     }
 
     // Validate Login and Save User Data
@@ -56,8 +113,8 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                 val response: LoginResponse = RetrofitInstance.api.login(loginRequest)
 
                 if (response.token != null && response.user != null) {
-                    if (response.user.status == "Banned") { // Check user.status instead of response.status
-                        val suspensionEndDate = response.user.suspensionEndDate // Use user.suspension_end_date
+                    if (response.user.status == "Banned") {
+                        val suspensionEndDate = response.user.suspensionEndDate
                         val message = if (suspensionEndDate != null) {
                             "Your account is suspended until $suspensionEndDate."
                         } else {
@@ -68,8 +125,6 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                     } else {
                         loggedInUser.value = response.user
                         Log.d("AuthenticationViewModel", "Login successful: ${loggedInUser.value}")
-
-                        // Save user data to DataStore
                         userPreferences.saveUser(
                             userId = response.user.id,
                             username = response.user.username,
@@ -176,45 +231,28 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
     }
 
 
-    fun logout(menuViewModel: MenuViewModel, onLogoutResult: (Boolean, String?) -> Unit) {
+    fun logout(menuViewModel: MenuViewModel?, onLogoutResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             try {
                 isLoading.value = true
                 ErrorMessage.value = null
-
                 val token = withContext(Dispatchers.IO) { userPreferences.getToken() }
                 val logoutSuccessful = if (!token.isNullOrEmpty()) {
                     val authHeader = "Bearer $token"
-                    Log.d("AuthenticationViewModel", "Sending logout request with Authorization: $authHeader")
                     val response = RetrofitInstance.api.logout(authHeader)
-                    if (response.isSuccessful) {
-                        Log.d("AuthenticationViewModel", "✅ Server logout successful")
-                        true
-                    } else {
-                        val errorResponse = response.errorBody()?.string() ?: "Unknown error"
-                        Log.e("AuthenticationViewModel", "❌ Logout failed: $errorResponse")
-                        ErrorMessage.value = "Logout failed: $errorResponse"
-                        false
-                    }
+                    response.isSuccessful
                 } else {
-                    Log.d("AuthenticationViewModel", "⚠️ No token found, proceeding with local cleanup")
-                    true // Treat as successful if no token exists (already logged out)
+                    true
                 }
-
                 if (logoutSuccessful) {
-                    // Clear UserPreferences
                     userPreferences.clearUser()
-                    // Clear local state
                     loggedInUser.value = null
-                    // Clear MenuViewModel data
-                    menuViewModel.clearData()
-                    Log.d("AuthenticationViewModel", "✅ User session fully cleared")
-                    onLogoutResult(true, null) // Success, no error message
+                    menuViewModel?.clearData()
+                    onLogoutResult(true, null)
                 } else {
-                    onLogoutResult(false, ErrorMessage.value) // Failure with error message
+                    onLogoutResult(false, ErrorMessage.value)
                 }
             } catch (e: Exception) {
-                Log.e("AuthenticationViewModel", "❌ Error during logout", e)
                 ErrorMessage.value = "Logout error: ${e.message}"
                 onLogoutResult(false, ErrorMessage.value)
             } finally {

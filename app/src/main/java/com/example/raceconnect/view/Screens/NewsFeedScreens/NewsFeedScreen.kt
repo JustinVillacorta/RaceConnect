@@ -38,6 +38,7 @@ import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -53,8 +54,10 @@ fun NewsFeedScreen(
     onShowProfileView: () -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
+    val authViewModel: AuthenticationViewModel = viewModel()
     val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val posts = viewModel.postsFlow.collectAsLazyPagingItems()
+    val errorMessage by authViewModel.ErrorMessage.collectAsState()
     var isRefreshing by remember { mutableStateOf(false) }
     val postLikes by viewModel.postLikes.collectAsState()
     val likeCounts by viewModel.likeCounts.collectAsState()
@@ -64,6 +67,17 @@ fun NewsFeedScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(errorMessage) {
+        if (errorMessage?.contains("banned", ignoreCase = true) == true) {
+            navController.navigate("login") { // Replace "login" with your login route
+                popUpTo(navController.graph.startDestinationId)
+                launchSingleTop = true
+            }
+            // Optionally show a dialog or toast with errorMessage
+            Log.d("NewsFeedScreen", "User logged out due to ban: $errorMessage")
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (!viewModel.isInitialRefreshDone) {
