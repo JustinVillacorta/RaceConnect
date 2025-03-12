@@ -86,6 +86,9 @@ interface ApiService {
     @GET("post-likes")
     suspend fun getPostLikes(@Query("post_id") postId: Int): Response<List<PostLike>>
 
+    @POST("reports")
+    suspend fun createReport(@Body report: ReportRequest): Response<ReportResponse>
+
     // Marketplace
     @GET("marketplace-items/{id}/images")
     suspend fun GetMarketplaceImage(@Path("id") itemId: Int): Response<List<MarketplaceImageResponse>>

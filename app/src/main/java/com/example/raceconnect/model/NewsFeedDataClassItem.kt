@@ -46,3 +46,15 @@ data class PostLike(
     @SerializedName("owner_id") val ownerId: Int,
     @SerializedName("created_at") val createdAt: String
 )
+
+data class ReportRequest(
+    @SerializedName("post_id") val post_id: Int?,
+    @SerializedName("marketplace_item_id") val marketplace_item_id: Int?,
+    @SerializedName("reporter_id") val reporter_id: Int,
+    @SerializedName("reason") val reason: String
+)
+
+data class ReportResponse(
+    val message: String,
+    val report_id: Int?
+)

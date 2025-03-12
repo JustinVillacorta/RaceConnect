@@ -112,7 +112,11 @@ fun RepostScreen(
                 onShowFullScreenImage = { /* Disabled in repost screen */ },
                 userPreferences = userPreferences,
                 onReportClick = { postId, reason, otherText ->
-                    viewModel.reportPost(postId, reason, otherText)
+                    viewModel.reportPost(postId, reason, otherText, onSuccess = {
+                        Log.d("NewsFeedScreen", "Post reported successfully")
+                    }, onFailure = { error ->
+                        Log.e("NewsFeedScreen", "Failed to report post: $error")
+                    })
                 },
                 onShowRepostScreen = { /* Disabled in repost screen */ },
                 onUserActionClick = { userId, action, otherText ->

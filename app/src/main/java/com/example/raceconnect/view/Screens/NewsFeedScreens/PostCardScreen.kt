@@ -1,29 +1,14 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,25 +17,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,13 +27,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.datastore.UserPreferences
@@ -84,7 +49,8 @@ fun PostCard(
     userPreferences: UserPreferences,
     onReportClick: (Int, String, String?) -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
-    onUserActionClick: (Int, String, String?) -> Unit
+    onUserActionClick: (Int, String, String?) -> Unit,
+    context: Context = LocalContext.current
 ) {
     var isLiked by remember { mutableStateOf(post.isLiked) }
     var likeCount by remember { mutableStateOf(post.like_count) }
@@ -93,9 +59,11 @@ fun PostCard(
     var showReportDialog by remember { mutableStateOf(false) }
     var showUserDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
-    val context = LocalContext.current
+    var selectedReason by remember { mutableStateOf("") }
+    var otherText by remember { mutableStateOf("") }
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id
+    var showFullScreenImage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(post.id) {
         viewModel.getPostImages(post.id)
@@ -169,7 +137,7 @@ fun PostCard(
                             .fillMaxWidth()
                             .padding(top = 8.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable { onShowFullScreenImage(imageUrls.first()) }
+                            .clickable { showFullScreenImage = imageUrls.first() }
                     ) {
                         AsyncImage(
                             model = imageUrls.first(),
@@ -249,88 +217,53 @@ fun PostCard(
     }
 
     if (showReportDialog) {
-        var selectedOption by remember { mutableStateOf("") }
-        var otherText by remember { mutableStateOf("") }
-
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
-            title = { Text(text = "Report Post") },
+            title = { Text("Report Post") },
             text = {
                 Column {
-                    Text(text = "Please select a reason for reporting this post:")
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
-                    reportOptions.forEach { option ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable { selectedOption = option },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = selectedOption == option,
-                                onClick = { selectedOption = option }
-                            )
-                            Text(
-                                text = option,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
+                    listOf("Not related", "Nudity", "Inappropriate", "Others").forEach { reason ->
+                        Row(Modifier.clickable { selectedReason = reason }) {
+                            RadioButton(selected = selectedReason == reason, onClick = { selectedReason = reason })
+                            Text(reason)
                         }
                     }
-
-                    if (selectedOption == "Others") {
-                        Spacer(modifier = Modifier.height(16.dp))
+                    if (selectedReason == "Others") {
                         TextField(
                             value = otherText,
                             onValueChange = { otherText = it },
-                            label = { Text("Please specify the reason") },
-                            modifier = Modifier.fillMaxWidth()
+                            label = { Text("Please specify") }
                         )
                     }
                 }
             },
             confirmButton = {
-                Text(
-                    text = "Confirm",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (selectedOption.isNotEmpty() &&
-                        (selectedOption != "Others" || otherText.isNotEmpty()))
-                        MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier
-                        .clickable {
-                            if (selectedOption.isNotEmpty()) {
-                                if (selectedOption == "Others" && otherText.isEmpty()) {
-                                    Toast.makeText(context,
-                                        "Please specify the reason",
-                                        Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context,
-                                        "Post reported!",
-                                        Toast.LENGTH_SHORT).show()
-                                    onReportClick(post.id, selectedOption,
-                                        if (selectedOption == "Others") otherText else null)
+                Button(
+                    onClick = {
+                        if (selectedReason.isNotEmpty()) {
+                            viewModel.reportPost(
+                                postId = post.id,
+                                reason = selectedReason,
+                                otherText = if (selectedReason == "Others") otherText else null,
+                                onSuccess = {
+                                    Toast.makeText(context, "Post reported successfully!", Toast.LENGTH_SHORT).show()
                                     showReportDialog = false
+                                },
+                                onFailure = { error ->
+                                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
                                 }
-                            }
+                            )
                         }
-                        .padding(8.dp)
-                )
+                    }
+                ) {
+                    Text("Submit")
+                }
             },
             dismissButton = {
-                Text(
-                    text = "Cancel",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .clickable { showReportDialog = false }
-                        .padding(8.dp)
-                )
-            },
-            shape = RoundedCornerShape(12.dp)
+                Button(onClick = { showReportDialog = false }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 
@@ -340,13 +273,11 @@ fun PostCard(
 
         AlertDialog(
             onDismissRequest = { showUserDialog = false },
-            title = { Text(text = "User Actions") },
+            title = { Text("User Actions") },
             text = {
                 Column {
-                    Text(text = "Please select an action for this user:")
+                    Text("Please select an action for this user:")
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    // Removed "Block User" and "Mute User", kept "Report User" and "Others"
                     val userOptions = listOf("Report User", "Others")
                     userOptions.forEach { option ->
                         Row(
@@ -367,7 +298,6 @@ fun PostCard(
                             )
                         }
                     }
-
                     if (selectedOption == "Others") {
                         Spacer(modifier = Modifier.height(16.dp))
                         TextField(
@@ -383,23 +313,17 @@ fun PostCard(
                 Text(
                     text = "Confirm",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (selectedOption.isNotEmpty() &&
-                        (selectedOption != "Others" || otherText.isNotEmpty()))
+                    color = if (selectedOption.isNotEmpty() && (selectedOption != "Others" || otherText.isNotEmpty()))
                         MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier
                         .clickable {
                             if (selectedOption.isNotEmpty()) {
                                 if (selectedOption == "Others" && otherText.isEmpty()) {
-                                    Toast.makeText(context,
-                                        "Please specify the action",
-                                        Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Please specify the action", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    Toast.makeText(context,
-                                        "User action performed: $selectedOption",
-                                        Toast.LENGTH_SHORT).show()
-                                    onUserActionClick(post.user_id, selectedOption,
-                                        if (selectedOption == "Others") otherText else null)
+                                    Toast.makeText(context, "User action performed: $selectedOption", Toast.LENGTH_SHORT).show()
+                                    onUserActionClick(post.user_id, selectedOption, if (selectedOption == "Others") otherText else null)
                                     showUserDialog = false
                                 }
                             }
@@ -420,6 +344,15 @@ fun PostCard(
             shape = RoundedCornerShape(12.dp)
         )
     }
+
+    if (showFullScreenImage != null) {
+        FullScreenImageViewer(
+            imageUrl = showFullScreenImage!!,
+            onDismiss = { showFullScreenImage = null },
+            onLikeClick = onLikeClick,
+            onCommentClick = onCommentClick
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -432,16 +365,7 @@ fun FullScreenImageViewer(
 ) {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
-    var isAnimating by remember { mutableStateOf(false) }
     var isLiked by remember { mutableStateOf(false) }
-    val velocityTracker = remember { VelocityTracker() }
-    var isDragging by remember { mutableStateOf(false) }
-
-    val animatedScale by animateFloatAsState(
-        targetValue = if (isAnimating) if (scale == 1f) 2.5f else 1f else scale,
-        animationSpec = tween(durationMillis = 200),
-        finishedListener = { isAnimating = false }
-    )
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -453,48 +377,28 @@ fun FullScreenImageViewer(
                 .padding(paddingValues)
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onDoubleTap = { centroid ->
-                            isAnimating = true
+                        onDoubleTap = {
                             scale = if (scale <= 1f) 2.5f else 1f
                             offset = Offset.Zero
-                        },
-                        onPress = {
-                            velocityTracker.resetTracking()
-                            isDragging = false
                         }
                     )
-
-                    detectTransformGestures { centroid, pan, zoom, rotation ->
-                        velocityTracker.addPosition(System.currentTimeMillis(), centroid)
-                        isDragging = true
-                        if (!isAnimating) {
-                            scale = (scale * zoom).coerceIn(0.5f, 5f)
-                            offset += pan
-                            val maxOffsetX = (size.width * (scale - 1)) / 2
-                            val maxOffsetY = (size.height * (scale - 1)) / 2
-                            offset = Offset(
-                                offset.x.coerceIn(-maxOffsetX, maxOffsetX),
-                                offset.y.coerceIn(-maxOffsetY, maxOffsetY)
-                            )
-                        }
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale = (scale * zoom).coerceIn(0.5f, 5f)
+                        offset += pan
+                        val maxOffsetX = (size.width * (scale - 1)) / 2
+                        val maxOffsetY = (size.height * (scale - 1)) / 2
+                        offset = Offset(
+                            offset.x.coerceIn(-maxOffsetX, maxOffsetX),
+                            offset.y.coerceIn(-maxOffsetY, maxOffsetY)
+                        )
                     }
-
                     detectDragGestures(
-                        onDrag = { change, dragAmount ->
-                            if (scale == 1f && !isAnimating) {
-                                offset += dragAmount
-                                velocityTracker.addPosition(System.currentTimeMillis(), change.position)
-                            }
+                        onDrag = { _, dragAmount ->
+                            if (scale == 1f) offset += dragAmount
                         },
                         onDragEnd = {
-                            val velocity = velocityTracker.calculateVelocity()
-                            if (isDragging && velocity.y > 1000f && scale == 1f) {
-                                onDismiss()
-                            } else {
-                                if (scale == 1f) offset = Offset.Zero
-                            }
-                            velocityTracker.resetTracking()
-                            isDragging = false
+                            if (offset.y > 200f && scale == 1f) onDismiss()
+                            else if (scale == 1f) offset = Offset.Zero
                         }
                     )
                 }
@@ -505,8 +409,8 @@ fun FullScreenImageViewer(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(
-                        scaleX = animatedScale,
-                        scaleY = animatedScale,
+                        scaleX = scale,
+                        scaleY = scale,
                         translationX = offset.x,
                         translationY = offset.y
                     ),
@@ -560,7 +464,6 @@ fun FullScreenImageViewer(
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
-
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier

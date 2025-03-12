@@ -12,6 +12,7 @@ import androidx.paging.cachedIn
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.CreateRepostRequest
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.model.ReportRequest
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.network.RetrofitInstance
 import kotlinx.coroutines.flow.Flow
@@ -209,21 +210,34 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         }
     }
 
-    fun reportPost(postId: Int, reason: String, otherText: String?) {
+    fun reportPost(
+        postId: Int,
+        reason: String,
+        otherText: String?,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
         viewModelScope.launch {
             try {
-                // Replace this with your actual API call to report the post
-                Log.d("NewsFeedViewModel", "Reporting post $postId for reason: $reason" +
-                        if (otherText != null) " - $otherText" else "")
-                // Example API call (pseudo-code):
-                // val response = apiService.reportPost(postId, reason, otherText)
-                // if (response.isSuccessful) {
-                //     Log.d("NewsFeedViewModel", "Post reported successfully")
-                // } else {
-                //     Log.e("NewsFeedViewModel", "Failed to report post")
-                // }
+                if (currentUserId == -1) {
+                    onFailure("User not logged in")
+                    return@launch
+                }
+                val finalReason = if (reason == "Others" && otherText != null) otherText else reason
+                val reportRequest = ReportRequest(
+                    post_id = postId,
+                    marketplace_item_id = null,
+                    reporter_id = currentUserId,
+                    reason = finalReason
+                )
+                val response = apiService.createReport(reportRequest)
+                if (response.isSuccessful) {
+                    onSuccess()
+                } else {
+                    onFailure("Failed to report post: ${response.errorBody()?.string()}")
+                }
             } catch (e: Exception) {
-                Log.e("NewsFeedViewModel", "Error reporting post: ${e.message}")
+                onFailure("Error reporting post: ${e.message}")
             }
         }
     }
