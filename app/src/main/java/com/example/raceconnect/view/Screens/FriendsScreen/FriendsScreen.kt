@@ -18,12 +18,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Friend
-import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.Red // Assuming Red is defined as #D32F2F or similar
 import com.example.raceconnect.viewmodel.FriendsViewModel
 import com.example.raceconnect.viewmodel.FriendsViewModelFactory
 
@@ -41,14 +42,26 @@ fun FriendsScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Friends",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Placeholder for profile picture (replace with actual user image if available)
+                        Image(
+                            painter = rememberAsyncImagePainter(model = ""),
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color.Gray)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Friends", // Replace with dynamic notification text if needed
+                            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 20.sp),
+                            color = Color.White
+                        )
+                    }
                 },
                 actions = {
-                    IconButton(onClick = { /* Handle search click */ }) {
+                    IconButton(onClick = { /* Handle search */ }) {
                         Icon(
                             painter = painterResource(id = R.drawable.baseline_search_24),
                             contentDescription = "Search",
@@ -67,14 +80,17 @@ fun FriendsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
+                .background(Color(0xFFF5F5F5)) // Light gray background
         ) {
             // Friend Requests Section
             item {
                 Text(
-                    text = "Friend requests",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.padding(top = 24.dp, bottom = 12.dp)
+                    text = "Friend Requests",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    ),
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
                 )
             }
             items(friends.filter { it.status == "Pending" }) { friend ->
@@ -85,15 +101,18 @@ fun FriendsScreen(
                 )
             }
 
-            // Explore Friends Section
+            // People You May Know Section
             item {
                 Text(
-                    text = "Explore friends",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.padding(top = 24.dp, bottom = 12.dp)
+                    text = "People You May Know",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    ),
+                    modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
                 )
             }
-            items(friends.filter { it.status == "NonFriends" }) { friend ->
+            items(friends.filter { it.status == "NonFriends" || it.status == "PendingSent" }) { friend ->
                 FriendItem(
                     friend = friend,
                     onAdd = { viewModel.addFriend(friend.id) },
@@ -115,78 +134,95 @@ fun FriendItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .background(Color.White, RoundedCornerShape(8.dp))
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        // Left side: Profile picture and username
         Row(verticalAlignment = Alignment.CenterVertically) {
             Image(
-                painter = rememberAsyncImagePainter(friend.profileImageUrl ?: ""), // Use actual URL or fallback
+                painter = rememberAsyncImagePainter(
+                    model = friend.profileImageUrl ?: "",
+                    placeholder = painterResource(id = R.drawable.ic_launcher_background),
+                    error = painterResource(id = R.drawable.ic_launcher_background)
+                ),
                 contentDescription = "Profile Picture",
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
                     .background(Color.Gray)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = friend.name,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
+                )
             )
         }
 
-        Column(horizontalAlignment = Alignment.End) {
-            when (friend.status) {
-                "Pending" -> {
+        // Right side: Vertically stacked buttons for Friend Requests
+        when (friend.status) {
+            "Pending" -> {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(8.dp) // Space between buttons
+                ) {
                     Button(
                         onClick = { onConfirm?.invoke() },
-                        modifier = Modifier.fillMaxWidth(0.7f),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFD32F2F),
+                            containerColor = Color(0xFFD32F2F), // Red from screenshot
                             contentColor = Color.White
-                        )
+                        ),
+                        modifier = Modifier
+                            .width(100.dp) // Fixed width for consistency
+                            .height(40.dp)
                     ) {
-                        Text("Confirm")
-
+                        Text("Confirm", fontSize = 14.sp)
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
                     Button(
                         onClick = { onCancel?.invoke() },
-                        modifier = Modifier.fillMaxWidth(0.7f),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE0E0E0),
+                            containerColor = Color(0xFFE0E0E0), // Light gray
                             contentColor = Color.Black
-                        )
+                        ),
+                        modifier = Modifier
+                            .width(100.dp) // Fixed width for consistency
+                            .height(40.dp)
                     ) {
-                        Text("Cancel")
+                        Text("Delete", fontSize = 14.sp)
                     }
                 }
-                "NonFriends" -> {
-                    Button(
-                        onClick = { onAdd?.invoke() },
-                        modifier = Modifier.fillMaxWidth(0.7f),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF9C0C13),
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text("Add friend")
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Button(
-                        onClick = { onRemove?.invoke() },
-                        modifier = Modifier.fillMaxWidth(0.7f),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE0E0E0),
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Text("Remove")
-                    }
+            }
+            "PendingSent" -> {
+                Button(
+                    onClick = { onRemove?.invoke() },
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE0E0E0), // Your light gray
+                        contentColor = Color.Black
+                    ),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("Pending", fontSize = 14.sp)
+                }
+            }
+            "NonFriends" -> {
+                Button(
+                    onClick = { onAdd?.invoke() },
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF9C0C13), // Your darker red from original code
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("Add Friend", fontSize = 14.sp)
                 }
             }
         }

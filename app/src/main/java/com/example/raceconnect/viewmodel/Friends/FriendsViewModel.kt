@@ -39,7 +39,8 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                             val id = friend["friend_id"]?.toString()?.replace(".0", "") ?: return@mapNotNull null
                             val name = friend["username"]?.toString() ?: return@mapNotNull null
                             val status = friend["status"]?.toString() ?: return@mapNotNull null
-                            Friend(id, name, status)
+                            val profileImageUrl = friend["profile_picture"]?.toString() // Map profile_picture
+                            Friend(id, name, status, profileImageUrl)
                         }
                         _friends.value = friendsList
                     } ?: run {
