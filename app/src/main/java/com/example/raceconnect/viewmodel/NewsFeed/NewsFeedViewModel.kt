@@ -12,6 +12,7 @@ import androidx.paging.cachedIn
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.CreateRepostRequest
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.model.Repost
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.network.NewsFeedPagingSourceUserPosts
 import com.example.raceconnect.network.RetrofitInstance
@@ -220,7 +221,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
             }
         }
     }
-
+// for repost ---------------------------------------------------------------------------------------------------------------------------
     fun repostPost(postId: Int, comment: String) {
         viewModelScope.launch {
             val userId = userPreferences.user.first()?.id ?: return@launch
@@ -243,6 +244,36 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
             }
         }
     }
+
+
+    private val _reposts = MutableStateFlow<Map<Int, List<Repost>>>(emptyMap())
+    val reposts: StateFlow<Map<Int, List<Repost>>> = _reposts.asStateFlow()
+
+    fun fetchReposts(postId: Int) {
+        if (_reposts.value.containsKey(postId)) {
+            Log.d("NewsFeedViewModel", "Reposts for post $postId already fetched, skipping...")
+            return // Avoid redundant API calls
+        }
+        viewModelScope.launch {
+            try {
+                val response = apiService.getRepostsByPostId(postId)
+                if (response.isSuccessful) {
+                    val repostList = response.body() ?: emptyList()
+                    Log.d("NewsFeedViewModel", "Fetched reposts for post $postId: $repostList")
+                    _reposts.value = _reposts.value.toMutableMap().apply {
+                        put(postId, repostList)
+                    }
+                    Log.d("NewsFeedViewModel", "✅ Successfully fetched reposts for post $postId")
+                } else {
+                    Log.e("NewsFeedViewModel", "❌ Failed to fetch reposts: ${response.code()} - ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "❌ Error fetching reposts for post $postId", e)
+            }
+        }
+    }
+
+// for repost------------------------------------------------------------------------------------------------------------------------------------------
 
     fun getPostsByUserId(userId: Int): StateFlow<PagingData<NewsFeedDataClassItem>> {
         val userPostsFlow = MutableStateFlow<PagingData<NewsFeedDataClassItem>>(PagingData.empty())

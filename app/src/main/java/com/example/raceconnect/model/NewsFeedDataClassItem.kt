@@ -20,7 +20,9 @@ data class NewsFeedDataClassItem(
     val created_at: String = "",
     val updated_at: String = "",
     val isLiked: Boolean = false,
-    val images: List<String>? = null // Added to match API response
+    val images: List<String>? = null, // Added to match API response
+    val isRepost: Boolean? = false,  // Default to false if null
+    val original_post_id: Int? = null
 )
 
 data class PostResponse(

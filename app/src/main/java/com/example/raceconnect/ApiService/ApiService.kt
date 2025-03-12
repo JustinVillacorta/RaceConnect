@@ -191,9 +191,9 @@ interface ApiService {
         @Body request: CreateRepostRequest
     ): Response<CreateRepostResponse>
 
-    @GET("post-reposts")
+    @GET("posts/{post_id}/post-reposts")
     suspend fun getRepostsByPostId(
-        @Query("post_id") postId: Int
+        @Path("post_id") postId: Int,
     ): Response<List<Repost>>
 
     @DELETE("post-reposts/{id}")

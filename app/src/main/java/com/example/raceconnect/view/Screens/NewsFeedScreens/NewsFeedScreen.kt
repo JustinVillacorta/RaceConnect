@@ -11,6 +11,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -40,7 +41,6 @@ import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
-import com.example.raceconnect.view.Screens.NewsFeedScreens.PostCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,32 +54,32 @@ fun NewsFeedScreen(
 ) {
     val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
     val posts = viewModel.postsFlow.collectAsLazyPagingItems()
-    var isRefreshing by remember { mutableStateOf(false) } // Local state for refresh control
+    var isRefreshing by remember { mutableStateOf(false) }
     val postLikes by viewModel.postLikes.collectAsState()
     val likeCounts by viewModel.likeCounts.collectAsState()
     val newPostTriggerState by viewModel.newPostTrigger.collectAsState()
     val user by userPreferences.user.collectAsState(initial = null)
+    val reposts by viewModel.reposts.collectAsState()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    // Log user ID for debugging
-    LaunchedEffect(user?.id) {
-        Log.d("NewsFeedScreen", "Logged-in user ID: ${user?.id}")
-    }
-
-    // Trigger initial refresh
+    // Initial refresh and user ID logging
     LaunchedEffect(Unit) {
         if (!viewModel.isInitialRefreshDone) {
             isRefreshing = true
             viewModel.refreshPosts()
             posts.refresh()
             viewModel.isInitialRefreshDone = true
+            Log.d("NewsFeedScreen", "Initial refresh triggered")
         }
     }
 
-    // Handle new post trigger
+    LaunchedEffect(user?.id) {
+        Log.d("NewsFeedScreen", "Logged-in user ID: ${user?.id}")
+    }
+
     LaunchedEffect(newPostTriggerState) {
         if (newPostTriggerState) {
             isRefreshing = true
@@ -113,7 +113,7 @@ fun NewsFeedScreen(
                 title = {
                     Text(
                         text = "RaceConnect",
-                        style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineMedium,
                         color = Color.White
                     )
                 },
@@ -139,6 +139,7 @@ fun NewsFeedScreen(
                 isRefreshing = true
                 viewModel.refreshPosts()
                 posts.refresh()
+                Log.d("NewsFeedScreen", "Swipe-to-refresh triggered")
             },
             modifier = Modifier.padding(paddingValues)
         ) {
@@ -157,58 +158,122 @@ fun NewsFeedScreen(
                 }
 
                 items(posts.itemCount) { index ->
-                    val post = posts[index] // Latest first (no reversal)
-                    post?.let {
-                        LaunchedEffect(it.id) {
-                            viewModel.fetchPostLikes(it.id)
-                            Log.d("NewsFeedScreen", "Post ID: ${it.id}, Created At: ${it.created_at}, Content: ${it.content}")
+                    val post = posts[index]
+                    post?.let { postItem ->
+                        // Fetch likes and reposts only once per post ID
+                        LaunchedEffect(postItem.id) {
+                            viewModel.fetchPostLikes(postItem.id)
+                            viewModel.fetchReposts(postItem.id)
                         }
 
-                        // Directly call PostCard without nesting a @Composable function
+                        // Log post details for debugging
+                        Log.d("NewsFeedScreen", "Rendering Post ID: ${postItem.id}, IsRepost: ${postItem.isRepost}, OriginalPostId: ${postItem.original_post_id}")
+
+                        // Render original post
                         PostCard(
-                            post = it.copy(
-                                isLiked = postLikes[it.id] ?: false,
-                                like_count = likeCounts[it.id] ?: it.like_count
+                            post = postItem.copy(
+                                isLiked = postLikes[postItem.id] ?: false,
+                                like_count = likeCounts[postItem.id] ?: postItem.like_count
                             ),
                             navController = navController,
                             viewModel = viewModel,
                             onCommentClick = {
-                                selectedPostId = it.id
+                                selectedPostId = postItem.id
                                 showBottomSheet = true
+                                Log.d("NewsFeedScreen", "Comment clicked for post ${postItem.id}")
                             },
                             onLikeClick = { isLiked ->
-                                if (isLiked) viewModel.toggleLike(it.id, it.user_id)
-                                else viewModel.unlikePost(it.id)
+                                if (isLiked) viewModel.toggleLike(postItem.id, postItem.user_id)
+                                else viewModel.unlikePost(postItem.id)
+                                Log.d("NewsFeedScreen", "Like toggled for post ${postItem.id} to $isLiked")
                             },
-                            onShowFullScreenImage = { imageUrl -> onShowFullScreenImage(imageUrl, it.id) },
+                            onShowFullScreenImage = { imageUrl ->
+                                onShowFullScreenImage(imageUrl, postItem.id)
+                            },
                             userPreferences = userPreferences,
-                            onReportClick = { viewModel.reportPost(it.id) },
+                            onReportClick = {
+                                viewModel.reportPost(postItem.id)
+                                Log.d("NewsFeedScreen", "Report clicked for post ${postItem.id}")
+                            },
                             onShowRepostScreen = onShowRepostScreen
                         )
+
+                        // Render reposts efficiently
+                        val repostList = reposts[postItem.id] ?: emptyList()
+                        repostList.forEach { repost ->
+                            val repostItem = remember(repost.id) {
+                                NewsFeedDataClassItem(
+                                    id = repost.id,
+                                    user_id = repost.userId,
+                                    content = repost.quote ?: "",
+                                    created_at = repost.createdAt,
+                                    isRepost = true,
+                                    original_post_id = postItem.id,
+                                    like_count = 0, // Fetch if needed
+                                    comment_count = 0,
+                                    repost_count = 0,
+                                    category = postItem.category,
+                                    privacy = postItem.privacy,
+                                    type = postItem.type,
+                                    postType = postItem.postType,
+                                    title = postItem.title
+                                )
+                            }
+                            RepostCard(
+                                repost = repostItem.copy(
+                                    isLiked = postLikes[repostItem.id] ?: false,
+                                    like_count = likeCounts[repostItem.id] ?: repostItem.like_count
+                                ),
+                                originalPost = postItem,
+                                navController = navController,
+                                viewModel = viewModel,
+                                onCommentClick = {
+                                    selectedPostId = repostItem.id
+                                    showBottomSheet = true
+                                    Log.d("NewsFeedScreen", "Comment clicked for repost ${repostItem.id}")
+                                },
+                                onLikeClick = { isLiked ->
+                                    if (isLiked) viewModel.toggleLike(repostItem.id, repostItem.user_id)
+                                    else viewModel.unlikePost(repostItem.id)
+                                    Log.d("NewsFeedScreen", "Like toggled for repost ${repostItem.id} to $isLiked")
+                                },
+                                onShowFullScreenImage = { imageUrl ->
+                                    onShowFullScreenImage(imageUrl, repostItem.id)
+                                },
+                                userPreferences = userPreferences,
+                                onReportClick = {
+                                    viewModel.reportPost(repostItem.id)
+                                    Log.d("NewsFeedScreen", "Report clicked for repost ${repostItem.id}")
+                                },
+                                onShowRepostScreen = onShowRepostScreen,
+                                reposts = reposts
+                            )
+                        }
                     }
                 }
 
-                // Handle initial and append load states
+                // Loading and error states
                 posts.apply {
                     when (loadState.refresh) {
                         is LoadState.Loading -> {
                             item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     CircularProgressIndicator()
                                 }
                             }
                         }
-
                         is LoadState.Error -> {
                             item {
                                 Text(
-                                    text = "Error loading posts: ${(loadState.refresh as LoadState.Error).error.message}",
+                                    text = "Error: ${(loadState.refresh as LoadState.Error).error.message}",
                                     color = Color.Red,
                                     modifier = Modifier.padding(16.dp)
                                 )
                             }
                         }
-
                         is LoadState.NotLoading -> {
                             if (posts.itemCount == 0) {
                                 item {
@@ -219,10 +284,6 @@ fun NewsFeedScreen(
                                     )
                                 }
                             }
-                            // Stop refreshing when loading is complete
-                            /**LaunchedEffect(Unit) {
-                                isRefreshing = false
-                            }**/
                         }
                     }
                     when (loadState.append) {
@@ -233,7 +294,11 @@ fun NewsFeedScreen(
                         }
                         is LoadState.Error -> {
                             item {
-                                Text(text = "Error loading more posts", color = Color.Red, modifier = Modifier.padding(16.dp))
+                                Text(
+                                    text = "Error loading more posts",
+                                    color = Color.Red,
+                                    modifier = Modifier.padding(16.dp)
+                                )
                             }
                         }
                         else -> {}
