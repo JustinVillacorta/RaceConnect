@@ -124,7 +124,9 @@ data class LoginResponse(
     val success: Boolean,
     val message: String,
     val user: users?,
-    val token: String?
+    val token: String?,
+    val status: String?,
+    val suspension_end_date: String?
 )
 
 data class SignupRequest(

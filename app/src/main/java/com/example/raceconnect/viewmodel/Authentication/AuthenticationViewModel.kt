@@ -56,37 +56,47 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                 val response: LoginResponse = RetrofitInstance.api.login(loginRequest)
 
                 if (response.token != null && response.user != null) {
-                    loggedInUser.value = response.user
-                    Log.d("AuthenticationViewModel", "Login successful: ${loggedInUser.value}")
+                    if (response.user.status == "Banned") { // Check user.status instead of response.status
+                        val suspensionEndDate = response.user.suspensionEndDate // Use user.suspension_end_date
+                        val message = if (suspensionEndDate != null) {
+                            "Your account is suspended until $suspensionEndDate."
+                        } else {
+                            "Your account is permanently banned."
+                        }
+                        ErrorMessage.value = message
+                        Log.d("AuthenticationViewModel", message)
+                    } else {
+                        loggedInUser.value = response.user
+                        Log.d("AuthenticationViewModel", "Login successful: ${loggedInUser.value}")
 
-                    // Save user data to DataStore with all relevant fields
-                    userPreferences.saveUser(
-                        userId = response.user.id,
-                        username = response.user.username,
-                        email = response.user.email,
-                        token = response.token,
-                        birthdate = response.user.birthdate,
-                        number = response.user.number,
-                        address = response.user.address,
-                        age = response.user.age,
-                        profilePicture = response.user.profilePicture,
-                        bio = response.user.bio,
-                        favoriteCategories = response.user.favoriteCategories?.joinToString(","),
-                        favoriteMarketplaceItems = response.user.favoriteMarketplaceItems?.joinToString(","),
-                        friendsList = response.user.friendsList?.joinToString(","),
-                        friendPrivacy = response.user.friendPrivacy,
-                        lastOnline = response.user.lastOnline,
-                        status = response.user.status,
-                        report = response.user.report,
-                        suspensionEndDate = response.user.suspensionEndDate,
-                        createdAt = response.user.createdAt,
-                        updatedAt = response.user.updatedAt
-                    )
+                        // Save user data to DataStore
+                        userPreferences.saveUser(
+                            userId = response.user.id,
+                            username = response.user.username,
+                            email = response.user.email,
+                            token = response.token,
+                            birthdate = response.user.birthdate,
+                            number = response.user.number,
+                            address = response.user.address,
+                            age = response.user.age,
+                            profilePicture = response.user.profilePicture,
+                            bio = response.user.bio,
+                            favoriteCategories = response.user.favoriteCategories?.joinToString(","),
+                            favoriteMarketplaceItems = response.user.favoriteMarketplaceItems?.joinToString(","),
+                            friendsList = response.user.friendsList?.joinToString(","),
+                            friendPrivacy = response.user.friendPrivacy,
+                            lastOnline = response.user.lastOnline,
+                            status = response.user.status,
+                            report = response.user.report,
+                            suspensionEndDate = response.user.suspensionEndDate,
+                            createdAt = response.user.createdAt,
+                            updatedAt = response.user.updatedAt
+                        )
+                    }
                 } else {
                     ErrorMessage.value = response.message ?: "Login failed"
                     Log.d("AuthenticationViewModel", "Login failed: ${response.message}")
                 }
-
             } catch (e: Exception) {
                 ErrorMessage.value = e.message ?: "An unexpected error occurred"
                 Log.e("AuthenticationViewModel", "Error during login", e)

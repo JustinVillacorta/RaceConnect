@@ -35,13 +35,17 @@ import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 @Composable
 fun LoginScreen(
     viewModel: AuthenticationViewModel,
-    onLoginClick: (String, String) -> Unit,
+    onLoginClick: (String, String) -> Unit = { username: String, password: String ->
+        viewModel.validateLogin(username, password)
+    },
     onSignupNavigate: () -> Unit
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
     var isPasswordVisible by remember { mutableStateOf(false) }
+
+    val errorMessage by viewModel.ErrorMessage.collectAsState()
 
     // In your LoginScreen:
     var showForgotPasswordDialog by remember { mutableStateOf(false) }
@@ -174,6 +178,14 @@ fun LoginScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    errorMessage?.let {
+                        Text(
+                            text = it,
+                            color = Color.Red,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
 
                     // Log in button in red
                     Button(
