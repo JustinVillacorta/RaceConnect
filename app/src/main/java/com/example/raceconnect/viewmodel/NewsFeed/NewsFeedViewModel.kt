@@ -8,13 +8,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.CreateRepostRequest
 import com.example.raceconnect.model.NewsFeedDataClassItem
-import com.example.raceconnect.model.Repost
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
-import com.example.raceconnect.network.NewsFeedPagingSourceUserPosts
 import com.example.raceconnect.network.RetrofitInstance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,9 +31,6 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
     val postLikes: StateFlow<Map<Int, Boolean>> = _postLikes.asStateFlow()
     val likeCounts: StateFlow<Map<Int, Int>> = _likeCounts.asStateFlow()
 
-    private val _posts = MutableStateFlow<PagingData<NewsFeedDataClassItem>>(PagingData.empty())
-    val posts: StateFlow<PagingData<NewsFeedDataClassItem>> = _posts.asStateFlow()
-
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
@@ -45,24 +41,21 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
     val postImages: StateFlow<Map<Int, List<String>>> = _postImages.asStateFlow()
 
     private val apiService = RetrofitInstance.api
-
-    // Flag to prevent multiple initial refreshes
     var isInitialRefreshDone = false
 
-    // Define Pager with pagingSourceFactory
+    // Store the paging source factory to allow invalidation
+    private val pagingSourceFactory: () -> PagingSource<Int, NewsFeedDataClassItem> = { NewsFeedPagingSourceAllPosts(apiService) }
     private val pager = Pager(
         config = PagingConfig(pageSize = 10, prefetchDistance = 2, enablePlaceholders = false),
-        pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService) }
+        pagingSourceFactory = pagingSourceFactory
     )
 
-    // Expose the Pager flow directly, cached in ViewModel scope
     val postsFlow = pager.flow.cachedIn(viewModelScope)
 
     init {
-        // Collect the Pager flow once during initialization
         viewModelScope.launch {
             postsFlow.collect { pagingData ->
-                _posts.value = pagingData
+                Log.d("NewsFeedViewModel", "Collected new PagingData with ${pagingData.toString().length} items")
             }
         }
     }
@@ -71,7 +64,9 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         viewModelScope.launch {
             _isRefreshing.value = true
             Log.d("NewsFeedViewModel", "✅ Refresh triggered")
-            //pager.refresh() // Invalidate and refresh the Pager
+            // Invalidate the current PagingSource to trigger a refresh
+            pagingSourceFactory.invoke().invalidate()
+            _isRefreshing.value = false
         }
     }
 
@@ -105,7 +100,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
 
                 if (response.isSuccessful) {
                     _newPostTrigger.value = true
-                    refreshPosts() // Trigger refresh after successful post
+                    refreshPosts()
                 } else {
                     Log.e("NewsFeedViewModel", "❌ Failed to create post: ${response.errorBody()?.string()}")
                 }
@@ -132,7 +127,6 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
     fun getPostImages(postId: Int) {
         viewModelScope.launch {
             try {
-                Log.d("NewsFeedViewModel", "Fetching images for post ID: $postId")
                 val response = apiService.GetPostImg(postId)
                 if (response.isSuccessful) {
                     val postResponses = response.body() ?: emptyList()
@@ -147,9 +141,6 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
                 }
             } catch (e: Exception) {
                 Log.e("NewsFeedViewModel", "Error fetching post images", e)
-                _postImages.value = _postImages.value.toMutableMap().apply {
-                    this[postId] = emptyList()
-                }
             }
         }
     }
@@ -221,7 +212,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
             }
         }
     }
-// for repost ---------------------------------------------------------------------------------------------------------------------------
+
     fun repostPost(postId: Int, comment: String) {
         viewModelScope.launch {
             val userId = userPreferences.user.first()?.id ?: return@launch
@@ -234,7 +225,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
                 val response = apiService.createRepost(request)
                 if (response.isSuccessful) {
                     _newPostTrigger.value = true
-                    refreshPosts() // Trigger refresh after successful repost
+                    refreshPosts()
                     Log.d("NewsFeedViewModel", "✅ Successfully reposted post $postId")
                 } else {
                     Log.e("NewsFeedViewModel", "❌ Failed to repost: ${response.errorBody()?.string()}")
@@ -245,43 +236,13 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         }
     }
 
-
-    private val _reposts = MutableStateFlow<Map<Int, List<Repost>>>(emptyMap())
-    val reposts: StateFlow<Map<Int, List<Repost>>> = _reposts.asStateFlow()
-
-    fun fetchReposts(postId: Int) {
-        if (_reposts.value.containsKey(postId)) {
-            Log.d("NewsFeedViewModel", "Reposts for post $postId already fetched, skipping...")
-            return // Avoid redundant API calls
-        }
-        viewModelScope.launch {
-            try {
-                val response = apiService.getRepostsByPostId(postId)
-                if (response.isSuccessful) {
-                    val repostList = response.body() ?: emptyList()
-                    Log.d("NewsFeedViewModel", "Fetched reposts for post $postId: $repostList")
-                    _reposts.value = _reposts.value.toMutableMap().apply {
-                        put(postId, repostList)
-                    }
-                    Log.d("NewsFeedViewModel", "✅ Successfully fetched reposts for post $postId")
-                } else {
-                    Log.e("NewsFeedViewModel", "❌ Failed to fetch reposts: ${response.code()} - ${response.errorBody()?.string()}")
-                }
-            } catch (e: Exception) {
-                Log.e("NewsFeedViewModel", "❌ Error fetching reposts for post $postId", e)
-            }
-        }
-    }
-
-// for repost------------------------------------------------------------------------------------------------------------------------------------------
-
     fun getPostsByUserId(userId: Int): StateFlow<PagingData<NewsFeedDataClassItem>> {
         val userPostsFlow = MutableStateFlow<PagingData<NewsFeedDataClassItem>>(PagingData.empty())
         viewModelScope.launch {
             try {
                 val pager = Pager(
                     config = PagingConfig(pageSize = 10, enablePlaceholders = false),
-                    pagingSourceFactory = { NewsFeedPagingSourceUserPosts(apiService, userId) }
+                    pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService)}
                 )
                 pager.flow.cachedIn(viewModelScope).collect { pagingData ->
                     userPostsFlow.value = pagingData

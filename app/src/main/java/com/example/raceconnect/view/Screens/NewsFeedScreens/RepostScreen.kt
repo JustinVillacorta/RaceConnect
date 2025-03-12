@@ -1,5 +1,6 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -134,7 +135,6 @@ fun RepostScreen(
         }
     }
 }
-
 @Composable
 fun RepostCard(
     repost: NewsFeedDataClassItem,
@@ -146,11 +146,10 @@ fun RepostCard(
     onShowFullScreenImage: (String) -> Unit,
     userPreferences: UserPreferences,
     onReportClick: () -> Unit,
-    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
-    reposts: Map<Int, List<Repost>> // Add this parameter to access reposts
+    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
     val user by userPreferences.user.collectAsState(initial = null)
-    val context = LocalContext.current
+    Log.d("RepostCard", "Rendering repost ID: ${repost.id}, OriginalPostId: ${repost.original_post_id}, OriginalPostAvailable: ${originalPost != null}")
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -162,7 +161,6 @@ fun RepostCard(
     ) {
         Box(modifier = Modifier.padding(16.dp)) {
             Column {
-                // Repost header
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -179,10 +177,11 @@ fun RepostCard(
                                     NavRoutes.ProfileView.createRoute(repost.user_id)
                                 }
                                 navController.navigate(destination)
+                                Log.d("RepostCard", "Navigating to profile for user ID: ${repost.user_id}")
                             }
                     ) {
                         AsyncImage(
-                            model =  "https://via.placeholder.com/40",
+                            model = "https://via.placeholder.com/40",
                             contentDescription = "Reposter Profile",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -190,9 +189,7 @@ fun RepostCard(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Repeat,
                                 contentDescription = "Repost Icon",
@@ -216,7 +213,6 @@ fun RepostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Repost quote/comment
                 if (!repost.content.isNullOrEmpty()) {
                     Text(
                         text = repost.content,
@@ -229,7 +225,6 @@ fun RepostCard(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                // Embedded original post (if exists)
                 originalPost?.let { original ->
                     Card(
                         shape = RoundedCornerShape(8.dp),
@@ -262,11 +257,6 @@ fun RepostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Repost actions
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -285,15 +275,9 @@ fun RepostCard(
                         color = Color.Gray,
                         modifier = Modifier.padding(start = 4.dp, end = 12.dp)
                     )
-                    ReactionIcon(
-                        icon = Icons.Default.ChatBubble,
-                        onClick = onCommentClick
-                    )
+                    ReactionIcon(icon = Icons.Default.ChatBubble, onClick = onCommentClick)
                     Spacer(modifier = Modifier.width(8.dp))
-                    ReactionIcon(
-                        icon = Icons.Default.Repeat,
-                        onClick = { onShowRepostScreen(repost) }
-                    )
+                    ReactionIcon(icon = Icons.Default.Repeat, onClick = { onShowRepostScreen(repost) })
                 }
             }
 
@@ -310,7 +294,6 @@ fun RepostCard(
         }
     }
 }
-
 // Helper function to format dates
 @Composable
 fun formatDateTime(dateTime: String?): String? {
