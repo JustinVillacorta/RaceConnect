@@ -70,11 +70,10 @@ fun NewsFeedScreen(
 
     LaunchedEffect(errorMessage) {
         if (errorMessage?.contains("banned", ignoreCase = true) == true) {
-            navController.navigate("login") { // Replace "login" with your login route
+            navController.navigate("login") {
                 popUpTo(navController.graph.startDestinationId)
                 launchSingleTop = true
             }
-            // Optionally show a dialog or toast with errorMessage
             Log.d("NewsFeedScreen", "User logged out due to ban: $errorMessage")
         }
     }
@@ -154,7 +153,6 @@ fun NewsFeedScreen(
 
                         Log.d("NewsFeedScreen", "Rendering Post ID: ${postItem.id}, IsRepost: ${postItem.isRepost}, OriginalPostId: ${postItem.original_post_id}, CreatedAt: ${postItem.created_at}")
 
-                        // Simplified condition: Render RepostCard if isRepost is true, otherwise PostCard
                         if (postItem.isRepost == true) {
                             val originalPost = posts.itemSnapshotList.items.find { it.id == postItem.original_post_id }
                             Log.d("NewsFeedScreen", "Rendering repost ID: ${postItem.id}, Original Post Found: ${originalPost != null}")
@@ -172,10 +170,16 @@ fun NewsFeedScreen(
                                 },
                                 onShowFullScreenImage = { onShowFullScreenImage(it, postItem.id) },
                                 userPreferences = userPreferences,
-                                onReportClick = { reason, otherText -> // Updated to match the expected signature
-                                    viewModel.reportPost(postItem.id, reason, otherText)
+                                onReportClick = { postId, reason, otherText ->
+                                    viewModel.reportPost(postId, reason, otherText)
                                 },
-                                onShowRepostScreen = onShowRepostScreen
+                                onShowRepostScreen = onShowRepostScreen,
+                                onUserActionClick = { userId, action, otherText ->
+                                    when (action) {
+                                        "Report User" -> viewModel.reportUser(userId, action, otherText)
+                                        else -> Log.d("NewsFeedScreen", "Unhandled user action: $action")
+                                    }
+                                }
                             )
                         } else {
                             Log.d("NewsFeedScreen", "Rendering post ID: ${postItem.id} (original or undetermined)")
@@ -192,10 +196,16 @@ fun NewsFeedScreen(
                                 },
                                 onShowFullScreenImage = { onShowFullScreenImage(it, postItem.id) },
                                 userPreferences = userPreferences,
-                                onReportClick = { reason, otherText -> // Updated to match the expected signature
-                                    viewModel.reportPost(postItem.id, reason, otherText)
+                                onReportClick = { postId, reason, otherText ->
+                                    viewModel.reportPost(postId, reason, otherText)
                                 },
-                                onShowRepostScreen = onShowRepostScreen
+                                onShowRepostScreen = onShowRepostScreen,
+                                onUserActionClick = { userId, action, otherText ->
+                                    when (action) {
+                                        "Report User" -> viewModel.reportUser(userId, action, otherText)
+                                        else -> Log.d("NewsFeedScreen", "Unhandled user action: $action")
+                                    }
+                                }
                             )
                         }
                     }

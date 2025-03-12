@@ -30,11 +30,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.Report
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -80,14 +82,17 @@ fun PostCard(
     viewModel: NewsFeedViewModel,
     onShowFullScreenImage: (String) -> Unit,
     userPreferences: UserPreferences,
-    onReportClick: (String, String?) -> Unit, // Updated signature to handle reason and optional text
-    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
+    onReportClick: (Int, String, String?) -> Unit,
+    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
+    onUserActionClick: (Int, String, String?) -> Unit
 ) {
     var isLiked by remember { mutableStateOf(post.isLiked) }
     var likeCount by remember { mutableStateOf(post.like_count) }
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: post.images ?: emptyList()
     var showReportDialog by remember { mutableStateOf(false) }
+    var showUserDialog by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id
@@ -210,20 +215,39 @@ fun PostCard(
                 }
             }
 
-            Icon(
-                imageVector = Icons.Default.Report,
-                contentDescription = "Report post",
-                modifier = Modifier
-                    .size(34.dp)
-                    .clickable { showReportDialog = true }
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp),
-                tint = Color.Gray
-            )
+            Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "More options",
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clickable { menuExpanded = true }
+                        .padding(8.dp),
+                    tint = Color.Gray
+                )
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Report Post") },
+                        onClick = {
+                            menuExpanded = false
+                            showReportDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("User Actions") },
+                        onClick = {
+                            menuExpanded = false
+                            showUserDialog = true
+                        }
+                    )
+                }
+            }
         }
     }
 
-    // Updated ReportDialog integration
     if (showReportDialog) {
         var selectedOption by remember { mutableStateOf("") }
         var otherText by remember { mutableStateOf("") }
@@ -236,9 +260,7 @@ fun PostCard(
                     Text(text = "Please select a reason for reporting this post:")
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Radio button options
                     val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
-
                     reportOptions.forEach { option ->
                         Row(
                             modifier = Modifier
@@ -259,7 +281,6 @@ fun PostCard(
                         }
                     }
 
-                    // Text field for "Others" option
                     if (selectedOption == "Others") {
                         Spacer(modifier = Modifier.height(16.dp))
                         TextField(
@@ -290,7 +311,7 @@ fun PostCard(
                                     Toast.makeText(context,
                                         "Post reported!",
                                         Toast.LENGTH_SHORT).show()
-                                    onReportClick(selectedOption,
+                                    onReportClick(post.id, selectedOption,
                                         if (selectedOption == "Others") otherText else null)
                                     showReportDialog = false
                                 }
@@ -306,6 +327,93 @@ fun PostCard(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
                         .clickable { showReportDialog = false }
+                        .padding(8.dp)
+                )
+            },
+            shape = RoundedCornerShape(12.dp)
+        )
+    }
+
+    if (showUserDialog) {
+        var selectedOption by remember { mutableStateOf("") }
+        var otherText by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showUserDialog = false },
+            title = { Text(text = "User Actions") },
+            text = {
+                Column {
+                    Text(text = "Please select an action for this user:")
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Removed "Block User" and "Mute User", kept "Report User" and "Others"
+                    val userOptions = listOf("Report User", "Others")
+                    userOptions.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedOption = option },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedOption == option,
+                                onClick = { selectedOption = option }
+                            )
+                            Text(
+                                text = option,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+
+                    if (selectedOption == "Others") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextField(
+                            value = otherText,
+                            onValueChange = { otherText = it },
+                            label = { Text("Please specify the action") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Text(
+                    text = "Confirm",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (selectedOption.isNotEmpty() &&
+                        (selectedOption != "Others" || otherText.isNotEmpty()))
+                        MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .clickable {
+                            if (selectedOption.isNotEmpty()) {
+                                if (selectedOption == "Others" && otherText.isEmpty()) {
+                                    Toast.makeText(context,
+                                        "Please specify the action",
+                                        Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context,
+                                        "User action performed: $selectedOption",
+                                        Toast.LENGTH_SHORT).show()
+                                    onUserActionClick(post.user_id, selectedOption,
+                                        if (selectedOption == "Others") otherText else null)
+                                    showUserDialog = false
+                                }
+                            }
+                        }
+                        .padding(8.dp)
+                )
+            },
+            dismissButton = {
+                Text(
+                    text = "Cancel",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .clickable { showUserDialog = false }
                         .padding(8.dp)
                 )
             },
@@ -487,36 +595,5 @@ fun ReactionIcon(icon: ImageVector, isLiked: Boolean = false, onClick: (() -> Un
             .size(24.dp)
             .clickable { onClick?.invoke() },
         tint = if (isLiked) Color.Red else Color.Gray
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewPostCard() {
-    val dummyPost = NewsFeedDataClassItem(
-        id = 1,
-        user_id = 1,
-        content = "This is a sample post for preview purposes.",
-        isLiked = false,
-        like_count = 10,
-        title = "Sample Post",
-        images = listOf("https://via.placeholder.com/300") // Use images instead of img_url
-    )
-
-    val mockViewModel = NewsFeedViewModel(UserPreferences(LocalContext.current))
-    LaunchedEffect(Unit) {
-        mockViewModel.getPostImages(dummyPost.id)
-    }
-
-    PostCard(
-        post = dummyPost,
-        navController = NavController(LocalContext.current),
-        onCommentClick = {},
-        onLikeClick = {},
-        viewModel = mockViewModel,
-        onShowFullScreenImage = {},
-        userPreferences = UserPreferences(LocalContext.current),
-        onReportClick = { _, _ -> }, // Updated for preview
-        onShowRepostScreen = {}
     )
 }

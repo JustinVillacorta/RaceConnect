@@ -228,6 +228,11 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         }
     }
 
+    fun reportUser(userId: Int, reason: String, otherText: String?) {
+        // Logic to report the user (same as reportPost for now)
+        Log.d("NewsFeedViewModel", "Reported user $userId with reason: $reason, otherText: $otherText")
+    }
+
     fun repostPost(postId: Int, comment: String) {
         viewModelScope.launch {
             val userId = userPreferences.user.first()?.id ?: return@launch

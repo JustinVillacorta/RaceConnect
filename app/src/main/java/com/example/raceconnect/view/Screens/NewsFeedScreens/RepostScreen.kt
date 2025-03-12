@@ -13,8 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.Report
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +31,6 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
-import com.example.raceconnect.model.Repost
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
@@ -45,7 +44,7 @@ fun RepostScreen(
     navController: NavController,
     viewModel: NewsFeedViewModel,
     onClose: () -> Unit,
-    userPreferences: UserPreferences // Added to pass to PostCard
+    userPreferences: UserPreferences
 ) {
     val context = LocalContext.current
     var repostComment by remember { mutableStateOf("") }
@@ -65,7 +64,7 @@ fun RepostScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Red // Use theme Red color
+                    containerColor = Red
                 )
             )
         }
@@ -104,7 +103,6 @@ fun RepostScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Use the updated PostCard composable
             PostCard(
                 post = post,
                 navController = navController,
@@ -113,10 +111,16 @@ fun RepostScreen(
                 viewModel = viewModel,
                 onShowFullScreenImage = { /* Disabled in repost screen */ },
                 userPreferences = userPreferences,
-                onReportClick = { reason, otherText ->
-                    viewModel.reportPost(post.id, reason, otherText) // Fixed to include post.id
+                onReportClick = { postId, reason, otherText ->
+                    viewModel.reportPost(postId, reason, otherText)
                 },
-                onShowRepostScreen = { /* Disabled in repost screen */ }
+                onShowRepostScreen = { /* Disabled in repost screen */ },
+                onUserActionClick = { userId, action, otherText ->
+                    when (action) {
+                        "Report User" -> viewModel.reportUser(userId, action, otherText)
+                        else -> Log.d("RepostScreen", "Unhandled user action: $action")
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -130,13 +134,14 @@ fun RepostScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Red) // Use theme Red color
+                colors = ButtonDefaults.buttonColors(containerColor = Red)
             ) {
                 Text("Repost", color = Color.White)
             }
         }
     }
 }
+
 @Composable
 fun RepostCard(
     repost: NewsFeedDataClassItem,
@@ -147,12 +152,15 @@ fun RepostCard(
     viewModel: NewsFeedViewModel,
     onShowFullScreenImage: (String) -> Unit,
     userPreferences: UserPreferences,
-    onReportClick: (String, String?) -> Unit, // Updated signature
-    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
+    onReportClick: (Int, String, String?) -> Unit,
+    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
+    onUserActionClick: (Int, String, String?) -> Unit
 ) {
     val user by userPreferences.user.collectAsState(initial = null)
     val context = LocalContext.current
-    var showReportDialog by remember { mutableStateOf(false) } // Added for dialog
+    var showReportDialog by remember { mutableStateOf(false) }
+    var showUserDialog by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
 
     Log.d("RepostCard", "Rendering repost ID: ${repost.id}, OriginalPostId: ${repost.original_post_id}, OriginalPostAvailable: ${originalPost != null}")
 
@@ -247,8 +255,9 @@ fun RepostCard(
                             viewModel = viewModel,
                             onShowFullScreenImage = onShowFullScreenImage,
                             userPreferences = userPreferences,
-                            onReportClick = onReportClick, // Pass updated onReportClick
-                            onShowRepostScreen = onShowRepostScreen
+                            onReportClick = onReportClick,
+                            onShowRepostScreen = onShowRepostScreen,
+                            onUserActionClick = onUserActionClick
                         )
                     }
                 } ?: run {
@@ -282,111 +291,217 @@ fun RepostCard(
                     )
                     ReactionIcon(icon = Icons.Default.ChatBubble, onClick = onCommentClick)
                     Spacer(modifier = Modifier.width(8.dp))
-                    ReactionIcon(icon = Icons.Default.Repeat, onClick = { onShowRepostScreen(repost) })
+
                 }
             }
 
-            Icon(
-                imageVector = Icons.Default.Report,
-                contentDescription = "Report repost",
-                modifier = Modifier
-                    .size(34.dp)
-                    .clickable { showReportDialog = true } // Trigger dialog
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp),
-                tint = Color.Gray
-            )
-
-            // Report Dialog for RepostCard
-            if (showReportDialog) {
-                var selectedOption by remember { mutableStateOf("") }
-                var otherText by remember { mutableStateOf("") }
-
-                AlertDialog(
-                    onDismissRequest = { showReportDialog = false },
-                    title = { Text(text = "Report Repost") },
-                    text = {
-                        Column {
-                            Text(text = "Please select a reason for reporting this repost:")
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
-                            reportOptions.forEach { option ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp)
-                                        .clickable { selectedOption = option },
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(
-                                        selected = selectedOption == option,
-                                        onClick = { selectedOption = option }
-                                    )
-                                    Text(
-                                        text = option,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
-                            }
-
-                            if (selectedOption == "Others") {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                TextField(
-                                    value = otherText,
-                                    onValueChange = { otherText = it },
-                                    label = { Text("Please specify the reason") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-                    },
-                    confirmButton = {
-                        Text(
-                            text = "Confirm",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (selectedOption.isNotEmpty() &&
-                                (selectedOption != "Others" || otherText.isNotEmpty()))
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            modifier = Modifier
-                                .clickable {
-                                    if (selectedOption.isNotEmpty()) {
-                                        if (selectedOption == "Others" && otherText.isEmpty()) {
-                                            Toast.makeText(context,
-                                                "Please specify the reason",
-                                                Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            Toast.makeText(context,
-                                                "Repost reported!",
-                                                Toast.LENGTH_SHORT).show()
-                                            onReportClick(selectedOption,
-                                                if (selectedOption == "Others") otherText else null)
-                                            showReportDialog = false
-                                        }
-                                    }
-                                }
-                                .padding(8.dp)
-                        )
-                    },
-                    dismissButton = {
-                        Text(
-                            text = "Cancel",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier
-                                .clickable { showReportDialog = false }
-                                .padding(8.dp)
-                        )
-                    },
-                    shape = RoundedCornerShape(12.dp)
+            Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "More options",
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clickable { menuExpanded = true }
+                        .padding(8.dp),
+                    tint = Color.Gray
                 )
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Report Repost") },
+                        onClick = {
+                            menuExpanded = false
+                            showReportDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("User Actions") },
+                        onClick = {
+                            menuExpanded = false
+                            showUserDialog = true
+                        }
+                    )
+                }
             }
         }
     }
+
+    if (showReportDialog) {
+        var selectedOption by remember { mutableStateOf("") }
+        var otherText by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showReportDialog = false },
+            title = { Text(text = "Report Repost") },
+            text = {
+                Column {
+                    Text(text = "Please select a reason for reporting this repost:")
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
+                    reportOptions.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedOption = option },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedOption == option,
+                                onClick = { selectedOption = option }
+                            )
+                            Text(
+                                text = option,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+
+                    if (selectedOption == "Others") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextField(
+                            value = otherText,
+                            onValueChange = { otherText = it },
+                            label = { Text("Please specify the reason") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Text(
+                    text = "Confirm",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (selectedOption.isNotEmpty() &&
+                        (selectedOption != "Others" || otherText.isNotEmpty()))
+                        MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .clickable {
+                            if (selectedOption.isNotEmpty()) {
+                                if (selectedOption == "Others" && otherText.isEmpty()) {
+                                    Toast.makeText(context,
+                                        "Please specify the reason",
+                                        Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context,
+                                        "Repost reported!",
+                                        Toast.LENGTH_SHORT).show()
+                                    onReportClick(repost.id, selectedOption,
+                                        if (selectedOption == "Others") otherText else null)
+                                    showReportDialog = false
+                                }
+                            }
+                        }
+                        .padding(8.dp)
+                )
+            },
+            dismissButton = {
+                Text(
+                    text = "Cancel",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .clickable { showReportDialog = false }
+                        .padding(8.dp)
+                )
+            },
+            shape = RoundedCornerShape(12.dp)
+        )
+    }
+
+    if (showUserDialog) {
+        var selectedOption by remember { mutableStateOf("") }
+        var otherText by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showUserDialog = false },
+            title = { Text(text = "User Actions") },
+            text = {
+                Column {
+                    Text(text = "Please select an action for this user:")
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Removed "Block User" and "Mute User", kept "Report User" and "Others"
+                    val userOptions = listOf("Report User", "Others")
+                    userOptions.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedOption = option },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedOption == option,
+                                onClick = { selectedOption = option }
+                            )
+                            Text(
+                                text = option,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+
+                    if (selectedOption == "Others") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextField(
+                            value = otherText,
+                            onValueChange = { otherText = it },
+                            label = { Text("Please specify the action") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Text(
+                    text = "Confirm",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (selectedOption.isNotEmpty() &&
+                        (selectedOption != "Others" || otherText.isNotEmpty()))
+                        MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .clickable {
+                            if (selectedOption.isNotEmpty()) {
+                                if (selectedOption == "Others" && otherText.isEmpty()) {
+                                    Toast.makeText(context,
+                                        "Please specify the action",
+                                        Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context,
+                                        "User action performed: $selectedOption",
+                                        Toast.LENGTH_SHORT).show()
+                                    onUserActionClick(repost.user_id, selectedOption,
+                                        if (selectedOption == "Others") otherText else null)
+                                    showUserDialog = false
+                                }
+                            }
+                        }
+                        .padding(8.dp)
+                )
+            },
+            dismissButton = {
+                Text(
+                    text = "Cancel",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .clickable { showUserDialog = false }
+                        .padding(8.dp)
+                )
+            },
+            shape = RoundedCornerShape(12.dp)
+        )
+    }
 }
-// Helper function to format dates
+
 @Composable
 fun formatDateTime(dateTime: String?): String? {
     if (dateTime.isNullOrEmpty()) return null
@@ -399,49 +514,3 @@ fun formatDateTime(dateTime: String?): String? {
         dateTime // Fallback to original string if parsing fails
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun PreviewRepostCard() {
-//    val dummyRepost = NewsFeedDataClassItem(
-//        id = 2,
-//        user_id = 2,
-//        title = "Repost Title",
-//        content = "This is my comment on the repost!",
-//        isLiked = false,
-//        like_count = 5,
-//        username = "Reposter",
-//        created_at = "2 minutes ago"
-//    )
-//
-//    val dummyOriginalPost = NewsFeedDataClassItem(
-//        id = 1,
-//        user_id = 1,
-//        content = "This is the original post content.",
-//        isLiked = false,
-//        like_count = 10,
-//        title = "Repost Title",
-//        username = "OriginalPoster",
-//        created_at = "1 hour ago",
-//        images = listOf("https://via.placeholder.com/300")
-//    )
-//
-//    val mockViewModel = NewsFeedViewModel(UserPreferences(LocalContext.current))
-//    LaunchedEffect(Unit) {
-//        mockViewModel.getPostImages(dummyOriginalPost.id)
-//    }
-//
-////    RepostCard(
-////        repost = dummyRepost,
-////        originalPost = dummyOriginalPost,
-////        navController = NavController(LocalContext.current),
-////        onCommentClick = {},
-////        onLikeClick = {},
-////        viewModel = mockViewModel,
-////        onShowFullScreenImage = {},
-////        userPreferences = UserPreferences(LocalContext.current),
-////        onReportClick = {},
-////        onShowRepostScreen = {}
-////
-//    )
-//}
