@@ -209,12 +209,21 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         }
     }
 
-    fun reportPost(postId: Int) {
+    fun reportPost(postId: Int, reason: String, otherText: String?) {
         viewModelScope.launch {
             try {
-                Log.d("NewsFeedViewModel", "Post $postId reported")
+                // Replace this with your actual API call to report the post
+                Log.d("NewsFeedViewModel", "Reporting post $postId for reason: $reason" +
+                        if (otherText != null) " - $otherText" else "")
+                // Example API call (pseudo-code):
+                // val response = apiService.reportPost(postId, reason, otherText)
+                // if (response.isSuccessful) {
+                //     Log.d("NewsFeedViewModel", "Post reported successfully")
+                // } else {
+                //     Log.e("NewsFeedViewModel", "Failed to report post")
+                // }
             } catch (e: Exception) {
-                Log.e("NewsFeedViewModel", "Error reporting post: $e")
+                Log.e("NewsFeedViewModel", "Error reporting post: ${e.message}")
             }
         }
     }

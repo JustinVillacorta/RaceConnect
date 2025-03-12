@@ -113,7 +113,9 @@ fun RepostScreen(
                 viewModel = viewModel,
                 onShowFullScreenImage = { /* Disabled in repost screen */ },
                 userPreferences = userPreferences,
-                onReportClick = { /* No-op implementation */ },
+                onReportClick = { reason, otherText ->
+                    viewModel.reportPost(post.id, reason, otherText) // Fixed to include post.id
+                },
                 onShowRepostScreen = { /* Disabled in repost screen */ }
             )
 
@@ -145,10 +147,13 @@ fun RepostCard(
     viewModel: NewsFeedViewModel,
     onShowFullScreenImage: (String) -> Unit,
     userPreferences: UserPreferences,
-    onReportClick: () -> Unit,
+    onReportClick: (String, String?) -> Unit, // Updated signature
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
     val user by userPreferences.user.collectAsState(initial = null)
+    val context = LocalContext.current
+    var showReportDialog by remember { mutableStateOf(false) } // Added for dialog
+
     Log.d("RepostCard", "Rendering repost ID: ${repost.id}, OriginalPostId: ${repost.original_post_id}, OriginalPostAvailable: ${originalPost != null}")
 
     Card(
@@ -242,7 +247,7 @@ fun RepostCard(
                             viewModel = viewModel,
                             onShowFullScreenImage = onShowFullScreenImage,
                             userPreferences = userPreferences,
-                            onReportClick = onReportClick,
+                            onReportClick = onReportClick, // Pass updated onReportClick
                             onShowRepostScreen = onShowRepostScreen
                         )
                     }
@@ -286,11 +291,98 @@ fun RepostCard(
                 contentDescription = "Report repost",
                 modifier = Modifier
                     .size(34.dp)
-                    .clickable { onReportClick() }
+                    .clickable { showReportDialog = true } // Trigger dialog
                     .align(Alignment.TopEnd)
                     .padding(8.dp),
                 tint = Color.Gray
             )
+
+            // Report Dialog for RepostCard
+            if (showReportDialog) {
+                var selectedOption by remember { mutableStateOf("") }
+                var otherText by remember { mutableStateOf("") }
+
+                AlertDialog(
+                    onDismissRequest = { showReportDialog = false },
+                    title = { Text(text = "Report Repost") },
+                    text = {
+                        Column {
+                            Text(text = "Please select a reason for reporting this repost:")
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
+                            reportOptions.forEach { option ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .clickable { selectedOption = option },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = selectedOption == option,
+                                        onClick = { selectedOption = option }
+                                    )
+                                    Text(
+                                        text = option,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
+
+                            if (selectedOption == "Others") {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                TextField(
+                                    value = otherText,
+                                    onValueChange = { otherText = it },
+                                    label = { Text("Please specify the reason") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        Text(
+                            text = "Confirm",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (selectedOption.isNotEmpty() &&
+                                (selectedOption != "Others" || otherText.isNotEmpty()))
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .clickable {
+                                    if (selectedOption.isNotEmpty()) {
+                                        if (selectedOption == "Others" && otherText.isEmpty()) {
+                                            Toast.makeText(context,
+                                                "Please specify the reason",
+                                                Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context,
+                                                "Repost reported!",
+                                                Toast.LENGTH_SHORT).show()
+                                            onReportClick(selectedOption,
+                                                if (selectedOption == "Others") otherText else null)
+                                            showReportDialog = false
+                                        }
+                                    }
+                                }
+                                .padding(8.dp)
+                        )
+                    },
+                    dismissButton = {
+                        Text(
+                            text = "Cancel",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .clickable { showReportDialog = false }
+                                .padding(8.dp)
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
         }
     }
 }

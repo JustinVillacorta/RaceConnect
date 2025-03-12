@@ -172,7 +172,9 @@ fun NewsFeedScreen(
                                 },
                                 onShowFullScreenImage = { onShowFullScreenImage(it, postItem.id) },
                                 userPreferences = userPreferences,
-                                onReportClick = { viewModel.reportPost(postItem.id) },
+                                onReportClick = { reason, otherText -> // Updated to match the expected signature
+                                    viewModel.reportPost(postItem.id, reason, otherText)
+                                },
                                 onShowRepostScreen = onShowRepostScreen
                             )
                         } else {
@@ -190,7 +192,9 @@ fun NewsFeedScreen(
                                 },
                                 onShowFullScreenImage = { onShowFullScreenImage(it, postItem.id) },
                                 userPreferences = userPreferences,
-                                onReportClick = { viewModel.reportPost(postItem.id) },
+                                onReportClick = { reason, otherText -> // Updated to match the expected signature
+                                    viewModel.reportPost(postItem.id, reason, otherText)
+                                },
                                 onShowRepostScreen = onShowRepostScreen
                             )
                         }

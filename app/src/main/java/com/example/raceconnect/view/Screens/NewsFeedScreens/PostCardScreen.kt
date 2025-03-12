@@ -38,8 +38,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -78,7 +80,7 @@ fun PostCard(
     viewModel: NewsFeedViewModel,
     onShowFullScreenImage: (String) -> Unit,
     userPreferences: UserPreferences,
-    onReportClick: () -> Unit,
+    onReportClick: (String, String?) -> Unit, // Updated signature to handle reason and optional text
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
     var isLiked by remember { mutableStateOf(post.isLiked) }
@@ -221,21 +223,78 @@ fun PostCard(
         }
     }
 
+    // Updated ReportDialog integration
     if (showReportDialog) {
+        var selectedOption by remember { mutableStateOf("") }
+        var otherText by remember { mutableStateOf("") }
+
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
             title = { Text(text = "Report Post") },
-            text = { Text(text = "Are you sure you want to report this post?") },
+            text = {
+                Column {
+                    Text(text = "Please select a reason for reporting this post:")
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Radio button options
+                    val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
+
+                    reportOptions.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedOption = option },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedOption == option,
+                                onClick = { selectedOption = option }
+                            )
+                            Text(
+                                text = option,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+
+                    // Text field for "Others" option
+                    if (selectedOption == "Others") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextField(
+                            value = otherText,
+                            onValueChange = { otherText = it },
+                            label = { Text("Please specify the reason") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 Text(
                     text = "Confirm",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = if (selectedOption.isNotEmpty() &&
+                        (selectedOption != "Others" || otherText.isNotEmpty()))
+                        MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier
                         .clickable {
-                            Toast.makeText(context, "Post reported!", Toast.LENGTH_SHORT).show()
-                            onReportClick()
-                            showReportDialog = false
+                            if (selectedOption.isNotEmpty()) {
+                                if (selectedOption == "Others" && otherText.isEmpty()) {
+                                    Toast.makeText(context,
+                                        "Please specify the reason",
+                                        Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context,
+                                        "Post reported!",
+                                        Toast.LENGTH_SHORT).show()
+                                    onReportClick(selectedOption,
+                                        if (selectedOption == "Others") otherText else null)
+                                    showReportDialog = false
+                                }
+                            }
                         }
                         .padding(8.dp)
                 )
@@ -457,7 +516,7 @@ fun PreviewPostCard() {
         viewModel = mockViewModel,
         onShowFullScreenImage = {},
         userPreferences = UserPreferences(LocalContext.current),
-        onReportClick = {},
+        onReportClick = { _, _ -> }, // Updated for preview
         onShowRepostScreen = {}
     )
 }
