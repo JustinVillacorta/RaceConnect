@@ -25,8 +25,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.datastore.UserPreferences
@@ -73,62 +73,77 @@ fun RepostScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            BasicTextField(
-                value = repostComment,
-                onValueChange = { repostComment = it },
+            Column(
                 modifier = Modifier
+                    .weight(1f)
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .background(Color.White, RoundedCornerShape(8.dp))
-                    .padding(16.dp),
-                textStyle = TextStyle(
-                    color = Color.Black,
-                    fontSize = MaterialTheme.typography.bodyMedium.fontSize
-                ),
-                decorationBox = { innerTextField ->
-                    if (repostComment.isEmpty()) {
-                        Text(
-                            text = "Add a comment to your repost (optional)",
-                            color = Color.Gray,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+            ) {
+                // TextField with Outline
+                BasicTextField(
+                    value = repostComment,
+                    onValueChange = { repostComment = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                        .background(Color.White, RoundedCornerShape(8.dp))
+                        .padding(16.dp),
+                    textStyle = TextStyle(
+                        color = Color.Black,
+                        fontSize = MaterialTheme.typography.bodyMedium.fontSize
+                    ),
+                    decorationBox = { innerTextField ->
+                        Box {
+                            if (repostComment.isEmpty()) {
+                                Text(
+                                    text = "Add a comment to your repost (optional)",
+                                    color = Color.Gray,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            innerTextField()
+                        }
                     }
-                    innerTextField()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Scrollable PostCard
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    PostCard(
+                        post = post,
+                        navController = navController,
+                        onCommentClick = { /* Disabled */ },
+                        onLikeClick = { _ -> /* Disabled */ },
+                        viewModel = viewModel,
+                        onShowFullScreenImage = { /* Disabled */ },
+                        userPreferences = userPreferences,
+                        onReportClick = { postId, reason, otherText ->
+                            viewModel.reportPost(postId, reason, otherText, onSuccess = {
+                                Log.d("RepostScreen", "Post reported successfully")
+                            }, onFailure = { error ->
+                                Log.e("RepostScreen", "Failed to report post: $error")
+                            })
+                        },
+                        onShowRepostScreen = { /* Disabled */ },
+                        onUserActionClick = { userId, action, otherText ->
+                            when (action) {
+                                "Report User" -> viewModel.reportUser(userId, action, otherText)
+                                else -> Log.d("RepostScreen", "Unhandled action: $action")
+                            }
+                        }
+                    )
                 }
-            )
+            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            PostCard(
-                post = post,
-                navController = navController,
-                onCommentClick = { /* Disabled in repost screen */ },
-                onLikeClick = { _ -> /* Disabled in repost screen */ },
-                viewModel = viewModel,
-                onShowFullScreenImage = { /* Disabled in repost screen */ },
-                userPreferences = userPreferences,
-                onReportClick = { postId, reason, otherText ->
-                    viewModel.reportPost(postId, reason, otherText, onSuccess = {
-                        Log.d("NewsFeedScreen", "Post reported successfully")
-                    }, onFailure = { error ->
-                        Log.e("NewsFeedScreen", "Failed to report post: $error")
-                    })
-                },
-                onShowRepostScreen = { /* Disabled in repost screen */ },
-                onUserActionClick = { userId, action, otherText ->
-                    when (action) {
-                        "Report User" -> viewModel.reportUser(userId, action, otherText)
-                        else -> Log.d("RepostScreen", "Unhandled user action: $action")
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
+            // Repost Button
             Button(
                 onClick = {
                     viewModel.repostPost(post.id, repostComment)
@@ -137,10 +152,11 @@ fun RepostScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Red)
+                    .padding(top = 16.dp, bottom = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Red),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Repost", color = Color.White)
+                Text("Repost", color = Color.White, fontSize = 16.sp)
             }
         }
     }
@@ -166,18 +182,18 @@ fun RepostCard(
     var showUserDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
 
-    Log.d("RepostCard", "Rendering repost ID: ${repost.id}, OriginalPostId: ${repost.original_post_id}, OriginalPostAvailable: ${originalPost != null}")
-
     Card(
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier
             .fillMaxWidth()
+            .wrapContentHeight()
             .padding(horizontal = 4.dp, vertical = 4.dp)
-            .background(Color.White)
     ) {
         Box(modifier = Modifier.padding(16.dp)) {
-            Column {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -194,7 +210,6 @@ fun RepostCard(
                                     NavRoutes.ProfileView.createRoute(repost.user_id)
                                 }
                                 navController.navigate(destination)
-                                Log.d("RepostCard", "Navigating to profile for user ID: ${repost.user_id}")
                             }
                     ) {
                         AsyncImage(
@@ -217,13 +232,15 @@ fun RepostCard(
                             Text(
                                 text = "${repost.username ?: "Anonymous"} reposted",
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
                             )
                         }
                         Text(
                             text = formatDateTime(repost.created_at) ?: "Just now",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = Color.Gray,
+                            maxLines = 1
                         )
                     }
                 }
@@ -248,7 +265,7 @@ fun RepostCard(
                         elevation = CardDefaults.cardElevation(1.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color.White)
+                            .wrapContentHeight()
                             .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(8.dp))
                     ) {
                         PostCard(
@@ -295,7 +312,6 @@ fun RepostCard(
                     )
                     ReactionIcon(icon = Icons.Default.ChatBubble, onClick = onCommentClick)
                     Spacer(modifier = Modifier.width(8.dp))
-
                 }
             }
 
@@ -332,6 +348,7 @@ fun RepostCard(
         }
     }
 
+    // Report Dialog remains unchanged for brevity, but should be responsive by default
     if (showReportDialog) {
         var selectedOption by remember { mutableStateOf("") }
         var otherText by remember { mutableStateOf("") }
@@ -418,6 +435,7 @@ fun RepostCard(
         )
     }
 
+    // User Dialog remains unchanged for brevity
     if (showUserDialog) {
         var selectedOption by remember { mutableStateOf("") }
         var otherText by remember { mutableStateOf("") }
@@ -430,7 +448,6 @@ fun RepostCard(
                     Text(text = "Please select an action for this user:")
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Removed "Block User" and "Mute User", kept "Report User" and "Others"
                     val userOptions = listOf("Report User", "Others")
                     userOptions.forEach { option ->
                         Row(
@@ -515,6 +532,6 @@ fun formatDateTime(dateTime: String?): String? {
         val date = inputFormat.parse(dateTime)
         date?.let { outputFormat.format(it) }
     } catch (e: Exception) {
-        dateTime // Fallback to original string if parsing fails
+        dateTime
     }
 }

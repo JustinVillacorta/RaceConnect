@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.raceconnect.datastore.UserPreferences
@@ -39,7 +40,6 @@ fun CommentSectionScreen(
     var commentText by remember { mutableStateOf("") }
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 
-    // Fetch userId and username from userPreferences.user Flow
     var userId by remember { mutableStateOf(0) }
     var username by remember { mutableStateOf("Unknown") }
 
@@ -49,8 +49,6 @@ fun CommentSectionScreen(
             userId = user.id
             username = user.username
         } else {
-            // Handle case where user is not logged in
-            // For now, use defaults; ideally, redirect to login screen
             userId = 0
             username = "Guest"
         }
@@ -60,46 +58,102 @@ fun CommentSectionScreen(
         viewModel.fetchComments(postId)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        if (viewModel.isLoading.value) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        viewModel.errorMessage.value?.let {
-            Text(
-                text = it,
-                color = Color.Red,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        bottomBar = {
+            CommentInput(
+                commentText = commentText,
+                onCommentChange = { commentText = it },
+                onSendClick = {
+                    if (commentText.isNotEmpty()) {
+                        if (userId == 0) {
+                            viewModel.errorMessage.value = "Please log in to comment."
+                            return@CommentInput
+                        }
+                        val newComment = PostComment(
+                            userId = userId,
+                            postId = postId,
+                            comment = commentText,
+                            createdAt = Date(),
+                            username = username
+                        )
+                        viewModel.addComment(newComment)
+                        commentText = ""
+                    }
+                }
             )
-            Spacer(modifier = Modifier.height(8.dp))
-        } ?: run {
-            if (viewModel.comments.isEmpty() && !viewModel.isLoading.value) {
-                Text(
-                    text = "No comments available.",
-                    color = Color.Gray,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
         }
-
-        LazyColumn(
-            modifier = Modifier.weight(1f)
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            items(viewModel.comments) { comment ->
-                CommentItem(
-                    comment = comment,
-                    navController = navController,
-                    onShowProfileView = onShowProfileView
-                )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    viewModel.isLoading.value -> {
+                        CircularProgressIndicator()
+                    }
+                    viewModel.errorMessage.value != null -> {
+                        Text(
+                            text = viewModel.errorMessage.value!!,
+                            color = Color.Red,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                    viewModel.comments.isEmpty() -> {
+                        Text(
+                            text = "No comments yet. Be the first to comment!",
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(vertical = 8.dp)
+                        ) {
+                            items(viewModel.comments) { comment ->
+                                CommentItem(
+                                    comment = comment,
+                                    navController = navController,
+                                    onShowProfileView = onShowProfileView
+                                )
+                                Divider(
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    thickness = 0.5.dp,
+                                    color = Color.Gray.copy(alpha = 0.2f)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
+    }
+}
 
+@Composable
+fun CommentInput(
+    commentText: String,
+    onCommentChange: (String) -> Unit,
+    onSendClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        shadowElevation = 4.dp,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -108,31 +162,19 @@ fun CommentSectionScreen(
         ) {
             OutlinedTextField(
                 value = commentText,
-                onValueChange = { commentText = it },
+                onValueChange = onCommentChange,
                 placeholder = { Text("Add a comment...") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(20.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(24.dp),
+                textStyle = MaterialTheme.typography.bodyMedium,
+                singleLine = true
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(onClick = {
-                if (commentText.isNotEmpty()) {
-                    if (userId == 0) {
-                        // Optionally redirect to login screen if user is not logged in
-                        // For now, show a message
-                        viewModel.errorMessage.value = "Please log in to comment."
-                        return@IconButton
-                    }
-                    val newComment = PostComment(
-                        userId = userId, // Use dynamic userId
-                        postId = postId,
-                        comment = commentText,
-                        createdAt = Date(),
-                        username = username // Use dynamic username
-                    )
-                    viewModel.addComment(newComment)
-                    commentText = ""
-                }
-            }) {
+            IconButton(
+                onClick = onSendClick,
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.Send,
                     contentDescription = "Send",
@@ -157,55 +199,72 @@ fun CommentItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        // Profile Picture Placeholder
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(Color.Gray)
-                .clickable { onShowProfileView() }
-        )
+                .clickable { onShowProfileView() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = comment.username?.firstOrNull()?.toString() ?: "?",
+                color = Color.White,
+                fontSize = 16.sp
+            )
+        }
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.wrapContentHeight()
+            ) {
                 Text(
                     text = comment.username ?: "User ${comment.userId}",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = timestamp,
+                    text = " • $timestamp",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = Color.Gray,
+                    modifier = Modifier.padding(start = 6.dp),
+                    maxLines = 1
                 )
             }
             Text(
                 text = comment.comment ?: comment.text ?: "",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Optional: Display likes if you extend the backend to support it
         if (comment.likes > 0) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .padding(start = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     imageVector = comment.icon ?: Icons.Default.Favorite,
-                    contentDescription = "Reaction Icon",
-                    modifier = Modifier.size(20.dp),
+                    contentDescription = "Likes",
+                    modifier = Modifier.size(18.dp),
                     tint = Color.Gray
                 )
                 Text(
-                    text = comment.likes.toString(),
+                    text = " ${comment.likes}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = Color.Gray,
+                    modifier = Modifier.padding(start = 4.dp)
                 )
             }
         }
