@@ -63,7 +63,6 @@ fun PostCard(
     var otherText by remember { mutableStateOf("") }
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id
-    var showFullScreenImage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(post.id) {
         viewModel.getPostImages(post.id)
@@ -96,7 +95,7 @@ fun PostCard(
                                     NavRoutes.ProfileView.createRoute(post.user_id)
                                 }
                                 Log.d("PostCard", "Navigating to $destination")
-                                navController.navigate(destination)
+                                navController.navigate(NavRoutes.ProfileView.route)
                             }
                     ) {
                         AsyncImage(
@@ -137,7 +136,10 @@ fun PostCard(
                             .fillMaxWidth()
                             .padding(top = 8.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable { showFullScreenImage = imageUrls.first() }
+                            .clickable {
+                                Log.d("PostCard", "Image clicked, URL: ${imageUrls.first()}")
+                                onShowFullScreenImage(imageUrls.first())
+                            }
                     ) {
                         AsyncImage(
                             model = imageUrls.first(),
@@ -216,10 +218,8 @@ fun PostCard(
         }
     }
 
+    // Report Dialog
     if (showReportDialog) {
-        var selectedReason by remember { mutableStateOf("") }
-        var otherText by remember { mutableStateOf("") }
-
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
             title = { Text(text = "Report Post") },
@@ -228,9 +228,7 @@ fun PostCard(
                     Text(text = "Please select a reason for reporting this post:")
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Radio button options
                     val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
-
                     reportOptions.forEach { reason ->
                         Row(
                             modifier = Modifier
@@ -251,7 +249,6 @@ fun PostCard(
                         }
                     }
 
-                    // Text field for "Others" option
                     if (selectedReason == "Others") {
                         Spacer(modifier = Modifier.height(16.dp))
                         TextField(
@@ -267,34 +264,17 @@ fun PostCard(
                 Text(
                     text = "Confirm",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (selectedReason.isNotEmpty() &&
-                        (selectedReason != "Others" || otherText.isNotEmpty()))
+                    color = if (selectedReason.isNotEmpty() && (selectedReason != "Others" || otherText.isNotEmpty()))
                         MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier
                         .clickable {
                             if (selectedReason.isNotEmpty()) {
                                 if (selectedReason == "Others" && otherText.isEmpty()) {
-                                    Toast.makeText(context,
-                                        "Please specify the reason",
-                                        Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Please specify the reason", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    viewModel.reportPost(
-                                        postId = post.id,
-                                        reason = selectedReason,
-                                        otherText = if (selectedReason == "Others") otherText else null,
-                                        onSuccess = {
-                                            Toast.makeText(context,
-                                                "Post reported successfully!",
-                                                Toast.LENGTH_SHORT).show()
-                                            showReportDialog = false
-                                        },
-                                        onFailure = { error ->
-                                            Toast.makeText(context,
-                                                error,
-                                                Toast.LENGTH_SHORT).show()
-                                        }
-                                    )
+                                    onReportClick(post.id, selectedReason, if (selectedReason == "Others") otherText else null)
+                                    showReportDialog = false
                                 }
                             }
                         }
@@ -314,10 +294,8 @@ fun PostCard(
         )
     }
 
+    // User Action Dialog
     if (showUserDialog) {
-        var selectedOption by remember { mutableStateOf("") }
-        var otherText by remember { mutableStateOf("") }
-
         AlertDialog(
             onDismissRequest = { showUserDialog = false },
             title = { Text("User Actions") },
@@ -331,12 +309,12 @@ fun PostCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
-                                .clickable { selectedOption = option },
+                                .clickable { selectedReason = option },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             RadioButton(
-                                selected = selectedOption == option,
-                                onClick = { selectedOption = option }
+                                selected = selectedReason == option,
+                                onClick = { selectedReason = option }
                             )
                             Text(
                                 text = option,
@@ -345,7 +323,7 @@ fun PostCard(
                             )
                         }
                     }
-                    if (selectedOption == "Others") {
+                    if (selectedReason == "Others") {
                         Spacer(modifier = Modifier.height(16.dp))
                         TextField(
                             value = otherText,
@@ -360,17 +338,16 @@ fun PostCard(
                 Text(
                     text = "Confirm",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (selectedOption.isNotEmpty() && (selectedOption != "Others" || otherText.isNotEmpty()))
+                    color = if (selectedReason.isNotEmpty() && (selectedReason != "Others" || otherText.isNotEmpty()))
                         MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier
                         .clickable {
-                            if (selectedOption.isNotEmpty()) {
-                                if (selectedOption == "Others" && otherText.isEmpty()) {
+                            if (selectedReason.isNotEmpty()) {
+                                if (selectedReason == "Others" && otherText.isEmpty()) {
                                     Toast.makeText(context, "Please specify the action", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    Toast.makeText(context, "User action performed: $selectedOption", Toast.LENGTH_SHORT).show()
-                                    onUserActionClick(post.user_id, selectedOption, if (selectedOption == "Others") otherText else null)
+                                    onUserActionClick(post.user_id, selectedReason, if (selectedReason == "Others") otherText else null)
                                     showUserDialog = false
                                 }
                             }
@@ -387,99 +364,10 @@ fun PostCard(
                         .clickable { showUserDialog = false }
                         .padding(8.dp)
                 )
-            },
-            shape = RoundedCornerShape(12.dp)
-        )
-    }
-
-    if (showUserDialog) {
-        var selectedOption by remember { mutableStateOf("") }
-        var otherText by remember { mutableStateOf("") }
-
-        AlertDialog(
-            onDismissRequest = { showUserDialog = false },
-            title = { Text("User Actions") },
-            text = {
-                Column {
-                    Text("Please select an action for this user:")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    val userOptions = listOf("Report User", "Others")
-                    userOptions.forEach { option ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable { selectedOption = option },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = selectedOption == option,
-                                onClick = { selectedOption = option }
-                            )
-                            Text(
-                                text = option,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                    }
-                    if (selectedOption == "Others") {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        TextField(
-                            value = otherText,
-                            onValueChange = { otherText = it },
-                            label = { Text("Please specify the action") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Text(
-                    text = "Confirm",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (selectedOption.isNotEmpty() && (selectedOption != "Others" || otherText.isNotEmpty()))
-                        MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier
-                        .clickable {
-                            if (selectedOption.isNotEmpty()) {
-                                if (selectedOption == "Others" && otherText.isEmpty()) {
-                                    Toast.makeText(context, "Please specify the action", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context, "User action performed: $selectedOption", Toast.LENGTH_SHORT).show()
-                                    onUserActionClick(post.user_id, selectedOption, if (selectedOption == "Others") otherText else null)
-                                    showUserDialog = false
-                                }
-                            }
-                        }
-                        .padding(8.dp)
-                )
-            },
-            dismissButton = {
-                Text(
-                    text = "Cancel",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .clickable { showUserDialog = false }
-                        .padding(8.dp)
-                )
-            },
-            shape = RoundedCornerShape(12.dp)
-        )
-    }
-
-    if (showFullScreenImage != null) {
-        FullScreenImageViewer(
-            imageUrl = showFullScreenImage!!,
-            onDismiss = { showFullScreenImage = null },
-            onLikeClick = onLikeClick,
-            onCommentClick = onCommentClick
+            }
         )
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullScreenImageViewer(
