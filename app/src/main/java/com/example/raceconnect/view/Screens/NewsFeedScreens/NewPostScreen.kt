@@ -83,6 +83,7 @@ fun AddPostSection(
 fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
     val context = LocalContext.current
     var postText by remember { mutableStateOf("") }
+    var postTitle by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var selectedCategory by remember { mutableStateOf("Formula 1") }
     var selectedPrivacy by remember { mutableStateOf("Public") }
@@ -107,7 +108,7 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp), // Padding inside Row
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -122,12 +123,12 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                 )
                 Button(
                     onClick = {
-                        if (postText.isNotEmpty()) {
-                            viewModel.addPost(context, postText, selectedImageUri, selectedCategory, selectedPrivacy)
+                        if (postText.isNotEmpty() && postTitle.isNotEmpty()) {
+                            viewModel.addPost(context, postText, postTitle, selectedImageUri, selectedCategory, selectedPrivacy)
                             onClose()
                         }
                     },
-                    enabled = postText.isNotEmpty(),
+                    enabled = postText.isNotEmpty() && postTitle.isNotEmpty(),
                     modifier = Modifier.padding(end = 8.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Red,
@@ -140,8 +141,7 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
             Divider(
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                 thickness = 1.dp,
-                modifier = Modifier
-                    .fillMaxWidth() // Spans full screen width
+                modifier = Modifier.fillMaxWidth()
                     .padding(vertical = 2.dp)
             )
 
@@ -149,7 +149,7 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp) // Padding applied to content only
+                    .padding(horizontal = 16.dp)
             ) {
                 // Profile Section
                 Row(
@@ -170,6 +170,21 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
+
+                // Title TextField
+                TextField(
+                    value = postTitle,
+                    onValueChange = { postTitle = it },
+                    label = { Text("Title") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
 
                 // Dropdowns
                 Row(
@@ -284,8 +299,7 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                 Divider(
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                     thickness = 1.dp,
-                    modifier = Modifier
-                        .fillMaxWidth() // Spans full width within padded Column
+                    modifier = Modifier.fillMaxWidth()
                         .padding(vertical = 2.dp)
                 )
 

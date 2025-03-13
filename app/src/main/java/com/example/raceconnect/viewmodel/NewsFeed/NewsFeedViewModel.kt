@@ -146,7 +146,7 @@ class NewsFeedViewModel(
         _newPostTrigger.value = false
     }
 
-    fun addPost(context: Context, content: String, imageUri: Uri?, category: String, privacy: String) {
+    fun addPost(context: Context, content: String, title: String, imageUri: Uri?, category: String, privacy: String) {
         viewModelScope.launch {
             val userId = currentUserId.value
             if (userId == null || userId <= 0) {
@@ -156,7 +156,7 @@ class NewsFeedViewModel(
             try {
                 val userIdPart = RequestBody.create("text/plain".toMediaTypeOrNull(), userId.toString())
                 val contentPart = RequestBody.create("text/plain".toMediaTypeOrNull(), content)
-                val titlePart = RequestBody.create("text/plain".toMediaTypeOrNull(), "You")
+                val titlePart = RequestBody.create("text/plain".toMediaTypeOrNull(), title)
                 val categoryPart = RequestBody.create("text/plain".toMediaTypeOrNull(), category)
                 val privacyPart = RequestBody.create("text/plain".toMediaTypeOrNull(), privacy)
                 val typePart = RequestBody.create("text/plain".toMediaTypeOrNull(), if (imageUri != null) "image" else "text")
