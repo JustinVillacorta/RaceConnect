@@ -10,9 +10,11 @@ import java.text.SimpleDateFormat
 import java.util.*
 import retrofit2.Response
 import com.example.raceconnect.utils.NetworkUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 
 class NewsFeedPagingSourceAllPosts(
     private val apiService: ApiService,
@@ -20,6 +22,10 @@ class NewsFeedPagingSourceAllPosts(
     private val categories: List<String>,
     private val context: Context
 ) : PagingSource<Int, NewsFeedDataClassItem>() {
+
+    companion object {
+        private const val MAX_REPOST_FETCHES = 5 // Limit repost requests per page
+    }
 
     override fun getRefreshKey(state: PagingState<Int, NewsFeedDataClassItem>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
@@ -58,9 +64,7 @@ class NewsFeedPagingSourceAllPosts(
             val processedIds = mutableSetOf<Int>()
 
             posts.forEach { post ->
-                val updatedPost = post.copy(
-                    isRepost = post.isRepost ?: false
-                )
+                val updatedPost = post.copy(isRepost = post.isRepost ?: false)
                 if (!processedIds.contains(updatedPost.id)) {
                     allItems.add(updatedPost)
                     processedIds.add(updatedPost.id)
@@ -70,46 +74,48 @@ class NewsFeedPagingSourceAllPosts(
                 }
             }
 
-            // Fetch reposts in parallel
+            // Fetch reposts in parallel with a limit
             coroutineScope {
-                val repostJobs = posts.filter { it.isRepost != true }.map { post ->
-                    async {
-                        try {
-                            val repostsResponse: Response<List<Repost>> = apiService.getRepostsByPostId(
-                                postId = post.id,
-                                limit = limit,
-                                offset = offset
-                            )
-                            if (repostsResponse.isSuccessful) {
-                                repostsResponse.body()?.map { repost ->
-                                    NewsFeedDataClassItem(
-                                        id = repost.id,
-                                        user_id = repost.userId,
-                                        content = repost.quote ?: "",
-                                        created_at = repost.createdAt,
-                                        isRepost = true,
-                                        original_post_id = repost.postId,
-                                        like_count = 0,
-                                        comment_count = 0,
-                                        repost_count = 0,
-                                        category = post.category,
-                                        privacy = post.privacy,
-                                        type = post.type,
-                                        postType = post.postType,
-                                        title = post.title,
-                                        username = null
-                                    )
-                                } ?: emptyList()
-                            } else {
-                                Log.e("PagingSourceAllPosts", "Failed to fetch reposts for post ${post.id}: ${repostsResponse.code()} - ${repostsResponse.message()}")
+                val repostJobs = posts.filter { it.isRepost != true }
+                    .take(MAX_REPOST_FETCHES) // Limit to 5 repost fetches per page
+                    .map { post ->
+                        async {
+                            try {
+                                val repostsResponse: Response<List<Repost>> = apiService.getRepostsByPostId(
+                                    postId = post.id,
+                                    limit = limit,
+                                    offset = offset
+                                )
+                                if (repostsResponse.isSuccessful) {
+                                    repostsResponse.body()?.map { repost ->
+                                        NewsFeedDataClassItem(
+                                            id = repost.id,
+                                            user_id = repost.userId,
+                                            content = repost.quote ?: "",
+                                            created_at = repost.createdAt,
+                                            isRepost = true,
+                                            original_post_id = repost.postId,
+                                            like_count = 0,
+                                            comment_count = 0,
+                                            repost_count = 0,
+                                            category = post.category,
+                                            privacy = post.privacy,
+                                            type = post.type,
+                                            postType = post.postType,
+                                            title = post.title,
+                                            username = null
+                                        )
+                                    } ?: emptyList()
+                                } else {
+                                    Log.e("PagingSourceAllPosts", "Failed to fetch reposts for post ${post.id}: ${repostsResponse.code()} - ${repostsResponse.message()}")
+                                    emptyList()
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PagingSourceAllPosts", "Error fetching reposts for post ${post.id}: ${e.message}", e)
                                 emptyList()
                             }
-                        } catch (e: Exception) {
-                            Log.e("PagingSourceAllPosts", "Error fetching reposts for post ${post.id}: ${e.message}", e)
-                            emptyList()
                         }
                     }
-                }
 
                 val repostResults = repostJobs.awaitAll()
                 repostResults.flatten().forEach { repost ->
@@ -124,13 +130,16 @@ class NewsFeedPagingSourceAllPosts(
             }
 
             Log.d("PagingSourceAllPosts", "All items before sorting (${allItems.size} total): ${allItems.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}" }}")
-            allItems.sortByDescending { item ->
-                try {
-                    val parsedDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(item.created_at)
-                    parsedDate?.time ?: 0L
-                } catch (e: Exception) {
-                    Log.e("PagingSourceAllPosts", "Error parsing date ${item.created_at} for post ${item.id}: ${e.message}")
-                    0L
+            // Move sorting to background thread
+            withContext(Dispatchers.Default) {
+                allItems.sortByDescending { item ->
+                    try {
+                        val parsedDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(item.created_at)
+                        parsedDate?.time ?: 0L
+                    } catch (e: Exception) {
+                        Log.e("PagingSourceAllPosts", "Error parsing date ${item.created_at} for post ${item.id}: ${e.message}")
+                        0L
+                    }
                 }
             }
             Log.d("PagingSourceAllPosts", "All items after sorting (${allItems.size} total): ${allItems.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}" }}")
