@@ -53,8 +53,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
-import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModelFactory
 
@@ -68,7 +68,7 @@ fun UserProfileScreen(
     val userPreferences = remember { UserPreferences(context) }
     val profileDetailsViewModel: ProfileDetailsViewModel = viewModel(factory = ProfileDetailsViewModelFactory(userPreferences))
     val profileData by profileDetailsViewModel.profileData.collectAsState(initial = null)
-    val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
+    val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
     val userId = profileData?.id
     val postsFlow = userId?.let { newsFeedViewModel.getPostsByUserId(it) }
     val posts = postsFlow?.collectAsLazyPagingItems()
@@ -111,7 +111,7 @@ fun UserProfileScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(100.dp)
+                            .size(200.dp)
                             .clip(CircleShape)
                             .background(Color.Gray)
                     ) {

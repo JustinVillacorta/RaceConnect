@@ -23,9 +23,14 @@ class UserPreferences(private val context: Context) {
         private val AGE = intPreferencesKey("age")
         private val PROFILE_PICTURE = stringPreferencesKey("profile_picture")
         private val BIO = stringPreferencesKey("bio")
-        private val FAVORITE_CATEGORIES = stringPreferencesKey("favorite_categories")
-        private val FAVORITE_MARKETPLACE_ITEMS = stringPreferencesKey("favorite_marketplace_items")
-        private val FRIENDS_LIST = stringPreferencesKey("friends_list")
+        // New keys using stringSetPreferencesKey
+        private val FAVORITE_CATEGORIES = stringSetPreferencesKey("favorite_categories_v2")
+        private val FAVORITE_MARKETPLACE_ITEMS = stringSetPreferencesKey("favorite_marketplace_items_v2")
+        private val FRIENDS_LIST = stringSetPreferencesKey("friends_list_v2")
+        // Old keys using stringPreferencesKey (for migration)
+        private val OLD_FAVORITE_CATEGORIES = stringPreferencesKey("favorite_categories")
+        private val OLD_FAVORITE_MARKETPLACE_ITEMS = stringPreferencesKey("favorite_marketplace_items")
+        private val OLD_FRIENDS_LIST = stringPreferencesKey("friends_list")
         private val FRIEND_PRIVACY = stringPreferencesKey("friend_privacy")
         private val LAST_ONLINE = stringPreferencesKey("last_online")
         private val STATUS = stringPreferencesKey("status")
@@ -33,6 +38,38 @@ class UserPreferences(private val context: Context) {
         private val SUSPENSION_END_DATE = stringPreferencesKey("suspension_end_date")
         private val CREATED_AT = stringPreferencesKey("created_at")
         private val UPDATED_AT = stringPreferencesKey("updated_at")
+    }
+
+    // Perform migration if old data exists
+    suspend fun migrateOldDataIfNeeded() {
+        context.dataStore.edit { preferences ->
+            // Migrate favorite categories
+            val oldFavoriteCategories = preferences[OLD_FAVORITE_CATEGORIES]
+            if (oldFavoriteCategories != null) {
+                val categoriesSet = oldFavoriteCategories.split(",").filter { it.isNotEmpty() }.toSet()
+                preferences[FAVORITE_CATEGORIES] = categoriesSet
+                preferences.remove(OLD_FAVORITE_CATEGORIES) // Remove old key
+                Log.d("UserPreferences", "Migrated favorite_categories to favorite_categories_v2: $categoriesSet")
+            }
+
+            // Migrate favorite marketplace items
+            val oldFavoriteMarketplaceItems = preferences[OLD_FAVORITE_MARKETPLACE_ITEMS]
+            if (oldFavoriteMarketplaceItems != null) {
+                val itemsSet = oldFavoriteMarketplaceItems.split(",").filter { it.isNotEmpty() }.toSet()
+                preferences[FAVORITE_MARKETPLACE_ITEMS] = itemsSet
+                preferences.remove(OLD_FAVORITE_MARKETPLACE_ITEMS) // Remove old key
+                Log.d("UserPreferences", "Migrated favorite_marketplace_items to favorite_marketplace_items_v2: $itemsSet")
+            }
+
+            // Migrate friends list
+            val oldFriendsList = preferences[OLD_FRIENDS_LIST]
+            if (oldFriendsList != null) {
+                val friendsSet = oldFriendsList.split(",").mapNotNull { it.toIntOrNull()?.toString() }.toSet()
+                preferences[FRIENDS_LIST] = friendsSet
+                preferences.remove(OLD_FRIENDS_LIST) // Remove old key
+                Log.d("UserPreferences", "Migrated friends_list to friends_list_v2: $friendsSet")
+            }
+        }
     }
 
     suspend fun saveUser(
@@ -46,9 +83,9 @@ class UserPreferences(private val context: Context) {
         age: Int? = null,
         profilePicture: String? = null,
         bio: String? = null,
-        favoriteCategories: String? = null,
-        favoriteMarketplaceItems: String? = null,
-        friendsList: String? = null,
+        favoriteCategories: Set<String>? = null,
+        favoriteMarketplaceItems: Set<String>? = null,
+        friendsList: Set<Int>? = null,
         friendPrivacy: String? = null,
         lastOnline: String? = null,
         status: String? = null,
@@ -70,11 +107,19 @@ class UserPreferences(private val context: Context) {
                 preferences[PROFILE_PICTURE] = it
                 Log.d("UserPreferences", "Saving profile picture: $it")
             }
-            Log.d("UserPreferences", "Retrieved profile picture: $profilePicture")
             bio?.let { preferences[BIO] = it }
-            favoriteCategories?.let { preferences[FAVORITE_CATEGORIES] = it }
-            favoriteMarketplaceItems?.let { preferences[FAVORITE_MARKETPLACE_ITEMS] = it }
-            friendsList?.let { preferences[FRIENDS_LIST] = it }
+            favoriteCategories?.let {
+                preferences[FAVORITE_CATEGORIES] = it
+                Log.d("UserPreferences", "Saving favorite categories: $it")
+            }
+            favoriteMarketplaceItems?.let {
+                preferences[FAVORITE_MARKETPLACE_ITEMS] = it
+                Log.d("UserPreferences", "Saving favorite marketplace items: $it")
+            }
+            friendsList?.let {
+                preferences[FRIENDS_LIST] = it.map { it.toString() }.toSet()
+                Log.d("UserPreferences", "Saving friends list: $it")
+            }
             friendPrivacy?.let { preferences[FRIEND_PRIVACY] = it }
             lastOnline?.let { preferences[LAST_ONLINE] = it }
             status?.let { preferences[STATUS] = it }
@@ -82,6 +127,7 @@ class UserPreferences(private val context: Context) {
             suspensionEndDate?.let { preferences[SUSPENSION_END_DATE] = it }
             createdAt?.let { preferences[CREATED_AT] = it }
             updatedAt?.let { preferences[UPDATED_AT] = it }
+            Log.d("UserPreferences", "User data saved: userId=$userId, username=$username, email=$email")
         }
     }
 
@@ -91,7 +137,7 @@ class UserPreferences(private val context: Context) {
         val email = preferences[EMAIL] ?: return@map null
         val profilePicture = preferences[PROFILE_PICTURE]
 
-        Log.d("UserPreferences", "Retrieved profile picture: $profilePicture")
+        Log.d("UserPreferences", "Retrieved user: id=$id, username=$username, email=$email, profilePicture=$profilePicture")
 
         users(
             id = id,
@@ -103,9 +149,9 @@ class UserPreferences(private val context: Context) {
             age = preferences[AGE],
             profilePicture = profilePicture,
             bio = preferences[BIO],
-            favoriteCategories = preferences[FAVORITE_CATEGORIES]?.split(",")?.filter { it.isNotEmpty() } ?: emptyList(),
-            favoriteMarketplaceItems = preferences[FAVORITE_MARKETPLACE_ITEMS]?.split(",")?.filter { it.isNotEmpty() } ?: emptyList(),
-            friendsList = preferences[FRIENDS_LIST]?.split(",")?.mapNotNull { it.toIntOrNull() } ?: emptyList(),
+            favoriteCategories = preferences[FAVORITE_CATEGORIES]?.toList() ?: emptyList(),
+            favoriteMarketplaceItems = preferences[FAVORITE_MARKETPLACE_ITEMS]?.toList() ?: emptyList(),
+            friendsList = preferences[FRIENDS_LIST]?.mapNotNull { it.toIntOrNull() } ?: emptyList(),
             friendPrivacy = preferences[FRIEND_PRIVACY],
             lastOnline = preferences[LAST_ONLINE],
             status = preferences[STATUS],
@@ -118,6 +164,24 @@ class UserPreferences(private val context: Context) {
 
     val token: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[TOKEN]
+    }
+
+    val selectedCategories: Flow<List<String>> = context.dataStore.data.map { preferences ->
+        preferences[FAVORITE_CATEGORIES]?.toList() ?: emptyList()
+    }
+
+    suspend fun saveSelectedCategories(categories: List<String>) {
+        context.dataStore.edit { preferences ->
+            preferences[FAVORITE_CATEGORIES] = categories.toSet()
+            Log.d("UserPreferences", "Saved selected categories: $categories")
+        }
+    }
+
+    suspend fun clearSelectedCategories() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(FAVORITE_CATEGORIES)
+            Log.d("UserPreferences", "Cleared selected categories")
+        }
     }
 
     suspend fun getUserId(): Int? {

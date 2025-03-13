@@ -90,13 +90,15 @@ class FriendsListDeserializer : JsonDeserializer<List<Int>?> {
     }
 }
 
-// Rest of the data classes remain unchanged
+
 data class UpdateUserRequest(
     val username: String,
     val birthdate: String?,
     val number: String?,
     val address: String?,
-    val bio: String?
+    val bio: String?,
+    @SerializedName("favorite_categories")
+    val favoriteCategories: List<String>?
 )
 
 data class UploadProfilePictureResponse(

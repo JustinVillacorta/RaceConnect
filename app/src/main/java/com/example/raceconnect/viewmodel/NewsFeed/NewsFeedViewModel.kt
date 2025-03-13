@@ -5,29 +5,38 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.CreateRepostRequest
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.ReportRequest
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.network.RetrofitInstance
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import java.io.File
 
-class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewModel() {
+class NewsFeedViewModel(
+    private val userPreferences: UserPreferences,
+    private val preferenceViewModel: NewsFeedPreferenceViewModel,
+    private val context: Context
+) : ViewModel() {
     private val _postLikes = MutableStateFlow<Map<Int, Boolean>>(emptyMap())
     private val _likeCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
     val postLikes: StateFlow<Map<Int, Boolean>> = _postLikes.asStateFlow()
@@ -42,24 +51,85 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
     private val _postImages = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
     val postImages: StateFlow<Map<Int, List<String>>> = _postImages.asStateFlow()
 
-    private val apiService = RetrofitInstance.api
+    private val apiService = RetrofitInstance.api ?: throw IllegalStateException("RetrofitInstance.api must not be null")
     var isInitialRefreshDone = false
 
-    // Get the current user's ID once during initialization
-    private val currentUserId: Int by lazy {
-        runBlocking { userPreferences.user.first()?.id ?: -1 }
-    }
+    private val _currentUserId = MutableStateFlow<Int?>(-1)
+    val currentUserId: StateFlow<Int?> = _currentUserId.asStateFlow()
 
-    // Main news feed flow for the current user
-    val postsFlow: Flow<PagingData<NewsFeedDataClassItem>> = Pager(
-        config = PagingConfig(pageSize = 10, prefetchDistance = 2, enablePlaceholders = false),
-        pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService, currentUserId) }
-    ).flow.cachedIn(viewModelScope)
+    private val _selectedCategories = MutableStateFlow<List<String>>(listOf("F1"))
+    val selectedCategories: StateFlow<List<String>> = _selectedCategories.asStateFlow()
+
+    private val _isDataReady = MutableStateFlow(false)
+    val isDataReady: StateFlow<Boolean> = _isDataReady.asStateFlow()
+
+    private val _postsFlow = MutableStateFlow<PagingData<NewsFeedDataClassItem>>(PagingData.empty())
+    val postsFlow: StateFlow<PagingData<NewsFeedDataClassItem>> = _postsFlow.asStateFlow()
 
     init {
         viewModelScope.launch {
-            postsFlow.collect { pagingData ->
-                Log.d("NewsFeedViewModel", "Collected new PagingData with items")
+            try {
+                val user = userPreferences.user.first()
+                _currentUserId.value = user?.id ?: -1
+                Log.d("NewsFeedViewModel", "Fetched user ID: ${_currentUserId.value}")
+
+                val categories = userPreferences.selectedCategories.first().map { brandName ->
+                    when (brandName) {
+                        "Formula 1" -> "F1"
+                        "24H le mans" -> "LEM"
+                        "Formula drift" -> "FD"
+                        "WRC" -> "WRC"
+                        "NASCAR" -> "NAS"
+                        "GT CUP" -> "GT"
+                        else -> "F1"
+                    }
+                }.ifEmpty { listOf("F1") }
+                _selectedCategories.value = categories
+                Log.d("NewsFeedViewModel", "Fetched categories: $categories")
+
+                _isDataReady.value = true
+                Log.d("NewsFeedViewModel", "Data is ready")
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "Error fetching initial data", e)
+                _isDataReady.value = true
+            }
+        }
+
+        viewModelScope.launch {
+            isDataReady.collect { ready ->
+                if (ready) {
+                    Log.d("NewsFeedViewModel", "Data is ready, collecting postsFlow")
+                    try {
+                        combine(
+                            currentUserId,
+                            selectedCategories
+                        ) { userId, categories ->
+                            userId to categories
+                        }.flatMapLatest { (userId, categories) ->
+                            if (userId == null || userId == -1) {
+                                Log.w("NewsFeedViewModel", "User ID is null or -1, returning empty PagingData")
+                                flowOf(PagingData.empty())
+                            } else {
+                                Log.d("NewsFeedViewModel", "Creating Pager with userId: $userId, categories: $categories")
+                                Pager(
+                                    config = PagingConfig(pageSize = 10, prefetchDistance = 2, enablePlaceholders = false),
+                                    pagingSourceFactory = {
+                                        Log.d("NewsFeedViewModel", "Creating NewsFeedPagingSource with apiService: $apiService")
+                                        NewsFeedPagingSourceAllPosts(apiService, userId, categories, context)
+                                    }
+                                ).flow
+                            }
+                        }.cachedIn(viewModelScope).collect { pagingData ->
+                            _postsFlow.value = pagingData
+                            Log.d("NewsFeedViewModel", "Collected new PagingData with items: $pagingData")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("NewsFeedViewModel", "Error collecting postsFlow", e)
+                        _postsFlow.value = PagingData.empty()
+                    }
+                } else {
+                    Log.w("NewsFeedViewModel", "Data not ready yet, skipping postsFlow collection")
+                }
             }
         }
     }
@@ -68,11 +138,6 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         viewModelScope.launch {
             _isRefreshing.value = true
             Log.d("NewsFeedViewModel", "✅ Refresh triggered")
-            // Invalidate the PagingSource to trigger a refresh
-            Pager(
-                config = PagingConfig(pageSize = 10, prefetchDistance = 2, enablePlaceholders = false),
-                pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService, currentUserId) }
-            ).flow.cachedIn(viewModelScope) // This recreates the Pager, effectively refreshing
             _isRefreshing.value = false
         }
     }
@@ -83,7 +148,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
 
     fun addPost(context: Context, content: String, imageUri: Uri?, category: String, privacy: String) {
         viewModelScope.launch {
-            val userId = userPreferences.user.first()?.id ?: return@launch
+            val userId = currentUserId.value ?: return@launch
             try {
                 val userIdPart = RequestBody.create("text/plain".toMediaTypeOrNull(), userId.toString())
                 val contentPart = RequestBody.create("text/plain".toMediaTypeOrNull(), content)
@@ -155,7 +220,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
     fun fetchPostLikes(postId: Int) {
         viewModelScope.launch {
             try {
-                val userId = userPreferences.user.first()?.id ?: return@launch
+                val userId = currentUserId.value ?: return@launch
                 val response = apiService.getPostLikes(postId)
                 if (response.isSuccessful) {
                     val likes = response.body() ?: emptyList()
@@ -172,7 +237,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
 
     fun toggleLike(postId: Int, ownerId: Int) {
         viewModelScope.launch {
-            val userId = userPreferences.user.first()?.id ?: return@launch
+            val userId = currentUserId.value ?: return@launch
             _postLikes.value = _postLikes.value + (postId to true)
             _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) + 1)
             try {
@@ -221,7 +286,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
             try {
                 Log.d("ReportPost", "Attempting to report post $postId with reason: $reason")
 
-                if (currentUserId == -1) {
+                val userId = currentUserId.value ?: run {
                     Log.w("ReportPost", "User not logged in, aborting report")
                     onFailure("User not logged in")
                     return@launch
@@ -233,7 +298,7 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
                 val reportRequest = ReportRequest(
                     post_id = postId,
                     marketplace_item_id = null,
-                    reporter_id = currentUserId,
+                    reporter_id = userId,
                     reason = finalReason
                 )
                 Log.d("ReportPost", "Report request created: $reportRequest")
@@ -257,13 +322,12 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
     }
 
     fun reportUser(userId: Int, reason: String, otherText: String?) {
-        // Logic to report the user (same as reportPost for now)
         Log.d("NewsFeedViewModel", "Reported user $userId with reason: $reason, otherText: $otherText")
     }
 
     fun repostPost(postId: Int, comment: String) {
         viewModelScope.launch {
-            val userId = userPreferences.user.first()?.id ?: return@launch
+            val userId = currentUserId.value ?: return@launch
             try {
                 val request = CreateRepostRequest(
                     userId = userId,
@@ -284,21 +348,10 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
         }
     }
 
-    fun getPostsByUserId(userId: Int): StateFlow<PagingData<NewsFeedDataClassItem>> {
-        val userPostsFlow = MutableStateFlow<PagingData<NewsFeedDataClassItem>>(PagingData.empty())
-        viewModelScope.launch {
-            try {
-                val pager = Pager(
-                    config = PagingConfig(pageSize = 10, enablePlaceholders = false),
-                    pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService, userId) }
-                )
-                pager.flow.cachedIn(viewModelScope).collect { pagingData ->
-                    userPostsFlow.value = pagingData
-                }
-            } catch (e: Exception) {
-                Log.e("NewsFeedViewModel", "Error fetching posts for user $userId", e)
-            }
-        }
-        return userPostsFlow.asStateFlow()
+    fun getPostsByUserId(userId: Int): Flow<PagingData<NewsFeedDataClassItem>> {
+        return Pager(
+            config = PagingConfig(pageSize = 10, enablePlaceholders = false),
+            pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService, userId, selectedCategories.value, context) }
+        ).flow.cachedIn(viewModelScope)
     }
 }

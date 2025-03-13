@@ -59,6 +59,7 @@ import com.example.raceconnect.view.Screens.NewsFeedScreens.RepostScreen
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.example.raceconnect.viewmodel.NotificationClickedViewModel
@@ -67,11 +68,18 @@ import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewMo
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModelFactory
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModelFactory
+import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {
     val navController = rememberNavController()
+    // Perform DataStore migration before proceeding
+    runBlocking {
+        userPreferences.migrateOldDataIfNeeded()
+        Log.d("AppNavigation", "DataStore migration completed")
+    }
+
     val token = userPreferences.token.collectAsState(initial = null).value
     val context = LocalContext.current
     val user by userPreferences.user.collectAsState(initial = null)
@@ -89,7 +97,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showListedItems by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
 
-    val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
+    // Use the new factory method with context and userPreferences
+    val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
     val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences))
     val profileDetailsViewModel: ProfileDetailsViewModel = viewModel(factory = ProfileDetailsViewModelFactory(userPreferences))
@@ -195,7 +204,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     composable("notifications") {
                         NotificationsScreen(context = LocalContext.current, navController = navController)
                     }
-                    // Route for regular posts
                     composable(
                         NavRoutes.Post.route,
                         arguments = listOf(
@@ -211,7 +219,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             PostDetailScreen(
                                 navController = navController,
                                 postId = postId,
-                                repostId = null, // No repostId for regular posts
+                                repostId = null,
                                 userPreferences = userPreferences,
                                 viewModel = viewModel(factory = NotificationClickedViewModelFactory())
                             )
@@ -228,7 +236,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             }
                         }
                     }
-                    // Route for reposts
                     composable(
                         NavRoutes.Repost.route,
                         arguments = listOf(
@@ -250,7 +257,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             PostDetailScreen(
                                 navController = navController,
                                 postId = postId,
-                                repostId = repostId, // Pass repostId for reposts
+                                repostId = repostId,
                                 userPreferences = userPreferences,
                                 viewModel = viewModel(factory = NotificationClickedViewModelFactory())
                             )
@@ -291,10 +298,16 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             onClose = { showChatSellerScreen = null }
                         )
                     }
+                    composable(NavRoutes.NewsFeedPreferences.route) {
+                        NewsFeedPreferencesScreen(
+                            navController = navController,
+                            onClose = { navController.popBackStack() },
+                            factory = NewsFeedPreferenceViewModelFactory(userPreferences)
+                        )
+                    }
                 }
             }
 
-            // Overlay for CreatePostScreen
             AnimatedVisibility(
                 visible = showCreatePostScreen,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
@@ -306,7 +319,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 )
             }
 
-            // Overlay for CreateMarketplaceItemScreen
             AnimatedVisibility(
                 visible = showCreateListing,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
@@ -319,7 +331,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 )
             }
 
-            // Overlay for MarketplaceItemDetailScreen
             showItemDetailScreen?.let { itemId ->
                 AnimatedVisibility(
                     visible = true,
@@ -336,7 +347,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
-            // Overlay for ChatSellerScreen
             showChatSellerScreen?.let { itemId ->
                 AnimatedVisibility(
                     visible = true,
@@ -351,7 +361,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
-            // Overlay for FullScreenImageViewer
             showFullScreenImage?.let { (imageUrl, postId) ->
                 AnimatedVisibility(
                     visible = true,
@@ -370,7 +379,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
-            // Overlay for RepostScreen
             showRepostScreen?.let { post ->
                 AnimatedVisibility(
                     visible = true,
@@ -387,7 +395,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
-            // Overlays for other menu options
             AnimatedVisibility(
                 visible = showFavoriteItems,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
@@ -407,8 +414,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
             ) {
                 NewsFeedPreferencesScreen(
                     navController = navController,
-                    menuViewModel = menuViewModel,
-                    onClose = { showNewsFeedPreferences = false }
+                    onClose = { showNewsFeedPreferences = false },
+                    factory = NewsFeedPreferenceViewModelFactory(userPreferences)
                 )
             }
 

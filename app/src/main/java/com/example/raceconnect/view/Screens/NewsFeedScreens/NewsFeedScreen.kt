@@ -39,10 +39,11 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
-import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,7 +56,8 @@ fun NewsFeedScreen(
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
     val authViewModel: AuthenticationViewModel = viewModel()
-    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences))
+    val context = LocalContext.current
+    val viewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
     val posts = viewModel.postsFlow.collectAsLazyPagingItems()
     val errorMessage by authViewModel.ErrorMessage.collectAsState()
     var isRefreshing by remember { mutableStateOf(false) }

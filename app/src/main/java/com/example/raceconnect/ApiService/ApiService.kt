@@ -62,6 +62,14 @@ interface ApiService {
         @Query("offset") offset: Int = 0
     ): Response<List<NewsFeedDataClassItem>>
 
+    @GET("posts")
+    suspend fun getPostsByCategoryAndPrivacy(
+        @Query("user_id") userId: Int,
+        @Query("category") categories: String, // Comma-separated list of categories
+        @Query("limit") limit: Int = 10,
+        @Query("offset") offset: Int = 0
+    ): Response<List<NewsFeedDataClassItem>>
+
     @GET("posts/{id}")
     suspend fun getPostById(
         @Path("id") id: Int
@@ -194,7 +202,6 @@ interface ApiService {
         @Path("id") id: Int
     ): Response<Map<String, String>>
 
-    // Add new repost endpoints
     @POST("post-reposts")
     suspend fun createRepost(
         @Body request: CreateRepostRequest
