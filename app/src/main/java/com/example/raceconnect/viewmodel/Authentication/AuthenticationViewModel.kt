@@ -113,7 +113,10 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                 val response: LoginResponse = RetrofitInstance.api.login(loginRequest)
 
                 if (response.token != null && response.user != null) {
-                    if (response.user.status == "Banned") {
+                    if (response.user.id <= 0) {
+                        ErrorMessage.value = "Invalid user ID received from server"
+                        Log.e("AuthenticationViewModel", "Invalid user ID: ${response.user.id}")
+                    } else if (response.user.status == "Banned") {
                         val suspensionEndDate = response.user.suspensionEndDate
                         val message = if (suspensionEndDate != null) {
                             "Your account is suspended until $suspensionEndDate."
@@ -136,9 +139,9 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                             age = response.user.age,
                             profilePicture = response.user.profilePicture,
                             bio = response.user.bio,
-                            favoriteCategories = response.user.favoriteCategories?.joinToString(",") as Set<String>?,
-                            favoriteMarketplaceItems = response.user.favoriteMarketplaceItems?.joinToString(",") as Set<String>?,
-                            friendsList = response.user.friendsList?.joinToString(",") as Set<Int>?,
+                            favoriteCategories = response.user.favoriteCategories?.toSet(),
+                            favoriteMarketplaceItems = response.user.favoriteMarketplaceItems?.toSet(),
+                            friendsList = response.user.friendsList?.toSet(),
                             friendPrivacy = response.user.friendPrivacy,
                             lastOnline = response.user.lastOnline,
                             status = response.user.status,

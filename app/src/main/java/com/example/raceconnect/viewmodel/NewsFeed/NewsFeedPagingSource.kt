@@ -15,7 +15,7 @@ class NewsFeedPagingSourceAllPosts(
     private val apiService: ApiService,
     private val userId: Int,
     private val categories: List<String>,
-    private val context: Context // Added for network check
+    private val context: Context
 ) : PagingSource<Int, NewsFeedDataClassItem>() {
 
     override fun getRefreshKey(state: PagingState<Int, NewsFeedDataClassItem>): Int? {
@@ -32,13 +32,11 @@ class NewsFeedPagingSourceAllPosts(
             val offset = page * limit
             Log.d("PagingSourceAllPosts", "Loading page $page, limit $limit, offset $offset for userId $userId with categories $categories")
 
-            // Check network availability
             if (!NetworkUtils.isNetworkAvailable(context)) {
                 Log.e("PagingSourceAllPosts", "No network available")
                 return LoadResult.Error(Exception("No network available"))
             }
 
-            // Fetch posts based on categories and privacy
             val postsResponse: Response<List<NewsFeedDataClassItem>> = apiService.getPostsByCategoryAndPrivacy(
                 userId = userId,
                 categories = categories.joinToString(","),
@@ -55,7 +53,6 @@ class NewsFeedPagingSourceAllPosts(
             val allItems = mutableListOf<NewsFeedDataClassItem>()
             val processedIds = mutableSetOf<Int>()
 
-            // Add posts
             posts.forEach { post ->
                 val updatedPost = post.copy(
                     isRepost = post.isRepost ?: false
@@ -69,29 +66,32 @@ class NewsFeedPagingSourceAllPosts(
                 }
             }
 
-            // Fetch reposts for each post
+            // Fetch reposts for each post with pagination
             posts.filter { it.isRepost != true }.forEach { post ->
                 try {
-                    val repostsResponse: Response<List<Repost>> = apiService.getRepostsByPostId(postId = post.id)
+                    val repostsResponse: Response<List<Repost>> = apiService.getRepostsByPostId(
+                        postId = post.id,
+                        limit = limit,
+                        offset = offset
+                    )
                     if (repostsResponse.isSuccessful) {
                         val reposts = repostsResponse.body()?.map { repost ->
                             NewsFeedDataClassItem(
                                 id = repost.id,
                                 user_id = repost.userId,
-                                content = repost.quote ?: "", // Map quote to content
+                                content = repost.quote ?: "",
                                 created_at = repost.createdAt,
                                 isRepost = true,
                                 original_post_id = repost.postId,
                                 like_count = 0,
                                 comment_count = 0,
                                 repost_count = 0,
-                                category = post.category, // Inherit from original post
+                                category = post.category,
                                 privacy = post.privacy,
                                 type = post.type,
                                 postType = post.postType,
                                 title = post.title,
-                                username = null,
-                                // owner_id is not mapped; consider adding if needed
+                                username = null
                             )
                         } ?: emptyList()
                         Log.d("PagingSourceAllPosts", "Fetched ${reposts.size} reposts for post ${post.id}: ${reposts.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}" }}")

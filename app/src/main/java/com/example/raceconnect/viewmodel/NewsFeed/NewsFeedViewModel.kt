@@ -148,7 +148,11 @@ class NewsFeedViewModel(
 
     fun addPost(context: Context, content: String, imageUri: Uri?, category: String, privacy: String) {
         viewModelScope.launch {
-            val userId = currentUserId.value ?: return@launch
+            val userId = currentUserId.value
+            if (userId == null || userId <= 0) {
+                Log.e("NewsFeedViewModel", "❌ Invalid userId: $userId. User not logged in or ID is invalid.")
+                return@launch
+            }
             try {
                 val userIdPart = RequestBody.create("text/plain".toMediaTypeOrNull(), userId.toString())
                 val contentPart = RequestBody.create("text/plain".toMediaTypeOrNull(), content)
@@ -173,6 +177,7 @@ class NewsFeedViewModel(
                 if (response.isSuccessful) {
                     _newPostTrigger.value = true
                     refreshPosts()
+                    Log.d("NewsFeedViewModel", "✅ Post created successfully")
                 } else {
                     Log.e("NewsFeedViewModel", "❌ Failed to create post: ${response.errorBody()?.string()}")
                 }

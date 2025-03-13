@@ -209,12 +209,10 @@ interface ApiService {
 
     @GET("post-reposts")
     suspend fun getRepostsByPostId(
+        @Query("postId") postId: Int,  // Added postId as query parameter
         @Query("limit") limit: Int,
         @Query("offset") offset: Int
     ): Response<List<Repost>>
-
-    @GET("reposts/{postId}")
-    suspend fun getRepostsByPostId(@Path("postId") postId: Int): Response<List<Repost>>
 
     @DELETE("post-reposts/{id}")
     suspend fun deleteRepost(
