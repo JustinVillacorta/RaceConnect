@@ -10,6 +10,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 import retrofit2.Response
 import com.example.raceconnect.utils.NetworkUtils
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 class NewsFeedPagingSourceAllPosts(
     private val apiService: ApiService,
@@ -27,6 +30,7 @@ class NewsFeedPagingSourceAllPosts(
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, NewsFeedDataClassItem> {
         return try {
+            val startTime = System.currentTimeMillis()
             val page = params.key ?: 0
             val limit = params.loadSize
             val offset = page * limit
@@ -66,49 +70,56 @@ class NewsFeedPagingSourceAllPosts(
                 }
             }
 
-            // Fetch reposts for each post with pagination
-            posts.filter { it.isRepost != true }.forEach { post ->
-                try {
-                    val repostsResponse: Response<List<Repost>> = apiService.getRepostsByPostId(
-                        postId = post.id,
-                        limit = limit,
-                        offset = offset
-                    )
-                    if (repostsResponse.isSuccessful) {
-                        val reposts = repostsResponse.body()?.map { repost ->
-                            NewsFeedDataClassItem(
-                                id = repost.id,
-                                user_id = repost.userId,
-                                content = repost.quote ?: "",
-                                created_at = repost.createdAt,
-                                isRepost = true,
-                                original_post_id = repost.postId,
-                                like_count = 0,
-                                comment_count = 0,
-                                repost_count = 0,
-                                category = post.category,
-                                privacy = post.privacy,
-                                type = post.type,
-                                postType = post.postType,
-                                title = post.title,
-                                username = null
+            // Fetch reposts in parallel
+            coroutineScope {
+                val repostJobs = posts.filter { it.isRepost != true }.map { post ->
+                    async {
+                        try {
+                            val repostsResponse: Response<List<Repost>> = apiService.getRepostsByPostId(
+                                postId = post.id,
+                                limit = limit,
+                                offset = offset
                             )
-                        } ?: emptyList()
-                        Log.d("PagingSourceAllPosts", "Fetched ${reposts.size} reposts for post ${post.id}: ${reposts.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}" }}")
-                        reposts.forEach { repost ->
-                            if (!processedIds.contains(repost.id)) {
-                                allItems.add(repost)
-                                processedIds.add(repost.id)
-                                Log.d("PagingSourceAllPosts", "Added repost ID: ${repost.id}, IsRepost: ${repost.isRepost}")
+                            if (repostsResponse.isSuccessful) {
+                                repostsResponse.body()?.map { repost ->
+                                    NewsFeedDataClassItem(
+                                        id = repost.id,
+                                        user_id = repost.userId,
+                                        content = repost.quote ?: "",
+                                        created_at = repost.createdAt,
+                                        isRepost = true,
+                                        original_post_id = repost.postId,
+                                        like_count = 0,
+                                        comment_count = 0,
+                                        repost_count = 0,
+                                        category = post.category,
+                                        privacy = post.privacy,
+                                        type = post.type,
+                                        postType = post.postType,
+                                        title = post.title,
+                                        username = null
+                                    )
+                                } ?: emptyList()
                             } else {
-                                Log.d("PagingSourceAllPosts", "Skipped duplicate repost ID: ${repost.id}")
+                                Log.e("PagingSourceAllPosts", "Failed to fetch reposts for post ${post.id}: ${repostsResponse.code()} - ${repostsResponse.message()}")
+                                emptyList()
                             }
+                        } catch (e: Exception) {
+                            Log.e("PagingSourceAllPosts", "Error fetching reposts for post ${post.id}: ${e.message}", e)
+                            emptyList()
                         }
-                    } else {
-                        Log.e("PagingSourceAllPosts", "Failed to fetch reposts for post ${post.id}: ${repostsResponse.code()} - ${repostsResponse.message()}")
                     }
-                } catch (e: Exception) {
-                    Log.e("PagingSourceAllPosts", "Error fetching reposts for post ${post.id}: ${e.message}", e)
+                }
+
+                val repostResults = repostJobs.awaitAll()
+                repostResults.flatten().forEach { repost ->
+                    if (!processedIds.contains(repost.id)) {
+                        allItems.add(repost)
+                        processedIds.add(repost.id)
+                        Log.d("PagingSourceAllPosts", "Added repost ID: ${repost.id}, IsRepost: ${repost.isRepost}")
+                    } else {
+                        Log.d("PagingSourceAllPosts", "Skipped duplicate repost ID: ${repost.id}")
+                    }
                 }
             }
 
@@ -123,6 +134,9 @@ class NewsFeedPagingSourceAllPosts(
                 }
             }
             Log.d("PagingSourceAllPosts", "All items after sorting (${allItems.size} total): ${allItems.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}" }}")
+
+            val endTime = System.currentTimeMillis()
+            Log.d("PagingSourceAllPosts", "Load completed in ${endTime - startTime}ms")
 
             LoadResult.Page(
                 data = allItems,
