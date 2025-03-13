@@ -96,11 +96,23 @@ class NewsFeedViewModel(
 
     init {
         viewModelScope.launch {
-            try {
-                val user = userPreferences.user.first()
+            // Observe user changes continuously
+            userPreferences.user.collect { user ->
                 _currentUserId.value = user?.id
-                Log.d("NewsFeedViewModel", "Fetched user ID: ${_currentUserId.value}")
+                Log.d("NewsFeedViewModel", "User ID updated: ${_currentUserId.value}")
+                
+                // Reset post-related state when user changes
+                if (user == null) {
+                    _postLikes.value = emptyMap()
+                    _likeCounts.value = emptyMap()
+                    _postImages.value = emptyMap()
+                    Log.d("NewsFeedViewModel", "Cleared post-related state due to user change")
+                }
+            }
+        }
 
+        viewModelScope.launch {
+            try {
                 val rawCategories = userPreferences.selectedCategories.first()
                 val mappedCategories = mapCategories(rawCategories)
                 _selectedCategories.value = mappedCategories

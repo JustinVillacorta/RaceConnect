@@ -248,7 +248,16 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                     true
                 }
                 if (logoutSuccessful) {
-                    userPreferences.clearUser()
+                    // Clear preferences first and wait for completion
+                    withContext(Dispatchers.IO) {
+                        userPreferences.clearUser()
+                        // Verify preferences are cleared
+                        val userId = userPreferences.getUserId()
+                        if (userId != null) {
+                            Log.w("AuthViewModel", "User ID still present after logout!")
+                        }
+                    }
+                    // Then clear other data
                     loggedInUser.value = null
                     menuViewModel?.clearData()
                     onLogoutResult(true, null)
@@ -365,4 +374,3 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
 
 
 }
-

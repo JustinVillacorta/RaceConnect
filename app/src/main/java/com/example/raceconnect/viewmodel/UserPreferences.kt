@@ -194,8 +194,33 @@ class UserPreferences(private val context: Context) {
 
     suspend fun clearUser() {
         context.dataStore.edit { preferences ->
+            // Clear all preferences first
             preferences.clear()
-            Log.d("UserPreferences", "User data cleared")
+            // Force clear critical user identifiers
+            preferences.remove(USER_ID)
+            preferences.remove(TOKEN)
+            // Clear all other user data
+            preferences.remove(USERNAME)
+            preferences.remove(EMAIL)
+            preferences.remove(BIRTHDATE)
+            preferences.remove(NUMBER)
+            preferences.remove(ADDRESS)
+            preferences.remove(AGE)
+            preferences.remove(PROFILE_PICTURE)
+            preferences.remove(BIO)
+            preferences.remove(FAVORITE_CATEGORIES)
+            preferences.remove(FAVORITE_MARKETPLACE_ITEMS)
+            preferences.remove(FRIENDS_LIST)
+            preferences.remove(FRIEND_PRIVACY)
+            preferences.remove(LAST_ONLINE)
+            preferences.remove(STATUS)
+            preferences.remove(REPORT)
+            preferences.remove(SUSPENSION_END_DATE)
+            preferences.remove(CREATED_AT)
+            preferences.remove(UPDATED_AT)
+            Log.d("UserPreferences", "User data cleared from preferences")
         }
+        // The user Flow will automatically emit null since USER_ID is cleared
+        Log.d("UserPreferences", "User state cleared")
     }
 }
