@@ -112,6 +112,13 @@ interface ApiService {
     @GET("marketplace-items/{id}/images")
     suspend fun GetMarketplaceImage(@Path("id") itemId: Int): Response<List<MarketplaceImageResponse>>
 
+    @GET("marketplace-items/user/{userId}")
+    suspend fun getMarketplaceItemsByUserId(
+        @Path("userId") userId: Int,
+        @Query("limit") limit: Int = 10,
+        @Query("offset") offset: Int = 0
+    ): Response<List<MarketplaceDataClassItem>>
+
     @Multipart
     @POST("marketplace-items")
     suspend fun MarketplacePostImage(

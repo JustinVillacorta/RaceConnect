@@ -2,82 +2,60 @@ package com.example.raceconnect.view.Screens.MenuScreens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallTopAppBar
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.raceconnect.R
-import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
+import coil.compose.AsyncImage
+import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.MarketplaceDataClassItem
+import com.example.raceconnect.view.Navigation.NavRoutes
+import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.viewmodel.NewsFeed.ListedItems.ListedItemsViewModel
+import com.example.raceconnect.viewmodel.NewsFeed.ListedItems.ListedItemsViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListedItemsScreen(
     navController: NavController,
-    onClose: () -> Unit,
-    menuViewModel: MenuViewModel
+    userPreferences: UserPreferences,
+    onClose: () -> Unit
 ) {
-    // Example data; replace this with real data from your MenuViewModel
-    val listedItems = listOf(
-        ListedItem(
-            name = "Vintage Racer Jacket",
-            price = "₱8,510",
-            imageRes = R.drawable.raceconnectlogo // Replace with your drawable
-        ),
-        ListedItem(
-            name = "Retro Race T-Shirt",
-            price = "₱1,675",
-            imageRes = R.drawable.raceconnectlogo // Replace with your drawable
-        ),
-        // Add more items as needed
+    val context = LocalContext.current
+    val viewModel: ListedItemsViewModel = viewModel(
+        factory = ListedItemsViewModelFactory(userPreferences, context)
     )
 
-    // State for the dropdown filter
+    val listedItems by viewModel.listedItems.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+
     var expanded by remember { mutableStateOf(false) }
-    val filterOptions = listOf("All items", "Jackets", "T-shirts")
+    val filterOptions = listOf("All items", "Available", "Sold")
     var selectedOption by remember { mutableStateOf(filterOptions[0]) }
 
     Scaffold(
         topBar = {
-            // Red top bar with title and a back arrow
             SmallTopAppBar(
-                title = { Text("Listed Items", color = Color.White) },
+                title = { Text("My Listed Items", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(
@@ -88,65 +66,130 @@ fun ListedItemsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.smallTopAppBarColors(
-                    containerColor = Color(0xFFC62828),
+                    containerColor = Red,
                     titleContentColor = Color.White
                 )
             )
         },
         modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
         ) {
-            // Exposed Dropdown Menu for filtering items
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = selectedOption,
-                    onValueChange = { /* read-only */ },
-                    label = { Text("Filter items") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                    },
-                    readOnly = true,
-                    modifier = Modifier
-                        .menuAnchor() // Required for the M3 ExposedDropdownMenuBox
-                        .fillMaxWidth()
-                )
-
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    filterOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option) },
-                            onClick = {
-                                selectedOption = option
-                                expanded = false
-                            }
+            when {
+                isLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = Red
+                    )
+                }
+                errorMessage != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = errorMessage ?: "An error occurred",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyLarge
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.loadListedItems() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Red)
+                        ) {
+                            Text("Retry", color = Color.White)
+                        }
                     }
                 }
-            }
+                listedItems.isEmpty() -> {
+                    Text(
+                        text = "You haven't listed any items yet",
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(16.dp),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Gray
+                    )
+                }
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = selectedOption,
+                                onValueChange = { /* read-only */ },
+                                label = { Text("Filter items") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                                },
+                                readOnly = true,
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
+                            )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                filterOptions.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            selectedOption = option
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
 
-            // LazyVerticalGrid for a two-column layout
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(listedItems) { item ->
-                    ListedItemCard(item = item)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        val filteredItems = when (selectedOption) {
+                            "Available" -> listedItems.filter { it.status == "Available" }
+                            "Sold" -> listedItems.filter { it.status != "Available" }
+                            else -> listedItems
+                        }
+
+                        if (filteredItems.isEmpty()) {
+                            Text(
+                                text = "No items match the selected filter",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.Gray,
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            )
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(filteredItems) { item ->
+                                    ListedItemCard(
+                                        item = item,
+                                        onClick = {
+                                            navController.navigate(NavRoutes.MarketplaceItemDetail.createRoute(item.id))
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -154,17 +197,21 @@ fun ListedItemsScreen(
 }
 
 @Composable
-fun ListedItemCard(item: ListedItem) {
+fun ListedItemCard(
+    item: MarketplaceDataClassItem,
+    onClick: () -> Unit
+) {
     Card(
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
     ) {
         Column {
-            // Item image
-            Image(
-                painter = painterResource(id = item.imageRes),
-                contentDescription = item.name,
+            AsyncImage(
+                model = item.image_url.takeIf { it.isNotEmpty() } ?: "https://via.placeholder.com/150",
+                contentDescription = item.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -174,23 +221,22 @@ fun ListedItemCard(item: ListedItem) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Item name
             Text(
-                text = item.name,
+                text = item.title,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 8.dp)
+                modifier = Modifier.padding(horizontal = 8.dp),
+                maxLines = 2
             )
 
-            // Price with a red background
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFC62828))
+                    .background(Red)
                     .padding(vertical = 4.dp, horizontal = 8.dp)
             ) {
                 Text(
-                    text = item.price,
+                    text = "₱${item.price}",
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
@@ -199,12 +245,3 @@ fun ListedItemCard(item: ListedItem) {
         }
     }
 }
-
-// Data class for a listed item
-data class ListedItem(
-    val name: String,
-    val price: String,
-    val imageRes: Int
-)
-
-

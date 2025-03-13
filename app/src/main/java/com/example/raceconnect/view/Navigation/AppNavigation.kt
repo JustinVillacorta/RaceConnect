@@ -50,12 +50,12 @@ import com.example.raceconnect.view.Screens.MenuScreens.NewsFeedPreferencesScree
 import com.example.raceconnect.view.Screens.MenuScreens.PostUserProfileViewScreen
 import com.example.raceconnect.view.Screens.MenuScreens.SettingsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.UserProfileScreen
-import com.example.raceconnect.view.Screens.ProfileScreens.MyProfileScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentSectionScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.FullScreenImageViewer
 import com.example.raceconnect.view.Screens.NewsFeedScreens.NewsFeedScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.RepostScreen
+import com.example.raceconnect.view.Screens.ProfileScreens.MyProfileScreen
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
@@ -74,7 +74,6 @@ import kotlinx.coroutines.runBlocking
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {
     val navController = rememberNavController()
-    // Perform DataStore migration before proceeding
     runBlocking {
         userPreferences.migrateOldDataIfNeeded()
         Log.d("AppNavigation", "DataStore migration completed")
@@ -85,7 +84,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id ?: 0
 
-    // State for overlays
     var showCreatePostScreen by remember { mutableStateOf(false) }
     var showCreateListing by remember { mutableStateOf(false) }
     var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
@@ -94,17 +92,12 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showRepostScreen by remember { mutableStateOf<NewsFeedDataClassItem?>(null) }
     var showFavoriteItems by remember { mutableStateOf(false) }
     var showNewsFeedPreferences by remember { mutableStateOf(false) }
-    var showListedItems by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
 
-    // Use the new factory method with context and userPreferences
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
     val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences))
     val profileDetailsViewModel: ProfileDetailsViewModel = viewModel(factory = ProfileDetailsViewModelFactory(userPreferences))
-
-    val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = currentBackStackEntry?.destination?.route
 
     if (token == null) {
         AuthenticationNavHost()
@@ -151,7 +144,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             navController = navController,
                             onShowFavoriteItems = { showFavoriteItems = true },
                             onShowNewsFeedPreferences = { showNewsFeedPreferences = true },
-                            onShowListedItems = { showListedItems = true },
+                            onShowListedItems = { navController.navigate(NavRoutes.ListedItems.route) }, // Changed to navigation
                             onShowSettings = { showSettings = true },
                             userPreferences = userPreferences
                         )
@@ -167,16 +160,13 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         )
                     ) { backStackEntry ->
                         val userId = backStackEntry.arguments?.getInt("userId") ?: 0
-                        Log.d("AppNavigation", "ProfileView route accessed with userId: $userId, loggedInUserId: $loggedInUserId")
                         if (userId == loggedInUserId && userId != 0) {
-                            Log.d("AppNavigation", "Navigating to UserProfileScreen for logged-in user (userId: $userId)")
                             UserProfileScreen(
                                 navController = navController,
                                 context = context,
                                 onClose = { navController.popBackStack() }
                             )
                         } else {
-                            Log.d("AppNavigation", "Navigating to PostUserProfileViewScreen for userId: $userId")
                             PostUserProfileViewScreen(
                                 navController = navController,
                                 context = context,
@@ -186,7 +176,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         }
                     }
                     composable(NavRoutes.ProfileDetails.route) {
-                        Log.d("AppNavigation", "Navigating to ProfileDetails route for logged-in user (userId: $loggedInUserId)")
                         MyProfileScreen(
                             onClose = { navController.popBackStack() },
                             profileDetailsViewModel = profileDetailsViewModel,
@@ -280,14 +269,23 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             onClose = { navController.popBackStack() }
                         )
                     }
-                    composable(NavRoutes.MarketplaceItemDetail.route) { backStackEntry ->
-                        val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
+                    composable(
+                        route = NavRoutes.MarketplaceItemDetail.route,
+                        arguments = listOf(
+                            navArgument("itemId") {
+                                type = NavType.IntType
+                                defaultValue = -1
+                                nullable = false
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
                         MarketplaceItemDetailScreen(
                             itemId = itemId,
                             navController = navController,
-                            onClose = { navController.popBackStack() },
                             viewModel = marketplaceViewModel,
-                            onClickChat = { showChatSellerScreen = it }
+                            onClose = { navController.popBackStack() },
+                            onClickChat = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) }
                         )
                     }
                     composable(NavRoutes.ChatSeller.route) { backStackEntry ->
@@ -295,19 +293,20 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         ChatSellerScreen(
                             itemId = itemId,
                             navController = navController,
-                            onClose = { showChatSellerScreen = null }
+                            onClose = { navController.popBackStack() }
                         )
                     }
-                    composable(NavRoutes.NewsFeedPreferences.route) {
-                        NewsFeedPreferencesScreen(
+                    composable(NavRoutes.ListedItems.route) {
+                        ListedItemsScreen(
                             navController = navController,
-                            onClose = { navController.popBackStack() },
-                            factory = NewsFeedPreferenceViewModelFactory(userPreferences)
+                            userPreferences = userPreferences,
+                            onClose = { navController.popBackStack() }
                         )
                     }
                 }
             }
 
+            // Overlays for other screens (keeping only necessary ones)
             AnimatedVisibility(
                 visible = showCreatePostScreen,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
@@ -416,18 +415,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     navController = navController,
                     onClose = { showNewsFeedPreferences = false },
                     factory = NewsFeedPreferenceViewModelFactory(userPreferences)
-                )
-            }
-
-            AnimatedVisibility(
-                visible = showListedItems,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-            ) {
-                ListedItemsScreen(
-                    navController = navController,
-                    menuViewModel = menuViewModel,
-                    onClose = { showListedItems = false }
                 )
             }
 

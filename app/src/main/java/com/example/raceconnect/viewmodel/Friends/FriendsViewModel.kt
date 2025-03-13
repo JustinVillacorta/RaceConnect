@@ -31,19 +31,59 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val userId = userPreferences.user.first()?.id ?: return@launch
-                val response = RetrofitInstance.api.getFriendsList(userId = userId.toString())
+                val userId = userPreferences.user.first()?.id?.toString() ?: run {
+                    println("Error: userId is null")
+                    return@launch
+                }
+                println("Logged-in userId: $userId (type: ${if (userId != null) userId::class.simpleName else "null"})")
+                val response = RetrofitInstance.api.getFriendsList(userId = userId)
                 if (response.isSuccessful) {
                     response.body()?.let { rawFriends ->
+                        println("Raw friends response: $rawFriends")
                         val friendsList = rawFriends.mapNotNull { friend ->
-                            val id = friend["friend_id"]?.toString()?.replace(".0", "") ?: return@mapNotNull null
-                            val name = friend["username"]?.toString() ?: return@mapNotNull null
-                            val status = friend["status"]?.toString() ?: return@mapNotNull null
-                            val profileImageUrl = friend["profile_picture"]?.toString() // Map profile_picture
-                            Friend(id, name, status, profileImageUrl)
+                            val id = friend["friend_id"]?.toString()?.replace(".0", "") ?: run {
+                                println("Error: friend_id is null for friend: $friend")
+                                return@mapNotNull null
+                            }
+                            val name = friend["username"]?.toString() ?: run {
+                                println("Error: username is null for friend: $friend")
+                                return@mapNotNull null
+                            }
+                            val status = friend["status"]?.toString() ?: run {
+                                println("Error: status is null for friend: $friend")
+                                return@mapNotNull null
+                            }
+                            val profileImageUrl = friend["profile_picture"]?.toString()
+                            val receiverId = when (status) {
+                                "Pending" -> {
+                                    println("Setting receiverId to $userId (type: ${userId::class.simpleName}) for status=$status, id=$id")
+                                    userId
+                                }
+                                "PendingSent" -> {
+                                    println("Setting receiverId to $id (type: ${id::class.simpleName}) for status=$status, id=$id")
+                                    id
+                                }
+                                else -> {
+                                    println("Setting receiverId to null for status=$status, id=$id")
+                                    null
+                                }
+                            }
+                            Friend(id, name, status, profileImageUrl, receiverId)
+                        }.distinctBy { it.id }.sortedBy {
+                            // Prioritize Pending over PendingSent over NonFriends
+                            when (it.status) {
+                                "Pending" -> 1
+                                "PendingSent" -> 2
+                                else -> 3
+                            }
+                        }.takeWhile { friend ->
+                            // Keep only the first entry for each id
+                            true
                         }
                         _friends.value = friendsList
+                        println("Final friends list: ${_friends.value}")
                     } ?: run {
+                        println("Error: Response body is null")
                         _friends.value = emptyList()
                     }
                 } else {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -37,13 +38,19 @@ fun FriendsScreen(
 ) {
     val friends by viewModel.friends.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val loggedInUser by userPreferences.user.collectAsState(initial = null)
+    // Assuming loggedInUser is of type Users?, extract the id field
+    val loggedInUserId = loggedInUser?.id?.toString() // Ensure id is accessed correctly
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchFriends() // Ensure data is fetched on screen load
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Placeholder for profile picture (replace with actual user image if available)
                         Image(
                             painter = rememberAsyncImagePainter(model = ""),
                             contentDescription = "Profile Picture",
@@ -54,7 +61,7 @@ fun FriendsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Friends", // Replace with dynamic notification text if needed
+                            text = "Friends",
                             style = MaterialTheme.typography.headlineMedium.copy(fontSize = 20.sp),
                             color = Color.White
                         )
@@ -80,7 +87,7 @@ fun FriendsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFF5F5F5)) // Light gray background
+                .background(Color(0xFFF5F5F5))
         ) {
             // Friend Requests Section
             item {
@@ -93,7 +100,11 @@ fun FriendsScreen(
                     modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
                 )
             }
-            items(friends.filter { it.status == "Pending" }) { friend ->
+            items(friends.filter { friend ->
+                val isPending = friend.status == "Pending"
+                println("Friend Requests Check - Friend: ${friend.name}, id=${friend.id}, status=${friend.status}, receiverId=${friend.receiverId}, isPending=$isPending")
+                isPending
+            }) { friend ->
                 FriendItem(
                     friend = friend,
                     onConfirm = { viewModel.confirmFriendRequest(friend.id) },
@@ -112,7 +123,22 @@ fun FriendsScreen(
                     modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
                 )
             }
-            items(friends.filter { it.status == "NonFriends" || it.status == "PendingSent" }) { friend ->
+            items(
+                friends.filter { friend ->
+                    val isNotReceiver = if (friend.receiverId != null && loggedInUserId != null) {
+                        val result = friend.receiverId != loggedInUserId
+                        println("Comparison: receiverId=${friend.receiverId} (type: ${friend.receiverId?.let { it::class.simpleName } ?: "null"}) vs loggedInUserId=$loggedInUserId (type: ${loggedInUserId?.let { it::class.simpleName } ?: "null"}), result=$result")
+                        result
+                    } else {
+                        println("Null check: receiverId=${friend.receiverId}, loggedInUserId=$loggedInUserId, defaulting to true")
+                        true
+                    }
+                    val shouldShow = (friend.status == "NonFriends" || friend.status == "PendingSent") && isNotReceiver
+                    println("People You May Know Check - Friend: ${friend.name}, id=${friend.id}, status=${friend.status}, receiverId=${friend.receiverId}, loggedInUserId=$loggedInUserId, isNotReceiver=$isNotReceiver, shouldShow=$shouldShow")
+                    shouldShow
+                }
+            ) { friend ->
+                println("Rendering FriendItem in People You May Know - Friend: ${friend.name}, id=${friend.id}, status=${friend.status}")
                 FriendItem(
                     friend = friend,
                     onAdd = { viewModel.addFriend(friend.id) },
