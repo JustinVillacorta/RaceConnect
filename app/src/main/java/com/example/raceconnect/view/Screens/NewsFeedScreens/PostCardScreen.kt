@@ -217,53 +217,178 @@ fun PostCard(
     }
 
     if (showReportDialog) {
+        var selectedReason by remember { mutableStateOf("") }
+        var otherText by remember { mutableStateOf("") }
+
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
-            title = { Text("Report Post") },
+            title = { Text(text = "Report Post") },
             text = {
                 Column {
-                    listOf("Not related", "Nudity", "Inappropriate", "Others").forEach { reason ->
-                        Row(Modifier.clickable { selectedReason = reason }) {
-                            RadioButton(selected = selectedReason == reason, onClick = { selectedReason = reason })
-                            Text(reason)
+                    Text(text = "Please select a reason for reporting this post:")
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Radio button options
+                    val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
+
+                    reportOptions.forEach { reason ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedReason = reason },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedReason == reason,
+                                onClick = { selectedReason = reason }
+                            )
+                            Text(
+                                text = reason,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
                         }
                     }
+
+                    // Text field for "Others" option
                     if (selectedReason == "Others") {
+                        Spacer(modifier = Modifier.height(16.dp))
                         TextField(
                             value = otherText,
                             onValueChange = { otherText = it },
-                            label = { Text("Please specify") }
+                            label = { Text("Please specify") },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        if (selectedReason.isNotEmpty()) {
-                            viewModel.reportPost(
-                                postId = post.id,
-                                reason = selectedReason,
-                                otherText = if (selectedReason == "Others") otherText else null,
-                                onSuccess = {
-                                    Toast.makeText(context, "Post reported successfully!", Toast.LENGTH_SHORT).show()
-                                    showReportDialog = false
-                                },
-                                onFailure = { error ->
-                                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                Text(
+                    text = "Confirm",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (selectedReason.isNotEmpty() &&
+                        (selectedReason != "Others" || otherText.isNotEmpty()))
+                        MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .clickable {
+                            if (selectedReason.isNotEmpty()) {
+                                if (selectedReason == "Others" && otherText.isEmpty()) {
+                                    Toast.makeText(context,
+                                        "Please specify the reason",
+                                        Toast.LENGTH_SHORT).show()
+                                } else {
+                                    viewModel.reportPost(
+                                        postId = post.id,
+                                        reason = selectedReason,
+                                        otherText = if (selectedReason == "Others") otherText else null,
+                                        onSuccess = {
+                                            Toast.makeText(context,
+                                                "Post reported successfully!",
+                                                Toast.LENGTH_SHORT).show()
+                                            showReportDialog = false
+                                        },
+                                        onFailure = { error ->
+                                            Toast.makeText(context,
+                                                error,
+                                                Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
                                 }
+                            }
+                        }
+                        .padding(8.dp)
+                )
+            },
+            dismissButton = {
+                Text(
+                    text = "Cancel",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .clickable { showReportDialog = false }
+                        .padding(8.dp)
+                )
+            }
+        )
+    }
+
+    if (showUserDialog) {
+        var selectedOption by remember { mutableStateOf("") }
+        var otherText by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showUserDialog = false },
+            title = { Text("User Actions") },
+            text = {
+                Column {
+                    Text("Please select an action for this user:")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    val userOptions = listOf("Report User", "Others")
+                    userOptions.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedOption = option },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedOption == option,
+                                onClick = { selectedOption = option }
+                            )
+                            Text(
+                                text = option,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
                             )
                         }
                     }
-                ) {
-                    Text("Submit")
+                    if (selectedOption == "Others") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextField(
+                            value = otherText,
+                            onValueChange = { otherText = it },
+                            label = { Text("Please specify the action") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             },
+            confirmButton = {
+                Text(
+                    text = "Confirm",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (selectedOption.isNotEmpty() && (selectedOption != "Others" || otherText.isNotEmpty()))
+                        MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .clickable {
+                            if (selectedOption.isNotEmpty()) {
+                                if (selectedOption == "Others" && otherText.isEmpty()) {
+                                    Toast.makeText(context, "Please specify the action", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "User action performed: $selectedOption", Toast.LENGTH_SHORT).show()
+                                    onUserActionClick(post.user_id, selectedOption, if (selectedOption == "Others") otherText else null)
+                                    showUserDialog = false
+                                }
+                            }
+                        }
+                        .padding(8.dp)
+                )
+            },
             dismissButton = {
-                Button(onClick = { showReportDialog = false }) {
-                    Text("Cancel")
-                }
-            }
+                Text(
+                    text = "Cancel",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .clickable { showUserDialog = false }
+                        .padding(8.dp)
+                )
+            },
+            shape = RoundedCornerShape(12.dp)
         )
     }
 

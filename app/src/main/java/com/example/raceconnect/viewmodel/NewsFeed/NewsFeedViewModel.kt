@@ -219,24 +219,38 @@ class NewsFeedViewModel(private val userPreferences: UserPreferences) : ViewMode
     ) {
         viewModelScope.launch {
             try {
+                Log.d("ReportPost", "Attempting to report post $postId with reason: $reason")
+
                 if (currentUserId == -1) {
+                    Log.w("ReportPost", "User not logged in, aborting report")
                     onFailure("User not logged in")
                     return@launch
                 }
+
                 val finalReason = if (reason == "Others" && otherText != null) otherText else reason
+                Log.i("ReportPost", "Final reason determined: $finalReason")
+
                 val reportRequest = ReportRequest(
                     post_id = postId,
                     marketplace_item_id = null,
                     reporter_id = currentUserId,
                     reason = finalReason
                 )
+                Log.d("ReportPost", "Report request created: $reportRequest")
+
                 val response = apiService.createReport(reportRequest)
+                Log.i("ReportPost", "API response received with code: ${response.code()}")
+
                 if (response.isSuccessful) {
+                    Log.i("ReportPost", "Post reported successfully")
                     onSuccess()
                 } else {
-                    onFailure("Failed to report post: ${response.errorBody()?.string()}")
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("ReportPost", "Failed to report post. Error: $errorBody")
+                    onFailure("Failed to report post: $errorBody")
                 }
             } catch (e: Exception) {
+                Log.e("ReportPost", "Exception occurred while reporting post", e)
                 onFailure("Error reporting post: ${e.message}")
             }
         }
