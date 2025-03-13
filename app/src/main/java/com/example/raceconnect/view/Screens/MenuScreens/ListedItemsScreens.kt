@@ -1,6 +1,5 @@
 package com.example.raceconnect.view.Screens.MenuScreens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,8 +27,8 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
-import com.example.raceconnect.viewmodel.NewsFeed.ListedItems.ListedItemsViewModel
-import com.example.raceconnect.viewmodel.NewsFeed.ListedItems.ListedItemsViewModelFactory
+import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
+import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,14 +37,12 @@ fun ListedItemsScreen(
     userPreferences: UserPreferences,
     onClose: () -> Unit
 ) {
-    val context = LocalContext.current
-    val viewModel: ListedItemsViewModel = viewModel(
-        factory = ListedItemsViewModelFactory(userPreferences, context)
+    val viewModel: MarketplaceViewModel = viewModel(
+        factory = MarketplaceViewModelFactory(userPreferences)
     )
 
-    val listedItems by viewModel.listedItems.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
+    val listedItems by viewModel.userItems.collectAsState() // Use userItems from MarketplaceViewModel
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     var expanded by remember { mutableStateOf(false) }
     val filterOptions = listOf("All items", "Available", "Sold")
@@ -79,33 +75,11 @@ fun ListedItemsScreen(
                 .padding(paddingValues)
         ) {
             when {
-                isLoading -> {
+                isRefreshing -> {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
                         color = Red
                     )
-                }
-                errorMessage != null -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = errorMessage ?: "An error occurred",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { viewModel.loadListedItems() },
-                            colors = ButtonDefaults.buttonColors(containerColor = Red)
-                        ) {
-                            Text("Retry", color = Color.White)
-                        }
-                    }
                 }
                 listedItems.isEmpty() -> {
                     Text(

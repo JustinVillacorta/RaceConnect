@@ -10,11 +10,13 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,8 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -44,6 +46,7 @@ import com.example.raceconnect.view.PostDetailScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
+import com.example.raceconnect.view.Screens.MarketplaceScreens.SellerViewMarketplaceItemDetailScreen
 import com.example.raceconnect.view.Screens.MenuScreens.FavoriteItemsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.ListedItemsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.NewsFeedPreferencesScreen
@@ -79,7 +82,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
         Log.d("AppNavigation", "DataStore migration completed")
     }
 
-    val token = userPreferences.token.collectAsState(initial = null).value
+    val token by userPreferences.token.collectAsState(initial = null)
     val context = LocalContext.current
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id ?: 0
@@ -144,7 +147,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             navController = navController,
                             onShowFavoriteItems = { showFavoriteItems = true },
                             onShowNewsFeedPreferences = { showNewsFeedPreferences = true },
-                            onShowListedItems = { navController.navigate(NavRoutes.ListedItems.route) }, // Changed to navigation
+                            onShowListedItems = { navController.navigate(NavRoutes.ListedItems.route) },
                             onShowSettings = { showSettings = true },
                             userPreferences = userPreferences
                         )
@@ -280,13 +283,50 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         )
                     ) { backStackEntry ->
                         val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
-                        MarketplaceItemDetailScreen(
-                            itemId = itemId,
-                            navController = navController,
-                            viewModel = marketplaceViewModel,
-                            onClose = { navController.popBackStack() },
-                            onClickChat = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) }
-                        )
+                        val items by marketplaceViewModel.items.collectAsState()
+                        val userItems by marketplaceViewModel.userItems.collectAsState()
+                        var item by remember { mutableStateOf(userItems.find { it.id == itemId } ?: items.find { it.id == itemId }) }
+
+                        LaunchedEffect(itemId) {
+                            if (item == null && itemId != -1) {
+                                Log.d("AppNavigation", "Item $itemId not found in local lists, fetching from API...")
+                                item = marketplaceViewModel.fetchItemById(itemId)
+                                Log.d("AppNavigation", "Fetched item: $item")
+                            }
+                        }
+
+                        when {
+                            itemId == -1 -> {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("Invalid item ID", color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                            item == null -> {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator() // Show loading while fetching
+                                    Text("Loading item...", color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            item?.seller_id == loggedInUserId && loggedInUserId != 0 -> {
+                                SellerViewMarketplaceItemDetailScreen(
+                                    itemId = itemId,
+                                    navController = navController,
+                                    viewModel = marketplaceViewModel,
+                                    onClose = { navController.popBackStack() },
+                                    onEdit = { /* TODO: Navigate to edit screen */ },
+                                    onDelete = { /* TODO: Implement delete logic */ }
+                                )
+                            }
+                            else -> {
+                                MarketplaceItemDetailScreen(
+                                    itemId = itemId,
+                                    navController = navController,
+                                    viewModel = marketplaceViewModel,
+                                    onClose = { navController.popBackStack() },
+                                    onClickChat = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) }
+                                )
+                            }
+                        }
                     }
                     composable(NavRoutes.ChatSeller.route) { backStackEntry ->
                         val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
@@ -306,7 +346,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
-            // Overlays for other screens (keeping only necessary ones)
+            // Overlays (unchanged)
             AnimatedVisibility(
                 visible = showCreatePostScreen,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
