@@ -101,6 +101,11 @@ data class UpdateUserRequest(
     val favoriteCategories: List<String>?
 )
 
+data class UpdateUserFavoriteCategoriesRequest(
+    @SerializedName("favorite_categories")
+    val favoriteCategories: List<String>?
+)
+
 data class UploadProfilePictureResponse(
     val success: Boolean,
     val message: String,

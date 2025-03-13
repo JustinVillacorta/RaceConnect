@@ -37,13 +37,12 @@ class NewsFeedViewModel(
     private val preferenceViewModel: NewsFeedPreferenceViewModel,
     private val context: Context
 ) : ViewModel() {
-    private val _postLikes = MutableStateFlow<Map<Int, Boolean>>(emptyMap())
-    private val _likeCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
-    val postLikes: StateFlow<Map<Int, Boolean>> = _postLikes.asStateFlow()
-    val likeCounts: StateFlow<Map<Int, Int>> = _likeCounts.asStateFlow()
 
-    private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+    private val _postLikes = MutableStateFlow<Map<Int, Boolean>>(emptyMap())
+    val postLikes: StateFlow<Map<Int, Boolean>> = _postLikes.asStateFlow()
+
+    private val _likeCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
+    val likeCounts: StateFlow<Map<Int, Int>> = _likeCounts.asStateFlow()
 
     private val _newPostTrigger = MutableStateFlow(false)
     val newPostTrigger: StateFlow<Boolean> = _newPostTrigger.asStateFlow()
@@ -51,94 +50,71 @@ class NewsFeedViewModel(
     private val _postImages = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
     val postImages: StateFlow<Map<Int, List<String>>> = _postImages.asStateFlow()
 
-    private val apiService = RetrofitInstance.api ?: throw IllegalStateException("RetrofitInstance.api must not be null")
+    private val apiService = RetrofitInstance.api
     var isInitialRefreshDone = false
 
-    private val _currentUserId = MutableStateFlow<Int?>(-1)
+    private val _currentUserId = MutableStateFlow<Int?>(null)
     val currentUserId: StateFlow<Int?> = _currentUserId.asStateFlow()
 
-    private val _selectedCategories = MutableStateFlow<List<String>>(listOf("F1"))
+    private val _selectedCategories = MutableStateFlow<List<String>>(emptyList())
     val selectedCategories: StateFlow<List<String>> = _selectedCategories.asStateFlow()
 
-    private val _isDataReady = MutableStateFlow(false)
-    val isDataReady: StateFlow<Boolean> = _isDataReady.asStateFlow()
+    // Map categories from user preferences to API-compatible codes
+    private fun mapCategories(brandNames: List<String>): List<String> {
+        return brandNames.map { brandName ->
+            when (brandName) {
+                "Formula 1" -> "F1"
+                "24H le mans" -> "LEM"
+                "Formula drift" -> "FD"
+                "WRC" -> "WRC"
+                "NASCAR" -> "NAS"
+                "GT CUP" -> "GT"
+                else -> "F1"
+            }
+        }.ifEmpty { listOf("F1") }
+    }
 
-    private val _postsFlow = MutableStateFlow<PagingData<NewsFeedDataClassItem>>(PagingData.empty())
-    val postsFlow: StateFlow<PagingData<NewsFeedDataClassItem>> = _postsFlow.asStateFlow()
+    val postsFlow: Flow<PagingData<NewsFeedDataClassItem>> = combine(
+        currentUserId,
+        userPreferences.selectedCategories // Observe raw preferences
+    ) { userId, rawCategories ->
+        userId to mapCategories(rawCategories) // Map categories here
+    }.flatMapLatest { (userId, mappedCategories) ->
+        if (userId == null || userId == -1) {
+            Log.w("NewsFeedViewModel", "User ID is null or -1, returning empty PagingData")
+            flowOf(PagingData.empty())
+        } else {
+            Log.d("NewsFeedViewModel", "Creating Pager with userId: $userId, categories: $mappedCategories")
+            Pager(
+                config = PagingConfig(pageSize = 10, prefetchDistance = 2, enablePlaceholders = false),
+                pagingSourceFactory = {
+                    NewsFeedPagingSourceAllPosts(apiService, userId, mappedCategories, context)
+                }
+            ).flow.cachedIn(viewModelScope)
+        }
+    }
 
     init {
         viewModelScope.launch {
             try {
                 val user = userPreferences.user.first()
-                _currentUserId.value = user?.id ?: -1
+                _currentUserId.value = user?.id
                 Log.d("NewsFeedViewModel", "Fetched user ID: ${_currentUserId.value}")
 
-                val categories = userPreferences.selectedCategories.first().map { brandName ->
-                    when (brandName) {
-                        "Formula 1" -> "F1"
-                        "24H le mans" -> "LEM"
-                        "Formula drift" -> "FD"
-                        "WRC" -> "WRC"
-                        "NASCAR" -> "NAS"
-                        "GT CUP" -> "GT"
-                        else -> "F1"
-                    }
-                }.ifEmpty { listOf("F1") }
-                _selectedCategories.value = categories
-                Log.d("NewsFeedViewModel", "Fetched categories: $categories")
-
-                _isDataReady.value = true
-                Log.d("NewsFeedViewModel", "Data is ready")
+                val rawCategories = userPreferences.selectedCategories.first()
+                val mappedCategories = mapCategories(rawCategories)
+                _selectedCategories.value = mappedCategories
+                Log.d("NewsFeedViewModel", "Initial categories: $mappedCategories (from raw: $rawCategories)")
             } catch (e: Exception) {
                 Log.e("NewsFeedViewModel", "Error fetching initial data", e)
-                _isDataReady.value = true
-            }
-        }
-
-        viewModelScope.launch {
-            isDataReady.collect { ready ->
-                if (ready) {
-                    Log.d("NewsFeedViewModel", "Data is ready, collecting postsFlow")
-                    try {
-                        combine(
-                            currentUserId,
-                            selectedCategories
-                        ) { userId, categories ->
-                            userId to categories
-                        }.flatMapLatest { (userId, categories) ->
-                            if (userId == null || userId == -1) {
-                                Log.w("NewsFeedViewModel", "User ID is null or -1, returning empty PagingData")
-                                flowOf(PagingData.empty())
-                            } else {
-                                Log.d("NewsFeedViewModel", "Creating Pager with userId: $userId, categories: $categories")
-                                Pager(
-                                    config = PagingConfig(pageSize = 10, prefetchDistance = 2, enablePlaceholders = false),
-                                    pagingSourceFactory = {
-                                        Log.d("NewsFeedViewModel", "Creating NewsFeedPagingSource with apiService: $apiService")
-                                        NewsFeedPagingSourceAllPosts(apiService, userId, categories, context)
-                                    }
-                                ).flow
-                            }
-                        }.cachedIn(viewModelScope).collect { pagingData ->
-                            _postsFlow.value = pagingData
-                            Log.d("NewsFeedViewModel", "Collected new PagingData with items: $pagingData")
-                        }
-                    } catch (e: Exception) {
-                        Log.e("NewsFeedViewModel", "Error collecting postsFlow", e)
-                        _postsFlow.value = PagingData.empty()
-                    }
-                } else {
-                    Log.w("NewsFeedViewModel", "Data not ready yet, skipping postsFlow collection")
-                }
             }
         }
     }
 
     fun refreshPosts() {
         viewModelScope.launch {
-            _isRefreshing.value = true
-            Log.d("NewsFeedViewModel", "✅ Refresh triggered")
-            _isRefreshing.value = false
+            Log.d("NewsFeedViewModel", "Refresh triggered")
+            _newPostTrigger.value = true
         }
     }
 

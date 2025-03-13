@@ -1,7 +1,6 @@
 package com.example.raceconnect.network
 
 import com.example.raceconnect.model.*
-import okhttp3.Call
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -25,6 +24,12 @@ interface ApiService {
     suspend fun updateUser(
         @Path("id") id: Int,
         @Body request: UpdateUserRequest
+    ): Response<UserSimpleResponse>
+
+    @PUT("users/{id}")
+    suspend fun updateUserCategories(
+        @Path("id") id: Int,
+        @Body request: UpdateUserFavoriteCategoriesRequest
     ): Response<UserSimpleResponse>
 
     @Multipart

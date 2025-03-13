@@ -3,6 +3,7 @@ package com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.UpdateUserFavoriteCategoriesRequest
 import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,9 +34,7 @@ class NewsFeedPreferenceViewModel(
         viewModelScope.launch {
             try {
                 _isLoading.value = true
-                // Load from UserPreferences or API
-                // For simplicity, assuming UserPreferences has a method to get selected categories
-                val preferences = userPreferences.selectedCategories.first() // Assuming this exists
+                val preferences = userPreferences.selectedCategories.first()
                 _selectedBrands.value = preferences
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to load preferences: ${e.message}"
@@ -54,7 +53,8 @@ class NewsFeedPreferenceViewModel(
                 currentBrands.add(brand)
             }
             _selectedBrands.value = currentBrands
-            savePreferences() // Save to UserPreferences or API
+            // Optionally save immediately, or wait for explicit save
+            // savePreferences()
         }
     }
 
@@ -62,8 +62,17 @@ class NewsFeedPreferenceViewModel(
         viewModelScope.launch {
             try {
                 _isLoading.value = true
-                // Save to UserPreferences or API
-                userPreferences.saveSelectedCategories(_selectedBrands.value) // Assuming this method exists
+                val userId = userPreferences.getUserId() ?: throw IllegalStateException("User ID not found")
+                val brands = _selectedBrands.value
+
+                userPreferences.saveSelectedCategories(brands) // This might be blocking
+                val request = UpdateUserFavoriteCategoriesRequest(favoriteCategories = brands)
+                val response = apiService.updateUserCategories(userId, request) // Network call
+                if (response.isSuccessful) {
+                    _errorMessage.value = null
+                } else {
+                    _errorMessage.value = "Failed to save preferences to server: ${response.message()}"
+                }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to save preferences: ${e.message}"
             } finally {

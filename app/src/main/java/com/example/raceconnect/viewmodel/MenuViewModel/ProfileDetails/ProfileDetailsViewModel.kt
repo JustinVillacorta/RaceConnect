@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.UpdateUserRequest
-import com.example.raceconnect.model.UploadProfilePictureResponse
 import com.example.raceconnect.model.users
 import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
