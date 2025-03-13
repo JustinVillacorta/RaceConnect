@@ -95,7 +95,7 @@ fun PostCard(
                                     NavRoutes.ProfileView.createRoute(post.user_id)
                                 }
                                 Log.d("PostCard", "Navigating to $destination")
-                                navController.navigate(NavRoutes.ProfileView.route)
+                                navController.navigate(destination)
                             }
                     ) {
                         AsyncImage(
