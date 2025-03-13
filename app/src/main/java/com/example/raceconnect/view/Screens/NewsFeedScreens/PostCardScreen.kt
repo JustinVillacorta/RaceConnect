@@ -37,6 +37,37 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
+import java.text.SimpleDateFormat
+import java.util.*
+
+// Utility function to format time relative to now
+fun formatTime(createdAt: String?): String {
+    if (createdAt.isNullOrEmpty()) return "Just now"
+
+    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    val date = try {
+        sdf.parse(createdAt)
+    } catch (e: Exception) {
+        Log.e("PostCard", "Error parsing date $createdAt: ${e.message}")
+        return createdAt ?: "Just now"
+    } ?: return "Just now"
+
+    val now = Calendar.getInstance()
+    val created = Calendar.getInstance().apply { time = date }
+    val diffInMillis = now.timeInMillis - created.timeInMillis
+    val diffInSeconds = diffInMillis / 1000
+    val diffInMinutes = diffInSeconds / 60
+    val diffInHours = diffInMinutes / 60
+    val diffInDays = diffInHours / 24
+
+    return when {
+        diffInMinutes < 1 -> "Just now"
+        diffInMinutes < 60 -> "${diffInMinutes} minute${if (diffInMinutes > 1) "s" else ""} ago"
+        diffInHours < 24 -> "${diffInHours} hour${if (diffInHours > 1) "s" else ""} ago"
+        diffInDays < 7 -> "${diffInDays} day${if (diffInDays > 1) "s" else ""} ago"
+        else -> sdf.format(date) // Fall back to full date for older posts
+    }
+}
 
 @Composable
 fun PostCard(
@@ -113,7 +144,7 @@ fun PostCard(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = post.created_at ?: "Just now",
+                            text = formatTime(post.created_at), // Updated to use relative time
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
@@ -368,6 +399,7 @@ fun PostCard(
         )
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullScreenImageViewer(

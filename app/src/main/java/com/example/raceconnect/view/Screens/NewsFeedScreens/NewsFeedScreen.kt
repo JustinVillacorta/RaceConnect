@@ -160,32 +160,37 @@ fun NewsFeedScreen(
                         Log.d("NewsFeedScreen", "Rendering Post ID: ${postItem.id}, IsRepost: ${postItem.isRepost}, OriginalPostId: ${postItem.original_post_id}, CreatedAt: ${postItem.created_at}")
 
                         if (postItem.isRepost == true) {
-                            // Optimize original post lookup (e.g., cache or pre-fetch)
+                            // Since the PagingSource ensures the original post is fetched, it should always be available
                             val originalPost = posts.itemSnapshotList.items.find { it.id == postItem.original_post_id }
-                            Log.d("NewsFeedScreen", "Rendering repost ID: ${postItem.id}, Original Post Found: ${originalPost != null}")
-                            RepostCard(
-                                repost = postItem.copy(isLiked = isLiked, like_count = likeCount),
-                                originalPost = originalPost,
-                                navController = navController,
-                                viewModel = viewModel,
-                                onCommentClick = { selectedPostId = postItem.id; showBottomSheet = true },
-                                onLikeClick = { liked ->
-                                    if (liked) viewModel.toggleLike(postItem.id, postItem.user_id) else viewModel.unlikePost(postItem.id)
-                                },
-                                onShowFullScreenImage = { onShowFullScreenImage(it, postItem.id) },
-                                userPreferences = userPreferences,
-                                onReportClick = { postId, reason, otherText ->
-                                    viewModel.reportPost(postId, reason, otherText, onSuccess = {
-                                        Log.d("NewsFeedScreen", "Post reported successfully")
-                                    }, onFailure = { error ->
-                                        Log.e("NewsFeedScreen", "Failed to report post: $error")
-                                    })
-                                },
-                                onShowRepostScreen = onShowRepostScreen,
-                                onUserActionClick = { userId, action, otherText ->
-                                    if (action == "Report User") viewModel.reportUser(userId, action, otherText)
-                                }
-                            )
+                            if (originalPost != null) {
+                                Log.d("NewsFeedScreen", "Rendering repost ID: ${postItem.id}, Original Post Found: ${originalPost.id}")
+                                RepostCard(
+                                    repost = postItem.copy(isLiked = isLiked, like_count = likeCount),
+                                    originalPost = originalPost,
+                                    navController = navController,
+                                    viewModel = viewModel,
+                                    onCommentClick = { selectedPostId = postItem.id; showBottomSheet = true },
+                                    onLikeClick = { liked ->
+                                        if (liked) viewModel.toggleLike(postItem.id, postItem.user_id) else viewModel.unlikePost(postItem.id)
+                                    },
+                                    onShowFullScreenImage = { onShowFullScreenImage(it, postItem.id) },
+                                    userPreferences = userPreferences,
+                                    onReportClick = { postId, reason, otherText ->
+                                        viewModel.reportPost(postId, reason, otherText, onSuccess = {
+                                            Log.d("NewsFeedScreen", "Post reported successfully")
+                                        }, onFailure = { error ->
+                                            Log.e("NewsFeedScreen", "Failed to report post: $error")
+                                        })
+                                    },
+                                    onShowRepostScreen = onShowRepostScreen,
+                                    onUserActionClick = { userId, action, otherText ->
+                                        if (action == "Report User") viewModel.reportUser(userId, action, otherText)
+                                    }
+                                )
+                            } else {
+                                // Log this case for debugging, but don't show in UI
+                                Log.e("NewsFeedScreen", "Original post ${postItem.original_post_id} for repost ${postItem.id} not found in list")
+                            }
                         } else {
                             Log.d("NewsFeedScreen", "Rendering post ID: ${postItem.id} (original)")
                             PostCard(

@@ -15,6 +15,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 class NewsFeedPagingSourceAllPosts(
     private val apiService: ApiService,
@@ -24,14 +25,30 @@ class NewsFeedPagingSourceAllPosts(
 ) : PagingSource<Int, NewsFeedDataClassItem>() {
 
     companion object {
-        private const val MAX_REPOST_FETCHES = 5 // Limit repost requests per page
+        private const val MAX_REPOST_FETCHES = 5 // Limit total repost requests per page
+        @Volatile private var fetchedRepostPostIds = ConcurrentHashMap<Int, Boolean>()
+        @Volatile private var fetchedOriginalPostIds = ConcurrentHashMap<Int, Boolean>()
+        @Volatile private var processedRepostIds = ConcurrentHashMap<Int, Boolean>()
+
+        fun clearCaches() {
+            fetchedRepostPostIds.clear()
+            fetchedOriginalPostIds.clear()
+            processedRepostIds.clear()
+            Log.d("PagingSourceAllPosts", "All caches cleared")
+        }
     }
+
+    private var isInitialLoad = true
 
     override fun getRefreshKey(state: PagingState<Int, NewsFeedDataClassItem>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
-            state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
-                ?: state.closestPageToPosition(anchorPosition)?.nextKey?.minus(1)
-        }
+            val anchorPage = state.closestPageToPosition(anchorPosition)
+            if (anchorPage?.data.isNullOrEmpty()) {
+                0
+            } else {
+                anchorPage?.prevKey?.plus(1) ?: anchorPage?.nextKey?.minus(1)
+            }
+        } ?: 0
     }
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, NewsFeedDataClassItem> {
@@ -40,13 +57,14 @@ class NewsFeedPagingSourceAllPosts(
             val page = params.key ?: 0
             val limit = params.loadSize
             val offset = page * limit
-            Log.d("PagingSourceAllPosts", "Loading page $page, limit $limit, offset $offset for userId $userId with categories $categories")
+            Log.d("PagingSourceAllPosts", "Loading page $page, limit $limit, offset $offset for userId $userId with categories $categories, IsInitialLoad: $isInitialLoad")
 
             if (!NetworkUtils.isNetworkAvailable(context)) {
                 Log.e("PagingSourceAllPosts", "No network available")
                 return LoadResult.Error(Exception("No network available"))
             }
 
+            // Fetch posts
             val postsResponse: Response<List<NewsFeedDataClassItem>> = apiService.getPostsByCategoryAndPrivacy(
                 userId = userId,
                 categories = categories.joinToString(","),
@@ -59,90 +77,197 @@ class NewsFeedPagingSourceAllPosts(
             }
 
             val posts = postsResponse.body() ?: emptyList()
-            Log.d("PagingSourceAllPosts", "Fetched ${posts.size} posts from getPostsByCategoryAndPrivacy: ${posts.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}" }}")
+            Log.d("PagingSourceAllPosts", "Fetched ${posts.size} posts from getPostsByCategoryAndPrivacy: ${posts.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}, Category=${it.category}" }}")
             val allItems = mutableListOf<NewsFeedDataClassItem>()
             val processedIds = mutableSetOf<Int>()
 
+            // Add posts and track original post IDs
             posts.forEach { post ->
                 val updatedPost = post.copy(isRepost = post.isRepost ?: false)
                 if (!processedIds.contains(updatedPost.id)) {
                     allItems.add(updatedPost)
                     processedIds.add(updatedPost.id)
-                    Log.d("PagingSourceAllPosts", "Added post ID: ${updatedPost.id}, IsRepost: ${updatedPost.isRepost}")
+                    if (updatedPost.isRepost != true) {
+                        fetchedOriginalPostIds[updatedPost.id] = true // Track original posts
+                    }
+                    Log.d("PagingSourceAllPosts", "Added post ID: ${updatedPost.id}, IsRepost: ${updatedPost.isRepost}, CreatedAt: ${updatedPost.created_at}, Category: ${updatedPost.category}")
                 } else {
                     Log.d("PagingSourceAllPosts", "Skipped duplicate post ID: ${updatedPost.id} from getPostsByCategoryAndPrivacy")
                 }
             }
 
-            // Fetch reposts in parallel with a limit
+            // Fetch reposts in parallel with deduplication and limit, only for posts in saved categories
             coroutineScope {
-                val repostJobs = posts.filter { it.isRepost != true }
-                    .take(MAX_REPOST_FETCHES) // Limit to 5 repost fetches per page
-                    .map { post ->
-                        async {
+                // Unique post IDs to fetch reposts for, filtered by category
+                val uniquePostIds = posts.filter { post ->
+                    // Safely check if the post is not a repost and its category matches
+                    (post.isRepost == false) && post.category?.let { category -> categories.contains(category) } == true
+                }.map { it.id }.distinct().take(MAX_REPOST_FETCHES)
+
+                Log.d("PagingSourceAllPosts", "Fetching reposts for post IDs: $uniquePostIds (filtered by categories $categories)")
+
+                val repostJobs = uniquePostIds.map { postId ->
+                    async {
+                        if (page == 0 || !fetchedRepostPostIds.containsKey(postId)) {
                             try {
                                 val repostsResponse: Response<List<Repost>> = apiService.getRepostsByPostId(
-                                    postId = post.id,
+                                    postId = postId,
                                     limit = limit,
                                     offset = offset
                                 )
                                 if (repostsResponse.isSuccessful) {
-                                    repostsResponse.body()?.map { repost ->
+                                    fetchedRepostPostIds[postId] = true // Mark as fetched
+                                    repostsResponse.body()?.filter { repost ->
+                                        // Ensure required fields are not null
+                                        repost.id != null && repost.userId != null && repost.createdAt != null && repost.postId != null
+                                    }?.map { repost ->
+                                        Log.d("PagingSourceAllPosts", "Mapping repost: ID=${repost.id}, UserId=${repost.userId}, CreatedAt=${repost.createdAt}, PostId=${repost.postId}")
                                         NewsFeedDataClassItem(
-                                            id = repost.id,
-                                            user_id = repost.userId,
+                                            id = repost.id!!,
+                                            user_id = repost.userId!!,
                                             content = repost.quote ?: "",
-                                            created_at = repost.createdAt,
+                                            created_at = repost.createdAt!!,
                                             isRepost = true,
-                                            original_post_id = repost.postId,
+                                            original_post_id = repost.postId!!,
                                             like_count = 0,
                                             comment_count = 0,
                                             repost_count = 0,
-                                            category = post.category,
-                                            privacy = post.privacy,
-                                            type = post.type,
-                                            postType = post.postType,
-                                            title = post.title,
+                                            category = posts.find { it.id == postId }?.category ?: "Formula 1",
+                                            privacy = posts.find { it.id == postId }?.privacy ?: "Public",
+                                            type = posts.find { it.id == postId }?.type ?: "text",
+                                            postType = posts.find { it.id == postId }?.postType ?: "normal",
+                                            title = posts.find { it.id == postId }?.title ?: "Repost",
                                             username = null
                                         )
                                     } ?: emptyList()
                                 } else {
-                                    Log.e("PagingSourceAllPosts", "Failed to fetch reposts for post ${post.id}: ${repostsResponse.code()} - ${repostsResponse.message()}")
+                                    Log.e("PagingSourceAllPosts", "Failed to fetch reposts for post $postId: ${repostsResponse.code()} - ${repostsResponse.message()}")
                                     emptyList()
                                 }
                             } catch (e: Exception) {
-                                Log.e("PagingSourceAllPosts", "Error fetching reposts for post ${post.id}: ${e.message}", e)
+                                Log.e("PagingSourceAllPosts", "Error fetching reposts for post $postId: ${e.message}", e)
                                 emptyList()
+                            }
+                        } else {
+                            emptyList()
+                        }
+                    }
+                }
+
+                val repostResults = repostJobs.awaitAll().flatten()
+                val missingOriginalIds = mutableSetOf<Int>()
+                val tempReposts = mutableListOf<NewsFeedDataClassItem>()
+
+                // First pass: Collect reposts and identify missing originals
+                repostResults.forEach { repost ->
+                    if (!processedIds.contains(repost.id) && !processedRepostIds.containsKey(repost.id)) {
+                        val originalPostId = repost.original_post_id
+                        val originalPost = allItems.find { it.id == originalPostId }
+                        // Only add repost if the original post's category matches the saved categories
+                        if (originalPost != null && originalPost.category?.let { categories.contains(it) } == true) {
+                            allItems.add(repost)
+                            processedIds.add(repost.id)
+                            processedRepostIds[repost.id] = true
+                            Log.d("PagingSourceAllPosts", "Added repost ID: ${repost.id}, IsRepost: ${repost.isRepost}, OriginalPostId: ${repost.original_post_id}, CreatedAt: ${repost.created_at}, Original Category: ${originalPost.category}")
+                        } else if (originalPostId != null) {
+                            if (originalPost != null) {
+                                Log.d("PagingSourceAllPosts", "Skipped repost ID: ${repost.id} - Original post category ${originalPost.category} not in saved categories $categories")
+                            } else {
+                                tempReposts.add(repost)
+                                missingOriginalIds.add(originalPostId)
+                                Log.d("PagingSourceAllPosts", "Deferred repost ID: ${repost.id} - Original post ${repost.original_post_id} not fetched yet")
+                            }
+                        }
+                    } else {
+                        Log.d("PagingSourceAllPosts", "Skipped duplicate or processed repost ID: ${repost.id}")
+                    }
+                }
+
+                // Fetch missing original posts using getPostById
+                if (missingOriginalIds.isNotEmpty()) {
+                    Log.d("PagingSourceAllPosts", "Attempting to fetch missing original posts: $missingOriginalIds")
+                    val fetchJobs = missingOriginalIds.map { originalPostId ->
+                        async {
+                            try {
+                                val postResponse: Response<NewsFeedDataClassItem> = apiService.getPostById(originalPostId)
+                                if (postResponse.isSuccessful) {
+                                    postResponse.body()?.let { post ->
+                                        if (!processedIds.contains(post.id) && (post.isRepost?.not() ?: true)) {
+                                            Log.d("PagingSourceAllPosts", "Fetched missing original post ID: ${post.id}, CreatedAt: ${post.created_at}, Category: ${post.category}")
+                                            post
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                } else {
+                                    Log.e("PagingSourceAllPosts", "Failed to fetch post ID $originalPostId: ${postResponse.code()} - ${postResponse.message()}")
+                                    null
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PagingSourceAllPosts", "Error fetching post ID $originalPostId: ${e.message}", e)
+                                null
                             }
                         }
                     }
 
-                val repostResults = repostJobs.awaitAll()
-                repostResults.flatten().forEach { repost ->
-                    if (!processedIds.contains(repost.id)) {
-                        allItems.add(repost)
-                        processedIds.add(repost.id)
-                        Log.d("PagingSourceAllPosts", "Added repost ID: ${repost.id}, IsRepost: ${repost.isRepost}")
-                    } else {
-                        Log.d("PagingSourceAllPosts", "Skipped duplicate repost ID: ${repost.id}")
+                    // Add fetched original posts to allItems
+                    fetchJobs.awaitAll().filterNotNull().forEach { fetchedPost ->
+                        // Only add fetched original posts if they match the saved categories
+                        if (fetchedPost.category?.let { categories.contains(it) } == true) {
+                            allItems.add(fetchedPost)
+                            processedIds.add(fetchedPost.id)
+                            fetchedOriginalPostIds[fetchedPost.id] = true
+                            Log.d("PagingSourceAllPosts", "Added fetched original post ID: ${fetchedPost.id}, Category: ${fetchedPost.category}")
+                        } else {
+                            Log.d("PagingSourceAllPosts", "Skipped fetched original post ID: ${fetchedPost.id} - Category ${fetchedPost.category} not in saved categories $categories")
+                        }
+                    }
+
+                    // Second pass: Add reposts whose originals are now fetched
+                    tempReposts.forEach { deferredRepost ->
+                        val originalPostId = deferredRepost.original_post_id
+                        val originalPost = allItems.find { it.id == originalPostId }
+                        if (originalPostId != null && originalPost != null && originalPost.category?.let { categories.contains(it) } == true) {
+                            if (!processedIds.contains(deferredRepost.id) && !processedRepostIds.containsKey(deferredRepost.id)) {
+                                allItems.add(deferredRepost)
+                                processedIds.add(deferredRepost.id)
+                                processedRepostIds[deferredRepost.id] = true
+                                Log.d("PagingSourceAllPosts", "Added deferred repost ID: ${deferredRepost.id}, OriginalPostId: ${deferredRepost.original_post_id}, CreatedAt: ${deferredRepost.created_at}, Original Category: ${originalPost.category}")
+                            }
+                        } else {
+                            Log.d("PagingSourceAllPosts", "Skipped repost ID: ${deferredRepost.id} - Original post ${deferredRepost.original_post_id} not fetched or category mismatch")
+                        }
                     }
                 }
             }
 
-            Log.d("PagingSourceAllPosts", "All items before sorting (${allItems.size} total): ${allItems.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}" }}")
-            // Move sorting to background thread
+            // Reset isInitialLoad after the first load
+            if (isInitialLoad && page == 0) {
+                isInitialLoad = false
+            }
+
+            Log.d("PagingSourceAllPosts", "All items before sorting (${allItems.size} total): ${allItems.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}, Category=${it.category}" }}")
+            // Sort on background thread (ensures chronological order by item's own created_at)
             withContext(Dispatchers.Default) {
                 allItems.sortByDescending { item ->
                     try {
-                        val parsedDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(item.created_at)
-                        parsedDate?.time ?: 0L
+                        if (item.created_at.isNullOrEmpty()) {
+                            Log.w("PagingSourceAllPosts", "Empty or null created_at for post/repost ID: ${item.id}, using 0L")
+                            0L
+                        } else {
+                            val parsedDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(item.created_at)
+                            parsedDate?.time ?: run {
+                                Log.w("PagingSourceAllPosts", "Failed to parse created_at ${item.created_at} for post/repost ID: ${item.id}, using 0L")
+                                0L
+                            }
+                        }
                     } catch (e: Exception) {
-                        Log.e("PagingSourceAllPosts", "Error parsing date ${item.created_at} for post ${item.id}: ${e.message}")
+                        Log.e("PagingSourceAllPosts", "Error parsing date ${item.created_at} for post/repost ID: ${item.id}: ${e.message}")
                         0L
                     }
                 }
             }
-            Log.d("PagingSourceAllPosts", "All items after sorting (${allItems.size} total): ${allItems.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}" }}")
+            Log.d("PagingSourceAllPosts", "All items after sorting (${allItems.size} total): ${allItems.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}, Category=${it.category}" }}")
 
             val endTime = System.currentTimeMillis()
             Log.d("PagingSourceAllPosts", "Load completed in ${endTime - startTime}ms")
@@ -154,7 +279,7 @@ class NewsFeedPagingSourceAllPosts(
             )
         } catch (e: Exception) {
             Log.e("PagingSourceAllPosts", "Exception during load: ${e.message}", e)
-            LoadResult.Error(e)
+            return LoadResult.Error(e)
         }
     }
 }

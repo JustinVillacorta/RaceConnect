@@ -35,7 +35,7 @@ import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import java.text.SimpleDateFormat
-import java.util.Locale
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -237,7 +237,7 @@ fun RepostCard(
                             )
                         }
                         Text(
-                            text = formatDateTime(repost.created_at) ?: "Just now",
+                            text = formatTime(repost.created_at), // Updated to use formatTime
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray,
                             maxLines = 1
@@ -348,95 +348,8 @@ fun RepostCard(
         }
     }
 
-    // Report Dialog remains unchanged for brevity, but should be responsive by default
+    // Report Dialog
     if (showReportDialog) {
-        var selectedOption by remember { mutableStateOf("") }
-        var otherText by remember { mutableStateOf("") }
-
-        AlertDialog(
-            onDismissRequest = { showReportDialog = false },
-            title = { Text(text = "Report Repost") },
-            text = {
-                Column {
-                    Text(text = "Please select a reason for reporting this repost:")
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
-                    reportOptions.forEach { option ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable { selectedOption = option },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = selectedOption == option,
-                                onClick = { selectedOption = option }
-                            )
-                            Text(
-                                text = option,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                    }
-
-                    if (selectedOption == "Others") {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        TextField(
-                            value = otherText,
-                            onValueChange = { otherText = it },
-                            label = { Text("Please specify the reason") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Text(
-                    text = "Confirm",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (selectedOption.isNotEmpty() &&
-                        (selectedOption != "Others" || otherText.isNotEmpty()))
-                        MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier
-                        .clickable {
-                            if (selectedOption.isNotEmpty()) {
-                                if (selectedOption == "Others" && otherText.isEmpty()) {
-                                    Toast.makeText(context,
-                                        "Please specify the reason",
-                                        Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context,
-                                        "Repost reported!",
-                                        Toast.LENGTH_SHORT).show()
-                                    onReportClick(repost.id, selectedOption,
-                                        if (selectedOption == "Others") otherText else null)
-                                    showReportDialog = false
-                                }
-                            }
-                        }
-                        .padding(8.dp)
-                )
-            },
-            dismissButton = {
-                Text(
-                    text = "Cancel",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .clickable { showReportDialog = false }
-                        .padding(8.dp)
-                )
-            },
-            shape = RoundedCornerShape(12.dp)
-        )
-    }
-
-    // User Dialog remains unchanged for brevity
-    if (showUserDialog) {
         var selectedOption by remember { mutableStateOf("") }
         var otherText by remember { mutableStateOf("") }
 
@@ -520,18 +433,5 @@ fun RepostCard(
             },
             shape = RoundedCornerShape(12.dp)
         )
-    }
-}
-
-@Composable
-fun formatDateTime(dateTime: String?): String? {
-    if (dateTime.isNullOrEmpty()) return null
-    return try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val outputFormat = SimpleDateFormat("MMM d, yyyy 'at' hh:mm a", Locale.getDefault())
-        val date = inputFormat.parse(dateTime)
-        date?.let { outputFormat.format(it) }
-    } catch (e: Exception) {
-        dateTime
     }
 }
