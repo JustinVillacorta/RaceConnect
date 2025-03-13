@@ -9,8 +9,10 @@ import com.example.raceconnect.network.RetrofitInstance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import android.util.Log
+import kotlinx.coroutines.flow.first
 
 class NewsFeedPreferenceViewModel(
     private val userPreferences: UserPreferences,
@@ -27,17 +29,31 @@ class NewsFeedPreferenceViewModel(
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     init {
-        loadPreferences()
+        // Continuously observe user preferences
+        viewModelScope.launch {
+            userPreferences.selectedCategories.collect { categories ->
+                _selectedBrands.value = categories
+                Log.d("NewsFeedPrefVM", "Updated categories from preferences: $categories")
+            }
+        }
     }
 
     private fun loadPreferences() {
         viewModelScope.launch {
             try {
                 _isLoading.value = true
+                val userId = userPreferences.getUserId()
+                if (userId == null) {
+                    _selectedBrands.value = listOf("F1") // Default for new users
+                    Log.d("NewsFeedPrefVM", "No user ID found, using default categories")
+                    return@launch
+                }
                 val preferences = userPreferences.selectedCategories.first()
                 _selectedBrands.value = preferences
+                Log.d("NewsFeedPrefVM", "Loaded categories for user $userId: $preferences")
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to load preferences: ${e.message}"
+                Log.e("NewsFeedPrefVM", "Error loading preferences", e)
             } finally {
                 _isLoading.value = false
             }
@@ -53,8 +69,7 @@ class NewsFeedPreferenceViewModel(
                 currentBrands.add(brand)
             }
             _selectedBrands.value = currentBrands
-            // Optionally save immediately, or wait for explicit save
-            // savePreferences()
+            Log.d("NewsFeedPrefVM", "Toggled brand $brand, new selection: $currentBrands")
         }
     }
 
@@ -65,16 +80,23 @@ class NewsFeedPreferenceViewModel(
                 val userId = userPreferences.getUserId() ?: throw IllegalStateException("User ID not found")
                 val brands = _selectedBrands.value
 
-                userPreferences.saveSelectedCategories(brands) // This might be blocking
+                // Save to local preferences first
+                userPreferences.saveSelectedCategories(brands)
+                Log.d("NewsFeedPrefVM", "Saved categories locally: $brands")
+
+                // Then update server
                 val request = UpdateUserFavoriteCategoriesRequest(favoriteCategories = brands)
-                val response = apiService.updateUserCategories(userId, request) // Network call
+                val response = apiService.updateUserCategories(userId, request)
                 if (response.isSuccessful) {
                     _errorMessage.value = null
+                    Log.d("NewsFeedPrefVM", "Saved categories to server for user $userId")
                 } else {
                     _errorMessage.value = "Failed to save preferences to server: ${response.message()}"
+                    Log.e("NewsFeedPrefVM", "Server error saving categories: ${response.message()}")
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to save preferences: ${e.message}"
+                Log.e("NewsFeedPrefVM", "Error saving preferences", e)
             } finally {
                 _isLoading.value = false
             }
@@ -83,8 +105,14 @@ class NewsFeedPreferenceViewModel(
 
     fun clearPreferences() {
         viewModelScope.launch {
-            _selectedBrands.value = emptyList()
-            savePreferences()
+            try {
+                _selectedBrands.value = listOf("F1") // Reset to default
+                userPreferences.clearSelectedCategories()
+                savePreferences() // Save the default to both local and server
+                Log.d("NewsFeedPrefVM", "Cleared preferences and set to default")
+            } catch (e: Exception) {
+                Log.e("NewsFeedPrefVM", "Error clearing preferences", e)
+            }
         }
     }
 }

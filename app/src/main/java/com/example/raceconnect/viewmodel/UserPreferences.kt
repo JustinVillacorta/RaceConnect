@@ -167,7 +167,12 @@ class UserPreferences(private val context: Context) {
     }
 
     val selectedCategories: Flow<List<String>> = context.dataStore.data.map { preferences ->
-        preferences[FAVORITE_CATEGORIES]?.toList() ?: emptyList()
+        // Only return categories if we have a valid user ID
+        if (preferences[USER_ID] != null) {
+            preferences[FAVORITE_CATEGORIES]?.toList() ?: listOf("F1")
+        } else {
+            listOf("F1") // Default for logged out state
+        }
     }
 
     suspend fun saveSelectedCategories(categories: List<String>) {
@@ -196,9 +201,15 @@ class UserPreferences(private val context: Context) {
         context.dataStore.edit { preferences ->
             // Clear all preferences first
             preferences.clear()
+            
             // Force clear critical user identifiers
             preferences.remove(USER_ID)
             preferences.remove(TOKEN)
+            
+            // Explicitly clear categories to ensure they don't persist
+            preferences.remove(FAVORITE_CATEGORIES)
+            preferences.remove(OLD_FAVORITE_CATEGORIES) // Clear old format too
+            
             // Clear all other user data
             preferences.remove(USERNAME)
             preferences.remove(EMAIL)
@@ -208,7 +219,6 @@ class UserPreferences(private val context: Context) {
             preferences.remove(AGE)
             preferences.remove(PROFILE_PICTURE)
             preferences.remove(BIO)
-            preferences.remove(FAVORITE_CATEGORIES)
             preferences.remove(FAVORITE_MARKETPLACE_ITEMS)
             preferences.remove(FRIENDS_LIST)
             preferences.remove(FRIEND_PRIVACY)
@@ -218,9 +228,8 @@ class UserPreferences(private val context: Context) {
             preferences.remove(SUSPENSION_END_DATE)
             preferences.remove(CREATED_AT)
             preferences.remove(UPDATED_AT)
-            Log.d("UserPreferences", "User data cleared from preferences")
         }
         // The user Flow will automatically emit null since USER_ID is cleared
-        Log.d("UserPreferences", "User state cleared")
+        Log.d("UserPreferences", "User state and preferences cleared")
     }
 }
