@@ -17,6 +17,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
+
 class NewsFeedPagingSourceAllPosts(
     private val apiService: ApiService,
     private val userId: Int,
@@ -68,7 +69,7 @@ class NewsFeedPagingSourceAllPosts(
             }
 
             val posts = postsResponse.body() ?: emptyList()
-            Log.d("PagingSourceAllPosts", "Fetched ${posts.size} posts: ${posts.map { "ID=${it.id}, CreatedAt=${it.created_at}" }}")
+            Log.d("PagingSourceAllPosts", "Fetched ${posts.size} posts: ${posts.map { "ID=${it.id}, CreatedAt=${it.created_at}, Username=${it.username}" }}")
             val allItems = mutableListOf<NewsFeedDataClassItem>()
             val processedIds = mutableSetOf<Int>() // Page-specific deduplication for original posts
             val processedRepostIds = mutableSetOf<Int>() // Separate deduplication for reposts
@@ -82,7 +83,7 @@ class NewsFeedPagingSourceAllPosts(
                     processedIds.add(updatedPost.id)
                     processedIdsGlobal[updatedPost.id] = true
                     originalPostIds.add(updatedPost.id)
-                    Log.d("PagingSourceAllPosts", "Added original post ID: ${updatedPost.id}, CreatedAt: ${updatedPost.created_at}")
+                    Log.d("PagingSourceAllPosts", "Added original post ID: ${updatedPost.id}, CreatedAt: ${updatedPost.created_at}, Username: ${updatedPost.username}")
                 } else {
                     Log.d("PagingSourceAllPosts", "Skipped original post ID: ${updatedPost.id} due to deduplication")
                 }
@@ -104,12 +105,20 @@ class NewsFeedPagingSourceAllPosts(
                             if (repostsResponse.isSuccessful) {
                                 val reposts = repostsResponse.body()?.filter { repost ->
                                     repost.id != null && repost.userId != null && repost.createdAt != null && repost.postId != null
-                                            && repost.postId == postId // Ensure reposts match the requested postId
+                                            && repost.postId == postId
                                 } ?: emptyList()
-                                Log.d("PagingSourceAllPosts", "Fetched ${reposts.size} reposts for postId $postId: ${reposts.map { "RepostID=${it.id}, OriginalPostId=${it.postId}, CreatedAt=${it.createdAt}" }}")
+                                Log.d("PagingSourceAllPosts", "Fetched ${reposts.size} reposts for postId $postId: ${reposts.map { "RepostID=${it.id}, OriginalPostId=${it.postId}, CreatedAt=${it.createdAt}, UserId=${it.userId}" }}")
 
                                 reposts.map { repost ->
                                     val originalPost = posts.find { it.id == repost.postId }
+                                    // Fetch username based on userId
+                                    val userResponse = apiService.getUser(repost.userId!!)
+                                    val username = if (userResponse.isSuccessful) {
+                                        userResponse.body()?.username
+                                    } else {
+                                        Log.e("PagingSourceAllPosts", "Failed to fetch user for userId ${repost.userId}: ${userResponse.code()}")
+                                        null
+                                    }
                                     NewsFeedDataClassItem(
                                         id = repost.id!!,
                                         user_id = repost.userId!!,
@@ -125,7 +134,7 @@ class NewsFeedPagingSourceAllPosts(
                                         type = originalPost?.type ?: "text",
                                         postType = originalPost?.postType ?: "normal",
                                         title = originalPost?.title ?: "Repost",
-                                        username = null
+                                        username = username // Set based on userId
                                     )
                                 }
                             } else {
@@ -144,10 +153,10 @@ class NewsFeedPagingSourceAllPosts(
 
             // Add reposts to the current page with separate deduplication
             repostResults.forEach { repost ->
-                if (!processedRepostIds.contains(repost.id)) { // Check only repost-specific deduplication
+                if (!processedRepostIds.contains(repost.id)) {
                     allItems.add(repost)
                     processedRepostIds.add(repost.id)
-                    Log.d("PagingSourceAllPosts", "Added repost ID: ${repost.id}, OriginalPostId: ${repost.original_post_id}, CreatedAt: ${repost.created_at}")
+                    Log.d("PagingSourceAllPosts", "Added repost ID: ${repost.id}, OriginalPostId: ${repost.original_post_id}, CreatedAt: ${repost.created_at}, Username: ${repost.username}")
                 } else {
                     Log.d("PagingSourceAllPosts", "Skipped repost ID: ${repost.id} due to repost-specific deduplication")
                 }
@@ -167,7 +176,7 @@ class NewsFeedPagingSourceAllPosts(
             }
 
             val endTime = System.currentTimeMillis()
-            Log.d("PagingSourceAllPosts", "Load completed in ${endTime - startTime}ms with ${allItems.size} items: ${allItems.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}" }}")
+            Log.d("PagingSourceAllPosts", "Load completed in ${endTime - startTime}ms with ${allItems.size} items: ${allItems.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}, Username=${it.username}" }}")
 
             LoadResult.Page(
                 data = allItems,

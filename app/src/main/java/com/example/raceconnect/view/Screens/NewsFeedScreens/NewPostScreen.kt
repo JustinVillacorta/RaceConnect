@@ -24,12 +24,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 
@@ -91,6 +93,9 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         selectedImageUri = uri
     }
+
+    val userPreferences = remember { UserPreferences(context) }
+    val user by userPreferences.user.collectAsState(initial = null)
 
     val categories = listOf("Formula 1", "24 Hours of Lemans", "World Rally Championship", "NASCAR", "Formula Drift", "GT Championship")
     val privacyOptions = listOf("Public", "Friends Only", "Only me")
@@ -156,17 +161,43 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                    )
+                    // Profile Picture Handling
+                    val profilePictureUri = user?.profilePicture?.let {
+                        try {
+                            Uri.parse(it)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+
+                    if (profilePictureUri != null) {
+                        val painter = rememberAsyncImagePainter(
+                            model = profilePictureUri,
+                            error = painterResource(id = android.R.drawable.ic_menu_gallery), // Fallback image
+                            placeholder = painterResource(id = android.R.drawable.ic_menu_gallery) // Loading placeholder
+                        )
+                        Image(
+                            painter = painter,
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        )
+                    }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Anonymous",
+                        text = user?.username ?: "Anonymous",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
