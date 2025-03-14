@@ -51,6 +51,7 @@ import com.example.raceconnect.view.NotificationsScreen
 import com.example.raceconnect.view.PostDetailScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplaceItemScreen
+import com.example.raceconnect.view.Screens.MarketplaceScreens.EditMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.SellerViewMarketplaceItemDetailScreen
 import com.example.raceconnect.view.Screens.MenuScreens.FavoriteItemsScreen
@@ -103,7 +104,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showFavoriteItems by remember { mutableStateOf(false) }
     var showNewsFeedPreferences by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
-    var showFavoriteItemDetailScreen by remember { mutableStateOf<Int?>(null) } // New state for favorite item detail
+    var showFavoriteItemDetailScreen by remember { mutableStateOf<Int?>(null) }
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
@@ -333,7 +334,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     navController = navController,
                                     viewModel = marketplaceViewModel,
                                     onClose = { navController.popBackStack() },
-                                    onEdit = { /* TODO: Navigate to edit screen */ },
                                     onDelete = { /* TODO: Implement delete logic */ }
                                 )
                             }
@@ -368,6 +368,24 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             }
                         }
                     }
+                    composable(
+                        route = NavRoutes.EditMarketplaceItem.route,
+                        arguments = listOf(
+                            navArgument("itemId") {
+                                type = NavType.IntType
+                                defaultValue = -1
+                                nullable = false
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
+                        EditMarketplaceItemScreen(
+                            itemId = itemId,
+                            navController = navController,
+                            viewModel = marketplaceViewModel,
+                            onClose = { navController.popBackStack() }
+                        )
+                    }
                     composable(NavRoutes.ChatSeller.route) { backStackEntry ->
                         val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
                         ChatSellerScreen(
@@ -386,6 +404,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
+            // [Keep all AnimatedVisibility blocks the same until the end]
             AnimatedVisibility(
                 visible = showCreatePostScreen,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
@@ -502,7 +521,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     navController = navController,
                     userPreferences = userPreferences,
                     onClose = { showFavoriteItems = false },
-                    onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId } // Pass callback
+                    onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId }
                 )
             }
 

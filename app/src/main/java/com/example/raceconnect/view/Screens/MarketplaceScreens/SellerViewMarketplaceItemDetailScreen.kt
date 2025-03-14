@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import android.util.Log
@@ -38,17 +39,14 @@ fun SellerViewMarketplaceItemDetailScreen(
     navController: NavController,
     viewModel: MarketplaceViewModel,
     onClose: () -> Unit,
-    onEdit: (Int) -> Unit = {},
     onDelete: (Int) -> Unit = {}
 ) {
-    // Use userItems instead of items since this is for the seller's own listing
     val userItems by viewModel.userItems.collectAsState()
     val imagesMap by viewModel.marketplaceImages.collectAsState()
     var item by remember { mutableStateOf(userItems.find { it.id == itemId }) }
     var isLoading by remember { mutableStateOf(item == null && itemId != -1) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Fetch item if not found locally
     LaunchedEffect(itemId) {
         if (item == null && itemId != -1) {
             Log.d("SellerView", "Item $itemId not found locally, fetching from API...")
@@ -64,7 +62,6 @@ fun SellerViewMarketplaceItemDetailScreen(
         }
     }
 
-    // Fetch images
     LaunchedEffect(itemId) {
         viewModel.getMarketplaceItemImages(itemId)
     }
@@ -113,7 +110,6 @@ fun SellerViewMarketplaceItemDetailScreen(
                 )
             } else if (item != null) {
                 Column {
-                    // Image carousel
                     if (imagesMap[itemId]?.isNotEmpty() == true) {
                         LazyRow(
                             modifier = Modifier
@@ -147,7 +143,6 @@ fun SellerViewMarketplaceItemDetailScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Title
                     Text(
                         text = item!!.title,
                         style = MaterialTheme.typography.headlineSmall,
@@ -160,7 +155,6 @@ fun SellerViewMarketplaceItemDetailScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Price
                     Text(
                         text = "₱${item!!.price}",
                         style = MaterialTheme.typography.bodyLarge,
@@ -172,19 +166,6 @@ fun SellerViewMarketplaceItemDetailScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Status
-                    Text(
-                        text = "Status: ${item!!.status}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (item!!.status == "Available") Color.Green else Color.Gray,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Description
                     Text(
                         text = item!!.description,
                         style = MaterialTheme.typography.bodyMedium,
@@ -197,7 +178,6 @@ fun SellerViewMarketplaceItemDetailScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Action Buttons (Edit and Delete)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -205,7 +185,7 @@ fun SellerViewMarketplaceItemDetailScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         Button(
-                            onClick = { onEdit(itemId) },
+                            onClick = { navController.navigate(NavRoutes.EditMarketplaceItem.createRoute(itemId)) },
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
                                 .weight(1f)

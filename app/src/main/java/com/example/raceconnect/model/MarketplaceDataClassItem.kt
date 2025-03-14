@@ -46,3 +46,17 @@ data class itemPostResponse(
     val message: String,
     val item_id: String
 )
+
+data class UpdateMarketplaceItemRequest(
+    val title: String? = null,
+    val description: String? = null,
+    val price: String? = null, // Sent as String, validated as numeric on the server
+    val category: String? = null,
+    val listing_status: String? = null,
+    val status: String? = null
+)
+
+data class UpdateMarketplaceItemResponse(
+    val message: String,
+    val image_urls: List<String>? = null // Matches the backend's response structure
+)
