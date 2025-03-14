@@ -56,6 +56,7 @@ fun NewsFeedPreferencesScreen(
 
     var showSearchBar by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var isEditable by remember { mutableStateOf(false) } // New state for edit mode
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -73,12 +74,16 @@ fun NewsFeedPreferencesScreen(
                 },
                 actions = {
                     Text(
-                        text = "Save",
+                        text = if (isEditable) "Save" else "Edit",
                         color = white,
                         modifier = Modifier
                             .clickable {
-                                viewModel.savePreferences()
-                                onClose()
+                                if (isEditable) {
+                                    viewModel.savePreferences()
+                                    isEditable = false
+                                } else {
+                                    isEditable = true
+                                }
                             }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         style = MaterialTheme.typography.bodyMedium
@@ -137,80 +142,83 @@ fun NewsFeedPreferencesScreen(
                         if (brand != null) {
                             BrandChip(
                                 brand = brand,
-                                onRemove = { viewModel.toggleBrand(brandName) }
+                                onRemove = if (isEditable) { { viewModel.toggleBrand(brandName) } } else null
                             )
                         }
                     }
                 }
             }
 
-            if (!showSearchBar) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(brandRed)
-                        .clickable { showSearchBar = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add brand",
-                        tint = white,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            if (showSearchBar) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    placeholder = { Text("Search") },
-                    leadingIcon = {
+            // Show add button and search only when in edit mode
+            if (isEditable) {
+                if (!showSearchBar) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(brandRed)
+                            .clickable { showSearchBar = true },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search icon",
-                            tint = Color.Gray
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add brand",
+                            tint = white,
+                            modifier = Modifier.size(24.dp)
                         )
-                    },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close search",
-                            tint = Color.Gray,
-                            modifier = Modifier.clickable {
-                                searchQuery = ""
-                                showSearchBar = false
-                            }
-                        )
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(8.dp)
-                )
-
-                val filteredBrands = availableBrands.filter {
-                    it.name.lowercase().contains(searchQuery.lowercase()) && it.name !in selectedBrands
+                    }
                 }
-                if (filteredBrands.isNotEmpty()) {
-                    LazyColumn(
+
+                if (showSearchBar) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(filteredBrands) { brand ->
-                            BrandChip(
-                                brand = brand,
-                                onClick = {
-                                    viewModel.toggleBrand(brand.name)
+                        placeholder = { Text("Search") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search icon",
+                                tint = Color.Gray
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close search",
+                                tint = Color.Gray,
+                                modifier = Modifier.clickable {
                                     searchQuery = ""
                                     showSearchBar = false
                                 }
                             )
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+
+                    val filteredBrands = availableBrands.filter {
+                        it.name.lowercase().contains(searchQuery.lowercase()) && it.name !in selectedBrands
+                    }
+                    if (filteredBrands.isNotEmpty()) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filteredBrands) { brand ->
+                                BrandChip(
+                                    brand = brand,
+                                    onClick = {
+                                        viewModel.toggleBrand(brand.name)
+                                        searchQuery = ""
+                                        showSearchBar = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -218,23 +226,26 @@ fun NewsFeedPreferencesScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Button(
-                onClick = { viewModel.clearPreferences() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = brandRed
-                ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp)
-            ) {
-                Text(
-                    text = "Remove All Preferences",
-                    color = brandRed,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            // Show remove all button only in edit mode
+            if (isEditable) {
+                Button(
+                    onClick = { viewModel.clearPreferences() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                        .height(50.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = brandRed
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp)
+                ) {
+                    Text(
+                        text = "Remove All Preferences",
+                        color = brandRed,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
     }
@@ -279,13 +290,13 @@ fun BrandChip(
                     .clickable { onRemove.invoke() },
                 tint = Color.Gray
             )
-        } else {
+        } else if (onClick != null) {
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "Add",
                 color = Color(0xFFC62828),
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.clickable { onClick?.invoke() }
+                modifier = Modifier.clickable { onClick.invoke() }
             )
         }
     }
