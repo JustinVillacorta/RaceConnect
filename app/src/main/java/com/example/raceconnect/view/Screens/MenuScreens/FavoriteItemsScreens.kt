@@ -35,7 +35,8 @@ import kotlinx.coroutines.launch
 fun FavoriteItemsScreen(
     navController: NavController,
     userPreferences: UserPreferences,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onShowItemDetail: (Int) -> Unit // Add this callback
 ) {
     val viewModel: MarketplaceViewModel = viewModel(
         factory = MarketplaceViewModelFactory(userPreferences)
@@ -46,22 +47,19 @@ fun FavoriteItemsScreen(
     val imagesMap by viewModel.marketplaceImages.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
-    // State for the dropdown
     var expanded by remember { mutableStateOf(false) }
     val filterOptions = listOf("All items", "Jackets", "T-shirts", "Formula Drift", "NASCAR")
     var selectedOption by remember { mutableStateOf(filterOptions[0]) }
 
-    // Filter items based on selected category
     val filteredItems = if (selectedOption == "All items") {
         userItems
     } else {
         userItems.filter { it.category == selectedOption }
     }
 
-    // Trigger fetch of liked items when the screen is first loaded
     LaunchedEffect(Unit) {
         if (userItems.isEmpty() && !isRefreshing) {
-            viewModel.fetchUserMarketplaceItems() // Fetch liked items
+            viewModel.fetchUserMarketplaceItems()
         }
     }
 
@@ -79,7 +77,7 @@ fun FavoriteItemsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.smallTopAppBarColors(
-                    containerColor = Color(0xFFC62828), // Red background
+                    containerColor = Color(0xFFC62828),
                     titleContentColor = Color.White
                 )
             )
@@ -96,7 +94,6 @@ fun FavoriteItemsScreen(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Dropdown filter (Exposed Dropdown Menu)
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { expanded = !expanded },
@@ -135,7 +132,6 @@ fun FavoriteItemsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Handle loading and empty states
                 when {
                     isRefreshing -> {
                         CircularProgressIndicator(
@@ -159,7 +155,7 @@ fun FavoriteItemsScreen(
                             Button(
                                 onClick = {
                                     coroutineScope.launch {
-                                        viewModel.fetchUserMarketplaceItems() // Refresh liked items
+                                        viewModel.fetchUserMarketplaceItems()
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = Red)
@@ -169,7 +165,6 @@ fun FavoriteItemsScreen(
                         }
                     }
                     else -> {
-                        // Grid of favorite items
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(2),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -180,9 +175,7 @@ fun FavoriteItemsScreen(
                                 FavoriteItemCard(
                                     item = item,
                                     imagesMap = imagesMap,
-                                    onClick = {
-                                        navController.navigate(NavRoutes.MarketplaceItemDetail.createRoute(item.id))
-                                    }
+                                    onClick = { onShowItemDetail(item.id) } // Use callback instead of navigation
                                 )
                             }
                         }

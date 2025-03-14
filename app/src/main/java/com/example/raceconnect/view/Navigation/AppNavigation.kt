@@ -103,6 +103,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showFavoriteItems by remember { mutableStateOf(false) }
     var showNewsFeedPreferences by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var showFavoriteItemDetailScreen by remember { mutableStateOf<Int?>(null) } // New state for favorite item detail
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
@@ -118,13 +119,15 @@ fun AppNavigation(userPreferences: UserPreferences) {
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 bottomBar = { BottomNavBar(navController) },
-                snackbarHost = { SnackbarHost(hostState = snackbarHostState) { data ->
-                    Snackbar(
-                        snackbarData = data,
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }}
+                snackbarHost = {
+                    SnackbarHost(hostState = snackbarHostState) { data ->
+                        Snackbar(
+                            snackbarData = data,
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
             ) { paddingValues ->
                 NavHost(
                     navController = navController,
@@ -497,9 +500,46 @@ fun AppNavigation(userPreferences: UserPreferences) {
             ) {
                 FavoriteItemsScreen(
                     navController = navController,
-                    userPreferences = userPreferences, // Pass userPreferences instead of menuViewModel
-                    onClose = { showFavoriteItems = false }
+                    userPreferences = userPreferences,
+                    onClose = { showFavoriteItems = false },
+                    onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId } // Pass callback
                 )
+            }
+
+            showFavoriteItemDetailScreen?.let { itemId ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                ) {
+                    MarketplaceItemDetailScreen(
+                        itemId = itemId,
+                        navController = navController,
+                        viewModel = marketplaceViewModel,
+                        onClose = { showFavoriteItemDetailScreen = null },
+                        onClickChat = { showChatSellerScreen = it },
+                        onLikeError = { errorMessage ->
+                            coroutineScope.launch {
+                                val snackbarResult = snackbarHostState.showSnackbar(
+                                    message = errorMessage,
+                                    actionLabel = "Retry",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (snackbarResult == SnackbarResult.ActionPerformed) {
+                                    try {
+                                        marketplaceViewModel.toggleLike(itemId)
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar(
+                                            message = "Retry failed: ${e.message}",
+                                            actionLabel = "Dismiss",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
             }
 
             AnimatedVisibility(
