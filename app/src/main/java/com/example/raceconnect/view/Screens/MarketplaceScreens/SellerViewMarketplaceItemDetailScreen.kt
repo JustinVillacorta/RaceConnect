@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,15 +38,35 @@ import android.util.Log
 fun SellerViewMarketplaceItemDetailScreen(
     itemId: Int,
     navController: NavController,
-    viewModel: MarketplaceViewModel,
+    viewModel: MarketplaceViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     onClose: () -> Unit,
-    onDelete: (Int) -> Unit = {}
+    onRefreshListedItems: () -> Unit = {} // Callback to refresh listed items
 ) {
     val userItems by viewModel.userItems.collectAsState()
     val imagesMap by viewModel.marketplaceImages.collectAsState()
     var item by remember { mutableStateOf(userItems.find { it.id == itemId }) }
     var isLoading by remember { mutableStateOf(item == null && itemId != -1) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var triggerDelete by remember { mutableStateOf(false) } // State to trigger deletion
+
+    // Retrieve the Context in a composable scope
+    val context = LocalContext.current
+
+    // Observe deletion result
+    LaunchedEffect(triggerDelete) {
+        if (triggerDelete) {
+            viewModel._errorMessage.collect { error ->
+                if (error == null) {
+                    onClose() // Navigate back on success
+                    onRefreshListedItems() // Trigger refresh of listed items
+                } else {
+                    errorMessage = error // Show error message
+                }
+                triggerDelete = false // Reset trigger
+            }
+        }
+    }
 
     LaunchedEffect(itemId) {
         if (item == null && itemId != -1) {
@@ -209,7 +230,7 @@ fun SellerViewMarketplaceItemDetailScreen(
                         }
 
                         Button(
-                            onClick = { onDelete(itemId) },
+                            onClick = { showDeleteDialog = true },
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
                                 .weight(1f)
@@ -233,6 +254,51 @@ fun SellerViewMarketplaceItemDetailScreen(
                         }
                     }
                 }
+            }
+
+            // Delete Confirmation Dialog
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text("Confirm Delete") },
+                    text = { Text("Are you sure you want to delete this item? This action cannot be undone.") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                viewModel.deleteItem(itemId, context) // Use the context variable
+                                triggerDelete = true // Trigger the LaunchedEffect to observe the result
+                                showDeleteDialog = false
+                            }
+                        ) {
+                            Text("Yes")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showDeleteDialog = false }) {
+                            Text("No")
+                        }
+                    }
+                )
+            }
+
+            // Display error message
+            errorMessage?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(top = 8.dp)
+                )
+            }
+            viewModel._errorMessage.collectAsState().value?.let { error ->
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(top = 8.dp)
+                )
             }
         }
     }

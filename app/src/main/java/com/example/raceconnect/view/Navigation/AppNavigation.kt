@@ -18,7 +18,6 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -316,6 +315,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             }
                         }
 
+                        var refreshListedItems by remember { mutableStateOf(false) } // State to trigger refresh
+
                         when {
                             itemId == -1 -> {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -334,7 +335,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     navController = navController,
                                     viewModel = marketplaceViewModel,
                                     onClose = { navController.popBackStack() },
-                                    onDelete = { /* TODO: Implement delete logic */ }
+                                    onRefreshListedItems = { refreshListedItems = true } // Pass refresh callback
                                 )
                             }
                             else -> {
@@ -346,25 +347,27 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     onClickChat = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) },
                                     onLikeError = { errorMessage ->
                                         coroutineScope.launch {
-                                            val snackbarResult = snackbarHostState.showSnackbar(
+                                            snackbarHostState.showSnackbar(
                                                 message = errorMessage,
                                                 actionLabel = "Retry",
                                                 duration = SnackbarDuration.Short
                                             )
-                                            if (snackbarResult == SnackbarResult.ActionPerformed) {
-                                                try {
-                                                    marketplaceViewModel.toggleLike(itemId)
-                                                } catch (e: Exception) {
-                                                    snackbarHostState.showSnackbar(
-                                                        message = "Retry failed: ${e.message}",
-                                                        actionLabel = "Dismiss",
-                                                        duration = SnackbarDuration.Short
-                                                    )
-                                                }
-                                            }
                                         }
                                     }
                                 )
+                            }
+                        }
+
+                        // Trigger refresh of ListedItemsScreen when refreshListedItems changes
+                        LaunchedEffect(refreshListedItems) {
+                            if (refreshListedItems) {
+                                navController.navigate(NavRoutes.ListedItems.route) {
+                                    popUpTo(NavRoutes.ListedItems.route) {
+                                        inclusive = false
+                                    }
+                                    launchSingleTop = true
+                                }
+                                refreshListedItems = false
                             }
                         }
                     }
@@ -398,13 +401,13 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         ListedItemsScreen(
                             navController = navController,
                             userPreferences = userPreferences,
-                            onClose = { navController.popBackStack() }
+                            onClose = { navController.popBackStack() },
+                            onRefresh = { /* No-op here, handled by LaunchedEffect in ListedItemsScreen */ }
                         )
                     }
                 }
             }
 
-            // [Keep all AnimatedVisibility blocks the same until the end]
             AnimatedVisibility(
                 visible = showCreatePostScreen,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
@@ -442,22 +445,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         onClickChat = { showChatSellerScreen = it },
                         onLikeError = { errorMessage ->
                             coroutineScope.launch {
-                                val snackbarResult = snackbarHostState.showSnackbar(
+                                snackbarHostState.showSnackbar(
                                     message = errorMessage,
                                     actionLabel = "Retry",
                                     duration = SnackbarDuration.Short
                                 )
-                                if (snackbarResult == SnackbarResult.ActionPerformed) {
-                                    try {
-                                        marketplaceViewModel.toggleLike(itemId)
-                                    } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar(
-                                            message = "Retry failed: ${e.message}",
-                                            actionLabel = "Dismiss",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                }
                             }
                         }
                     )
@@ -539,22 +531,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         onClickChat = { showChatSellerScreen = it },
                         onLikeError = { errorMessage ->
                             coroutineScope.launch {
-                                val snackbarResult = snackbarHostState.showSnackbar(
+                                snackbarHostState.showSnackbar(
                                     message = errorMessage,
                                     actionLabel = "Retry",
                                     duration = SnackbarDuration.Short
                                 )
-                                if (snackbarResult == SnackbarResult.ActionPerformed) {
-                                    try {
-                                        marketplaceViewModel.toggleLike(itemId)
-                                    } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar(
-                                            message = "Retry failed: ${e.message}",
-                                            actionLabel = "Dismiss",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                }
                             }
                         }
                     )

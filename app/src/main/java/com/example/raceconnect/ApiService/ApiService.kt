@@ -160,6 +160,11 @@ interface ApiService {
         @Part images: List<MultipartBody.Part>
     ): Response<Map<String, Any>>
 
+    @DELETE("marketplace-items/{id}")
+    suspend fun deleteMarketplaceItem(
+        @Path("id") id: Int
+    ): Response<Map<String, String>>
+
     @GET("marketplace-item-likes")
     suspend fun getAllLikes(): Response<MarketplaceItemLikesResponse>
 
