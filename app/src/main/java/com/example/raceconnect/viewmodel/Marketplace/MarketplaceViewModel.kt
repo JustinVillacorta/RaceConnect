@@ -126,14 +126,35 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         viewModelScope.launch {
             try {
                 val userId = _currentUserId.value ?: return@launch
-                val response = RetrofitInstance.api.getUserLikedItems(userId)
+                val response = RetrofitInstance.api.getLikedItemsByUserIds(userId.toString())
                 if (response.isSuccessful) {
                     val body = response.body()
                     if (body == null) {
                         Log.e("MarketplaceViewModel", "Response body is null for user $userId")
                         _userItems.value = emptyList()
                     } else {
-                        val items = body.data as? List<MarketplaceDataClassItem> ?: emptyList()
+                        val data = body["data"] as? Map<String, List<Map<String, Any>>> ?: emptyMap()
+                        val userItemsList = data[userId.toString()] ?: emptyList()
+                        // Map the response to MarketplaceDataClassItem
+                        val items = userItemsList.mapNotNull { itemMap ->
+                            try {
+                                MarketplaceDataClassItem(
+                                    id = (itemMap["id"] as? Number)?.toInt() ?: return@mapNotNull null,
+                                    title = itemMap["title"] as? String ?: "",
+                                    description = itemMap["description"] as? String ?: "",
+                                    price = itemMap["price"] as? String ?: "0.0", // Keep as String
+                                    category = itemMap["category"] as? String ?: "",
+                                    status = itemMap["listing_status"] as? String ?: "",
+                                    seller_id = (itemMap["seller_id"] as? Number)?.toInt() ?: 0, // Default to 0 if null
+                                    image_url = null,
+                                    created_at = itemMap["created_at"] as? String ?: "",
+                                    updated_at = itemMap["updated_at"] as? String ?: ""
+                                )
+                            } catch (e: Exception) {
+                                Log.e("MarketplaceViewModel", "Error mapping item: $itemMap", e)
+                                null
+                            }
+                        }
                         _userItems.value = items
                         Log.d("MarketplaceViewModel", "Fetched ${items.size} liked items for user $userId")
                         items.forEach { item ->
@@ -275,11 +296,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                 _errorMessage.value = "Cannot toggle like: Item not found"
                 return@launch
             }
-            val ownerId = item.seller_id ?: run {
-                Log.e("MarketplaceViewModel", "Seller ID not found for item $itemId")
-                _errorMessage.value = "Cannot toggle like: Seller ID not found"
-                return@launch
-            }
+            val ownerId = item.seller_id
             try {
                 val params = mapOf(
                     "user_id" to userId,
@@ -309,7 +326,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
 
     fun addMarketplaceItem(
         title: String,
-        price: String,
+        price: String, // Changed to String to match MarketplaceDataClassItem
         description: String,
         category: String,
         imageUrl: String = ""
@@ -359,7 +376,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
     fun addMarketplaceItemWithImages(
         context: Context,
         title: String,
-        price: String,
+        price: String, // Changed to String to match MarketplaceDataClassItem
         description: String,
         category: String,
         imageUris: List<Uri>? = null

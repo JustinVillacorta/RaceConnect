@@ -48,7 +48,7 @@ fun FavoriteItemsScreen(
 
     // State for the dropdown
     var expanded by remember { mutableStateOf(false) }
-    val filterOptions = listOf("All items", "Jackets", "T-shirts")
+    val filterOptions = listOf("All items", "Jackets", "T-shirts", "Formula Drift", "NASCAR")
     var selectedOption by remember { mutableStateOf(filterOptions[0]) }
 
     // Filter items based on selected category
@@ -107,11 +107,13 @@ fun FavoriteItemsScreen(
                         onValueChange = { /* no-op, read-only */ },
                         label = { Text("Filter by category") },
                         trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = expanded
+                            )
                         },
                         readOnly = true,
                         modifier = Modifier
-                            .menuAnchor() // needed for M3 ExposedDropdownMenuBox
+                            .menuAnchor()
                             .fillMaxWidth()
                     )
 

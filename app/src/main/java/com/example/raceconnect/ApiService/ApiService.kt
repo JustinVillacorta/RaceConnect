@@ -122,6 +122,11 @@ interface ApiService {
         @Query("offset") offset: Int = 0
     ): Response<List<MarketplaceDataClassItem>>
 
+    @GET("marketplace-item-likes/liked-posts")
+    suspend fun getLikedItemsByUserIds(
+        @Query("user_ids") userIds: String // Comma-separated user IDs, e.g., "4"
+    ): Response<Map<String, Any>>
+
     @Multipart
     @POST("marketplace-items")
     suspend fun MarketplacePostImage(
@@ -132,7 +137,7 @@ interface ApiService {
         @Part("price") price: RequestBody,
         @Part("status") status: RequestBody,
         @Part images: List<MultipartBody.Part>?
-    ): Response<MarketplaceImageResponse>
+    ): Response<itemPostResponse> // Updated return type
 
     @GET("marketplace-items")
     suspend fun getAllMarketplaceItems(
