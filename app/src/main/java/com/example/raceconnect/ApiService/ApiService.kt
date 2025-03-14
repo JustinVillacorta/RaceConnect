@@ -70,7 +70,7 @@ interface ApiService {
     @GET("posts")
     suspend fun getPostsByCategoryAndPrivacy(
         @Query("user_id") userId: Int,
-        @Query("category") categories: String, // Comma-separated list of categories
+        @Query("category") categories: String,
         @Query("limit") limit: Int = 100000,
         @Query("offset") offset: Int = 0
     ): Response<List<NewsFeedDataClassItem>>
@@ -138,11 +138,20 @@ interface ApiService {
     suspend fun getAllMarketplaceItems(
         @Query("limit") limit: Int = 10,
         @Query("offset") offset: Int = 0,
-        @Query("exclude_seller_id") excludeSellerId: Int? = null // New parameter
+        @Query("exclude_seller_id") excludeSellerId: Int? = null
     ): Response<List<MarketplaceDataClassItem>>
 
     @POST("marketplace-items")
     suspend fun createMarketplaceItem(@Body item: MarketplaceDataClassItem): Response<itemPostResponse>
+
+    @POST("marketplace-item-likes")
+    suspend fun likeMarketplaceItem(@Body requestBody: Map<String, Int>): Response<ResponseBody>
+
+    @DELETE("marketplace-item-likes")
+    suspend fun unlikeMarketplaceItem(@Body requestBody: Map<String, Int>): Response<ResponseBody>
+
+    @GET("marketplace-item-likes")
+    suspend fun getMarketplaceItemLikes(@Query("marketplace_item_id") itemId: Int): Response<List<MarketplaceItemLike>>
 
     @GET("friends/list")
     suspend fun getFriendsList(@Query("user_id") userId: String): Response<List<Map<String, Any?>>>
@@ -228,7 +237,7 @@ interface ApiService {
 
     @GET("post-reposts")
     suspend fun getRepostsByPostId(
-        @Query("postId") postId: Int,  // Added postId as query parameter
+        @Query("postId") postId: Int,
         @Query("limit") limit: Int = 100000,
         @Query("offset") offset: Int= 0
     ): Response<List<Repost>>

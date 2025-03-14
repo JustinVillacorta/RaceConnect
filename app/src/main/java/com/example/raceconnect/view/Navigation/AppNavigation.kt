@@ -285,7 +285,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
                         val items by marketplaceViewModel.items.collectAsState()
                         val userItems by marketplaceViewModel.userItems.collectAsState()
-                        var item by remember { mutableStateOf(userItems.find { it.id == itemId } ?: items.find { it.id == itemId }) }
+                        var item by remember { mutableStateOf(items.find { it.id == itemId } ?: userItems.find { it.id == itemId }) }
 
                         LaunchedEffect(itemId) {
                             if (item == null && itemId != -1) {
@@ -303,7 +303,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             }
                             item == null -> {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator() // Show loading while fetching
+                                    CircularProgressIndicator()
                                     Text("Loading item...", color = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
@@ -346,7 +346,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
-            // Overlays (unchanged)
             AnimatedVisibility(
                 visible = showCreatePostScreen,
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),

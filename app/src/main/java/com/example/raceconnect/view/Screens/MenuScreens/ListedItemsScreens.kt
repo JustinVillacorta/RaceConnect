@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -29,6 +31,7 @@ import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,12 +44,15 @@ fun ListedItemsScreen(
         factory = MarketplaceViewModelFactory(userPreferences)
     )
 
-    val listedItems by viewModel.userItems.collectAsState() // Use userItems from MarketplaceViewModel
+    val listedItems by viewModel.userItems.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
 
-    var expanded by remember { mutableStateOf(false) }
-    val filterOptions = listOf("All items", "Available", "Sold")
-    var selectedOption by remember { mutableStateOf(filterOptions[0]) }
+    LaunchedEffect(Unit) {
+        if (listedItems.isEmpty() && !isRefreshing) {
+            viewModel.refreshMarketplaceItems()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -82,14 +88,29 @@ fun ListedItemsScreen(
                     )
                 }
                 listedItems.isEmpty() -> {
-                    Text(
-                        text = "You haven't listed any items yet",
+                    Column(
                         modifier = Modifier
                             .align(Alignment.Center)
                             .padding(16.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Gray
-                    )
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "You haven't listed any items yet",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    viewModel.refreshMarketplaceItems()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Red)
+                        ) {
+                            Text("Refresh", color = Color.White)
+                        }
+                    }
                 }
                 else -> {
                     Column(
@@ -97,70 +118,22 @@ fun ListedItemsScreen(
                             .fillMaxSize()
                             .padding(16.dp)
                     ) {
-                        ExposedDropdownMenuBox(
-                            expanded = expanded,
-                            onExpandedChange = { expanded = !expanded },
-                            modifier = Modifier.fillMaxWidth()
+                        Spacer(modifier = Modifier.height(16.dp)) // Replaced filter space with Spacer
+
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            OutlinedTextField(
-                                value = selectedOption,
-                                onValueChange = { /* read-only */ },
-                                label = { Text("Filter items") },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                                },
-                                readOnly = true,
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .fillMaxWidth()
-                            )
-
-                            ExposedDropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false }
-                            ) {
-                                filterOptions.forEach { option ->
-                                    DropdownMenuItem(
-                                        text = { Text(option) },
-                                        onClick = {
-                                            selectedOption = option
-                                            expanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        val filteredItems = when (selectedOption) {
-                            "Available" -> listedItems.filter { it.status == "Available" }
-                            "Sold" -> listedItems.filter { it.status != "Available" }
-                            else -> listedItems
-                        }
-
-                        if (filteredItems.isEmpty()) {
-                            Text(
-                                text = "No items match the selected filter",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.Gray,
-                                modifier = Modifier.align(Alignment.CenterHorizontally)
-                            )
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(filteredItems) { item ->
-                                    ListedItemCard(
-                                        item = item,
-                                        onClick = {
-                                            navController.navigate(NavRoutes.MarketplaceItemDetail.createRoute(item.id))
-                                        }
-                                    )
-                                }
+                            items(listedItems) { item ->
+                                ListedItemCard(
+                                    item = item,
+                                    viewModel = viewModel,
+                                    onClick = {
+                                        navController.navigate(NavRoutes.MarketplaceItemDetail.createRoute(item.id))
+                                    }
+                                )
                             }
                         }
                     }
@@ -173,8 +146,19 @@ fun ListedItemsScreen(
 @Composable
 fun ListedItemCard(
     item: MarketplaceDataClassItem,
+    viewModel: MarketplaceViewModel,
     onClick: () -> Unit
 ) {
+    val imagesMap by viewModel.marketplaceImages.collectAsState()
+    val isLiked by viewModel.isLiked.collectAsState()
+    val likeCount by viewModel.likeCount.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+
+    val itemImages = imagesMap[item.id] ?: emptyList()
+    val displayImage = itemImages.firstOrNull() ?: item.image_url?.takeIf { it.isNotEmpty() } ?: "https://via.placeholder.com/150"
+    val liked = isLiked[item.id] ?: false
+    val count = likeCount[item.id] ?: 0
+
     Card(
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(4.dp),
@@ -184,7 +168,7 @@ fun ListedItemCard(
     ) {
         Column {
             AsyncImage(
-                model = item.image_url.takeIf { it.isNotEmpty() } ?: "https://via.placeholder.com/150",
+                model = displayImage,
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

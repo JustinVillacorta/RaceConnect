@@ -1,6 +1,5 @@
 package com.example.raceconnect.ui
 
-import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -17,18 +16,18 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemCard
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
-// Marketplace screen displaying "Current's Best" and "More for You" sections
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketplaceScreen(
     userPreferences: UserPreferences,
     navController: NavController,
     onShowCreateListing: () -> Unit,
-    onShowItemDetail: (Int) -> Unit, // Callback to show MarketplaceItemDetailScreen
+    onShowItemDetail: (Int) -> Unit,
     viewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
 ) {
     val items by viewModel.items.collectAsState()
@@ -46,8 +45,6 @@ fun MarketplaceScreen(
                     )
                 },
                 actions = {
-
-                    // Search icon
                     IconButton(onClick = { /* Handle search click */ }) {
                         Icon(
                             painter = painterResource(id = com.example.raceconnect.R.drawable.baseline_search_24),
@@ -94,8 +91,8 @@ fun MarketplaceScreen(
                             MarketplaceItemCard(
                                 item = item,
                                 navController = navController,
-                                viewModel = (viewModel()), // Pass ViewMode
-                                onClick = { onShowItemDetail(item.id) } // Trigger callback
+                                viewModel = viewModel, // Pass the ViewModel instance
+                                onClick = { itemId -> onShowItemDetail(itemId) } // Pass item.id to onShowItemDetail
                             )
                         }
                     }

@@ -7,12 +7,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,24 +28,30 @@ import coil.compose.AsyncImage
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketplaceItemDetailScreen(
     itemId: Int,
     navController: NavController,
-    viewModel: MarketplaceViewModel, // Pass ViewModel explicitly
+    viewModel: MarketplaceViewModel,
     onClose: () -> Unit,
     onClickChat: (Int) -> Unit = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) }
 ) {
     val items by viewModel.items.collectAsState()
     val imagesMap by viewModel.marketplaceImages.collectAsState()
-    val item = items.find { it.id == itemId } // Find item by ID
+    val isLiked by viewModel.isLiked.collectAsState()
+    val likeCount by viewModel.likeCount.collectAsState()
+    val item = items.find { it.id == itemId }
     val itemImages = imagesMap[itemId] ?: emptyList()
+    val liked = isLiked[itemId] ?: false
+    val count = likeCount[itemId] ?: 0
+    val coroutineScope = rememberCoroutineScope()
 
-    // Fetch item images if not already fetched
     LaunchedEffect(itemId) {
         viewModel.getMarketplaceItemImages(itemId)
+        viewModel.fetchLikeStatus(itemId)
     }
 
     if (item == null) {
@@ -106,7 +114,7 @@ fun MarketplaceItemDetailScreen(
                 }
             } else {
                 AsyncImage(
-                    model = item.image_url,
+                    model = item.image_url?.takeIf { it.isNotEmpty() } ?: "https://via.placeholder.com/150",
                     contentDescription = "Marketplace Item Detail Image",
                     modifier = Modifier
                         .fillMaxWidth()
@@ -160,24 +168,32 @@ fun MarketplaceItemDetailScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(
-                    onClick = { /* Handle add to favorites */ },
+                    onClick = {
+                        coroutineScope.launch {
+                            viewModel.toggleLike(itemId)
+                        }
+                    },
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(50.dp)
-                        .padding(end = 8.dp)
+                        .padding(end = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                        contentColor = if (liked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                    )
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.FavoriteBorder,
-                            contentDescription = "Add to Favorites",
+                            imageVector = if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Like",
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add to Favorites")
+                        Text("${count} Like${if (count != 1) "s" else ""}")
                     }
                 }
 

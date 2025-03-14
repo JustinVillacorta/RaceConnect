@@ -1,29 +1,39 @@
 package com.example.raceconnect.model
 
-data class MarketplaceDataClassItem(
-    val id: Int,
-    val seller_id: Int,
-    val title: String,
-    val description: String,
-    val price: String, // Keeping as String to handle formatting (e.g., "10.00")
-    val category: String,
-    val image_url: String = "", // Default to empty if no image provided
-    val favorite_count: Int = 0, // Default to 0 if not specified
-    val status: String = "Available", // Default to "Available"
-    val report: String = "None", // Default to "None"
-    val reported_at: String? = null, // Nullable, default to null
-    val previous_status: String? = null, // Nullable, default to null
-    val listing_status: String = "Available", // Default to "Available"
-    val created_at: String = "", // Default to empty string, filled by backend
-    val updated_at: String = "" // Default to empty string, filled by backend
-)
-data class itemPostResponse(
-    val message: String
-    )
+import com.google.gson.annotations.SerializedName
 
+data class MarketplaceDataClassItem(
+    @SerializedName("id") val id: Int,
+    @SerializedName("seller_id") val seller_id: Int,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String,
+    @SerializedName("category") val category: String,
+    @SerializedName("price") val price: String,
+    @SerializedName("listing_status") val listing_status: String = "Available",
+    @SerializedName("status") val status: String = "Active",
+    @SerializedName("image_url") val image_url: String?, // Made nullable
+    @SerializedName("favorite_count") val favorite_count: Int = 0,
+    @SerializedName("archived_at") val archived_at: String? = null,
+    @SerializedName("report") val report: String = "none",
+    @SerializedName("reported_at") val reported_at: String? = null,
+    @SerializedName("created_at") val created_at: String,
+    @SerializedName("updated_at") val updated_at: String,
+    @SerializedName("previous_status") val previous_status: String? = null
+)
+
+data class MarketplaceItemLike(
+    @SerializedName("id") val id: Int,
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("marketplace_item_id") val marketplaceItemId: Int,
+    @SerializedName("owner_id") val ownerId: Int,
+    @SerializedName("created_at") val createdAt: String
+)
 
 data class MarketplaceImageResponse(
+    @SerializedName("image_url") val image_url: String
+)
+
+data class itemPostResponse(
     val message: String,
-    val marketplace_item_id: String,
-    val image_url: String
+    val item_id: String
 )
