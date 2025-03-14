@@ -227,8 +227,8 @@ fun ProfileScreen(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         MenuOptionCard(
-                            iconResId = R.drawable.baseline_settings_24,
-                            text = "Settings",
+                            iconResId = R.drawable.baseline_people_24,
+                            text = "Friends",
                             onClick = onShowSettings
                         )
                     }

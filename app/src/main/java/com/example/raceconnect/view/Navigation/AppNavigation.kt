@@ -54,10 +54,10 @@ import com.example.raceconnect.view.Screens.MarketplaceScreens.EditMarketplaceIt
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.SellerViewMarketplaceItemDetailScreen
 import com.example.raceconnect.view.Screens.MenuScreens.FavoriteItemsScreen
+import com.example.raceconnect.view.Screens.MenuScreens.FriendsListScreen
 import com.example.raceconnect.view.Screens.MenuScreens.ListedItemsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.NewsFeedPreferencesScreen
 import com.example.raceconnect.view.Screens.MenuScreens.PostUserProfileViewScreen
-import com.example.raceconnect.view.Screens.MenuScreens.SettingsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.UserProfileScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentSectionScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
@@ -66,6 +66,7 @@ import com.example.raceconnect.view.Screens.NewsFeedScreens.NewsFeedScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.RepostScreen
 import com.example.raceconnect.view.Screens.ProfileScreens.MyProfileScreen
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
+import com.example.raceconnect.viewmodel.FriendsViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModelFactory
@@ -102,7 +103,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showRepostScreen by remember { mutableStateOf<NewsFeedDataClassItem?>(null) }
     var showFavoriteItems by remember { mutableStateOf(false) }
     var showNewsFeedPreferences by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
     var showFavoriteItemDetailScreen by remember { mutableStateOf<Int?>(null) }
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
@@ -168,7 +168,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             onShowFavoriteItems = { showFavoriteItems = true },
                             onShowNewsFeedPreferences = { showNewsFeedPreferences = true },
                             onShowListedItems = { navController.navigate(NavRoutes.ListedItems.route) },
-                            onShowSettings = { showSettings = true },
+                            onShowSettings = { navController.navigate(NavRoutes.FriendListScreen.route) }, // Navigate to FriendsListScreen via NavHost
                             userPreferences = userPreferences
                         )
                     }
@@ -290,6 +290,13 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         FriendsScreen(
                             userPreferences = userPreferences,
                             onClose = { navController.popBackStack() }
+                        )
+                    }
+                    composable(NavRoutes.FriendListScreen.route) { // Added route for FriendsListScreen
+                        FriendsListScreen(
+                            navController = navController,
+                            onClose = { navController.popBackStack() },
+                            userPreferences = userPreferences
                         )
                     }
                     composable(
@@ -554,17 +561,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 )
             }
 
-            AnimatedVisibility(
-                visible = showSettings,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-            ) {
-                SettingsScreen(
-                    navController = navController,
-                    menuViewModel = menuViewModel,
-                    onClose = { showSettings = false }
-                )
-            }
+            // Removed AnimatedVisibility for FriendsListScreen since it's now handled via NavHost
         }
     }
 }

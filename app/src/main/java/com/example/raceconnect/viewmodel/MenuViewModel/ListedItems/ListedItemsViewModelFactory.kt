@@ -1,4 +1,4 @@
-package com.example.raceconnect.viewmodel.NewsFeed.ListedItems
+package com.example.raceconnect.viewmodel.MenuViewModel.ListedItems
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
