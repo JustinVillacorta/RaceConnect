@@ -37,6 +37,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
@@ -71,6 +72,12 @@ fun NewsFeedScreen(
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
+    // Log received items for debugging
+    LaunchedEffect(posts.itemCount) {
+        Log.d("NewsFeedScreen", "Received ${posts.itemCount} items in posts: ${posts.itemSnapshotList.items.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}, Content=${it.content}" }}")
+        Log.d("NewsFeedScreen", "Full item list: ${posts.itemSnapshotList.items}")
+    }
+
     // Handle ban navigation
     LaunchedEffect(errorMessage) {
         if (errorMessage?.contains("banned", ignoreCase = true) == true) {
@@ -86,6 +93,8 @@ fun NewsFeedScreen(
     LaunchedEffect(Unit, newPostTriggerState) {
         if (!viewModel.isInitialRefreshDone || newPostTriggerState) {
             isRefreshing = true
+            NewsFeedPagingSourceAllPosts.clearCaches() // Clear caches to fetch fresh data
+            Log.d("NewsFeedScreen", "Caches cleared before refresh")
             viewModel.refreshPosts()
             posts.refresh()
             delay(100) // Small debounce to ensure refresh stabilizes
@@ -126,6 +135,8 @@ fun NewsFeedScreen(
             state = rememberSwipeRefreshState(isRefreshing),
             onRefresh = {
                 isRefreshing = true
+                NewsFeedPagingSourceAllPosts.clearCaches() // Clear caches to fetch fresh data
+                Log.d("NewsFeedScreen", "Caches cleared before swipe refresh")
                 viewModel.refreshPosts()
                 posts.refresh()
                 Log.d("NewsFeedScreen", "Swipe-to-refresh triggered")
@@ -157,42 +168,57 @@ fun NewsFeedScreen(
 
                         val isLiked = postLikes[postItem.id] ?: false
                         val likeCount = likeCounts[postItem.id] ?: postItem.like_count
-                        Log.d("NewsFeedScreen", "Rendering Post ID: ${postItem.id}, IsRepost: ${postItem.isRepost}, OriginalPostId: ${postItem.original_post_id}, CreatedAt: ${postItem.created_at}")
+                        Log.d("NewsFeedScreen", "Rendering Post ID: ${postItem.id}, IsRepost: ${postItem.isRepost}, OriginalPostId: ${postItem.original_post_id}, CreatedAt: ${postItem.created_at}, Content: ${postItem.content}")
 
                         if (postItem.isRepost == true) {
-                            // Since the PagingSource ensures the original post is fetched, it should always be available
+                            // Find the original post in the list
                             val originalPost = posts.itemSnapshotList.items.find { it.id == postItem.original_post_id }
-                            if (originalPost != null) {
-                                Log.d("NewsFeedScreen", "Rendering repost ID: ${postItem.id}, Original Post Found: ${originalPost.id}")
-                                RepostCard(
-                                    repost = postItem.copy(isLiked = isLiked, like_count = likeCount),
-                                    originalPost = originalPost,
-                                    navController = navController,
-                                    viewModel = viewModel,
-                                    onCommentClick = { selectedPostId = postItem.id; showBottomSheet = true },
-                                    onLikeClick = { liked ->
-                                        if (liked) viewModel.toggleLike(postItem.id, postItem.user_id) else viewModel.unlikePost(postItem.id)
-                                    },
-                                    onShowFullScreenImage = { onShowFullScreenImage(it, postItem.id) },
-                                    userPreferences = userPreferences,
-                                    onReportClick = { postId, reason, otherText ->
-                                        viewModel.reportPost(postId, reason, otherText, onSuccess = {
-                                            Log.d("NewsFeedScreen", "Post reported successfully")
-                                        }, onFailure = { error ->
-                                            Log.e("NewsFeedScreen", "Failed to report post: $error")
-                                        })
-                                    },
-                                    onShowRepostScreen = onShowRepostScreen,
-                                    onUserActionClick = { userId, action, otherText ->
-                                        if (action == "Report User") viewModel.reportUser(userId, action, otherText)
-                                    }
-                                )
-                            } else {
-                                // Log this case for debugging, but don't show in UI
-                                Log.e("NewsFeedScreen", "Original post ${postItem.original_post_id} for repost ${postItem.id} not found in list")
+                            if (originalPost == null) {
+                                Log.w("NewsFeedScreen", "Original post ID ${postItem.original_post_id} not found for repost ID ${postItem.id}")
                             }
+                            val displayOriginalPost = originalPost ?: NewsFeedDataClassItem(
+                                id = postItem.original_post_id ?: -1,
+                                user_id = -1,
+                                content = "Original post unavailable",
+                                created_at = "",
+                                isRepost = false,
+                                original_post_id = null,
+                                like_count = 0,
+                                comment_count = 0,
+                                repost_count = 0,
+                                category = postItem.category,
+                                privacy = "Public",
+                                type = "text",
+                                postType = "normal",
+                                title = "Unavailable",
+                                username = "Unknown"
+                            )
+                            Log.d("NewsFeedScreen", "Rendering repost ID: ${postItem.id}, Original Post ID: ${displayOriginalPost.id}, Content: ${displayOriginalPost.content}")
+                            RepostCard(
+                                repost = postItem.copy(isLiked = isLiked, like_count = likeCount),
+                                originalPost = displayOriginalPost,
+                                navController = navController,
+                                viewModel = viewModel,
+                                onCommentClick = { selectedPostId = postItem.id; showBottomSheet = true },
+                                onLikeClick = { liked ->
+                                    if (liked) viewModel.toggleLike(postItem.id, postItem.user_id) else viewModel.unlikePost(postItem.id)
+                                },
+                                onShowFullScreenImage = { onShowFullScreenImage(it, postItem.id) },
+                                userPreferences = userPreferences,
+                                onReportClick = { postId, reason, otherText ->
+                                    viewModel.reportPost(postId, reason, otherText, onSuccess = {
+                                        Log.d("NewsFeedScreen", "Post reported successfully")
+                                    }, onFailure = { error ->
+                                        Log.e("NewsFeedScreen", "Failed to report post: $error")
+                                    })
+                                },
+                                onShowRepostScreen = onShowRepostScreen,
+                                onUserActionClick = { userId, action, otherText ->
+                                    if (action == "Report User") viewModel.reportUser(userId, action, otherText)
+                                }
+                            )
                         } else {
-                            Log.d("NewsFeedScreen", "Rendering post ID: ${postItem.id} (original)")
+                            Log.d("NewsFeedScreen", "Rendering post ID: ${postItem.id} (original), Content: ${postItem.content}")
                             PostCard(
                                 post = postItem.copy(isLiked = isLiked, like_count = likeCount),
                                 navController = navController,

@@ -71,7 +71,7 @@ interface ApiService {
     suspend fun getPostsByCategoryAndPrivacy(
         @Query("user_id") userId: Int,
         @Query("category") categories: String, // Comma-separated list of categories
-        @Query("limit") limit: Int = 10,
+        @Query("limit") limit: Int = 100000,
         @Query("offset") offset: Int = 0
     ): Response<List<NewsFeedDataClassItem>>
 
@@ -229,8 +229,8 @@ interface ApiService {
     @GET("post-reposts")
     suspend fun getRepostsByPostId(
         @Query("postId") postId: Int,  // Added postId as query parameter
-        @Query("limit") limit: Int,
-        @Query("offset") offset: Int
+        @Query("limit") limit: Int = 100000,
+        @Query("offset") offset: Int= 0
     ): Response<List<Repost>>
 
     @DELETE("post-reposts/{id}")
