@@ -18,10 +18,10 @@ sealed class NavRoutes(val route: String) {
     object CreatePost : NavRoutes("createPost")
     object Marketplace : NavRoutes("marketplace")
     object Notifications : NavRoutes("notifications")
-    object Post : NavRoutes("postDetail/{postId}") { // Route for regular posts
+    object Post : NavRoutes("postDetail/{postId}") {
         fun createRoute(postId: Int) = "postDetail/$postId"
     }
-    object Repost : NavRoutes("postDetail/{postId}/repost/{repostId}") { // Separate route for reposts
+    object Repost : NavRoutes("postDetail/{postId}/repost/{repostId}") {
         fun createRoute(postId: Int, repostId: Int) = "postDetail/$postId/repost/$repostId"
     }
     object ProfileView : NavRoutes("profileView/{userId}") {
@@ -30,6 +30,9 @@ sealed class NavRoutes(val route: String) {
     object Friends : NavRoutes("friends")
     object MarketplaceItemDetail : NavRoutes("marketplaceItemDetail/{itemId}") {
         fun createRoute(itemId: Int) = "marketplaceItemDetail/$itemId"
+    }
+    object EditMarketplaceItem : NavRoutes("editMarketplaceItem/{itemId}") {
+        fun createRoute(itemId: Int) = "editMarketplaceItem/$itemId"
     }
     object ChatSeller : NavRoutes("chatSeller/{itemId}") {
         fun createRoute(itemId: Int) = "chatSeller/$itemId"

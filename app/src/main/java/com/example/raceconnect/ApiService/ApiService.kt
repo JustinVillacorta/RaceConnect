@@ -127,24 +127,38 @@ interface ApiService {
         @Query("user_ids") userIds: String // Comma-separated user IDs, e.g., "4"
     ): Response<Map<String, Any>>
 
-    @Multipart
-    @POST("marketplace-items")
-    suspend fun MarketplacePostImage(
-        @Part("seller_id") seller_id: RequestBody,
-        @Part("description") description: RequestBody,
-        @Part("title") title: RequestBody,
-        @Part("category") category: RequestBody,
-        @Part("price") price: RequestBody,
-        @Part("status") status: RequestBody,
-        @Part images: List<MultipartBody.Part>?
-    ): Response<itemPostResponse> // Updated return type
-
     @GET("marketplace-items")
     suspend fun getAllMarketplaceItems(
         @Query("limit") limit: Int = 10,
         @Query("offset") offset: Int = 0,
         @Query("exclude_seller_id") excludeSellerId: Int? = null
     ): Response<List<MarketplaceDataClassItem>>
+
+    @Multipart
+    @POST("marketplace-items")
+    suspend fun MarketplacePostImage(
+        @Part("seller_id") seller_id: RequestBody,
+        @Part("title") title: RequestBody,
+        @Part("description") description: RequestBody,
+        @Part("price") price: RequestBody,
+        @Part("category") category: RequestBody,
+        @Part("status") status: RequestBody,
+        @Part("listing_status") listing_status: RequestBody,
+        @Part images: List<MultipartBody.Part>?
+    ): Response<Map<String, Any>>
+
+    @PUT("marketplace-items/{id}")
+    suspend fun updateMarketplaceItem(
+        @Path("id") id: Int,
+        @Body request: UpdateMarketplaceItemRequest
+    ): Response<UpdateMarketplaceItemResponse>
+
+    @Multipart
+    @POST("marketplace-items/{id}/images")
+    suspend fun uploadMarketplaceItemImages(
+        @Path("id") id: Int,
+        @Part images: List<MultipartBody.Part>
+    ): Response<Map<String, Any>>
 
     @GET("marketplace-item-likes")
     suspend fun getAllLikes(): Response<MarketplaceItemLikesResponse>
