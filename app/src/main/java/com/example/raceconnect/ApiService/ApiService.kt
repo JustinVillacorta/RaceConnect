@@ -110,7 +110,7 @@ interface ApiService {
 
     // Marketplace
     @GET("marketplace-items/{id}/images")
-    suspend fun GetMarketplaceImage(@Path("id") itemId: Int): Response<List<MarketplaceImageResponse>>
+    suspend fun getMarketplaceItemImages(@Path("id") itemId: Int): Response<List<MarketplaceImageResponse>>
 
     @GET("marketplace-items/{id}")
     suspend fun getItemById(@Path("id") itemId: Int): Response<MarketplaceDataClassItem>
@@ -122,6 +122,11 @@ interface ApiService {
         @Query("offset") offset: Int = 0
     ): Response<List<MarketplaceDataClassItem>>
 
+    @GET("marketplace-item-likes/liked-posts")
+    suspend fun getLikedItemsByUserIds(
+        @Query("user_ids") userIds: String // Comma-separated user IDs, e.g., "4"
+    ): Response<Map<String, Any>>
+
     @Multipart
     @POST("marketplace-items")
     suspend fun MarketplacePostImage(
@@ -132,7 +137,7 @@ interface ApiService {
         @Part("price") price: RequestBody,
         @Part("status") status: RequestBody,
         @Part images: List<MultipartBody.Part>?
-    ): Response<MarketplaceImageResponse>
+    ): Response<itemPostResponse> // Updated return type
 
     @GET("marketplace-items")
     suspend fun getAllMarketplaceItems(
@@ -141,17 +146,23 @@ interface ApiService {
         @Query("exclude_seller_id") excludeSellerId: Int? = null
     ): Response<List<MarketplaceDataClassItem>>
 
-    @POST("marketplace-items")
-    suspend fun createMarketplaceItem(@Body item: MarketplaceDataClassItem): Response<itemPostResponse>
+    @GET("marketplace-item-likes")
+    suspend fun getAllLikes(): Response<MarketplaceItemLikesResponse>
+
+    @GET("marketplace-item-likes/{id}")
+    suspend fun getLikesByItemId(@Path("id") itemId: Int): Response<MarketplaceItemLikesResponse>
+
+    @GET("marketplace-items/{id}/likes")
+    suspend fun getMarketplaceItemLikes(@Path("id") itemId: Int): Response<MarketplaceItemLikesResponse>
+
+    @GET("marketplace-item-likes/user/{userId}")
+    suspend fun getUserLikedItems(@Path("userId") userId: Int): Response<MarketplaceItemLikesResponse>
 
     @POST("marketplace-item-likes")
-    suspend fun likeMarketplaceItem(@Body requestBody: Map<String, Int>): Response<ResponseBody>
+    suspend fun toggleLike(@Body params: Map<String, Int>): Response<Map<String, Any>>
 
-    @DELETE("marketplace-item-likes")
-    suspend fun unlikeMarketplaceItem(@Body requestBody: Map<String, Int>): Response<ResponseBody>
-
-    @GET("marketplace-item-likes")
-    suspend fun getMarketplaceItemLikes(@Query("marketplace_item_id") itemId: Int): Response<List<MarketplaceItemLike>>
+    @DELETE("marketplace-item-likes/{id}")
+    suspend fun deleteLike(@Path("id") likeId: Int): Response<Map<String, String>>
 
     @GET("friends/list")
     suspend fun getFriendsList(@Query("user_id") userId: String): Response<List<Map<String, Any?>>>
@@ -239,7 +250,7 @@ interface ApiService {
     suspend fun getRepostsByPostId(
         @Query("postId") postId: Int,
         @Query("limit") limit: Int = 100000,
-        @Query("offset") offset: Int= 0
+        @Query("offset") offset: Int = 0
     ): Response<List<Repost>>
 
     @DELETE("post-reposts/{id}")

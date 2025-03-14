@@ -14,6 +14,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,19 +26,20 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.ui.BottomNavBar
 import com.example.raceconnect.ui.MarketplaceScreen
@@ -71,6 +77,7 @@ import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewMo
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModelFactory
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModelFactory
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -96,18 +103,31 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showFavoriteItems by remember { mutableStateOf(false) }
     var showNewsFeedPreferences by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var showFavoriteItemDetailScreen by remember { mutableStateOf<Int?>(null) } // New state for favorite item detail
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
     val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
     val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences))
     val profileDetailsViewModel: ProfileDetailsViewModel = viewModel(factory = ProfileDetailsViewModelFactory(userPreferences))
 
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
     if (token == null) {
         AuthenticationNavHost()
     } else {
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
-                bottomBar = { BottomNavBar(navController) }
+                bottomBar = { BottomNavBar(navController) },
+                snackbarHost = {
+                    SnackbarHost(hostState = snackbarHostState) { data ->
+                        Snackbar(
+                            snackbarData = data,
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
             ) { paddingValues ->
                 NavHost(
                     navController = navController,
@@ -283,9 +303,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         )
                     ) { backStackEntry ->
                         val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
-                        val items by marketplaceViewModel.items.collectAsState()
+                        val items by marketplaceViewModel.marketplaceItems.collectAsState()
                         val userItems by marketplaceViewModel.userItems.collectAsState()
-                        var item by remember { mutableStateOf(items.find { it.id == itemId } ?: userItems.find { it.id == itemId }) }
+                        var item by remember { mutableStateOf<MarketplaceDataClassItem?>(items.find { it.id == itemId } ?: userItems.find { it.id == itemId }) }
 
                         LaunchedEffect(itemId) {
                             if (item == null && itemId != -1) {
@@ -323,7 +343,27 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     navController = navController,
                                     viewModel = marketplaceViewModel,
                                     onClose = { navController.popBackStack() },
-                                    onClickChat = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) }
+                                    onClickChat = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) },
+                                    onLikeError = { errorMessage ->
+                                        coroutineScope.launch {
+                                            val snackbarResult = snackbarHostState.showSnackbar(
+                                                message = errorMessage,
+                                                actionLabel = "Retry",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                            if (snackbarResult == SnackbarResult.ActionPerformed) {
+                                                try {
+                                                    marketplaceViewModel.toggleLike(itemId)
+                                                } catch (e: Exception) {
+                                                    snackbarHostState.showSnackbar(
+                                                        message = "Retry failed: ${e.message}",
+                                                        actionLabel = "Dismiss",
+                                                        duration = SnackbarDuration.Short
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -380,7 +420,27 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         navController = navController,
                         viewModel = marketplaceViewModel,
                         onClose = { showItemDetailScreen = null },
-                        onClickChat = { showChatSellerScreen = it }
+                        onClickChat = { showChatSellerScreen = it },
+                        onLikeError = { errorMessage ->
+                            coroutineScope.launch {
+                                val snackbarResult = snackbarHostState.showSnackbar(
+                                    message = errorMessage,
+                                    actionLabel = "Retry",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (snackbarResult == SnackbarResult.ActionPerformed) {
+                                    try {
+                                        marketplaceViewModel.toggleLike(itemId)
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar(
+                                            message = "Retry failed: ${e.message}",
+                                            actionLabel = "Dismiss",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     )
                 }
             }
@@ -440,9 +500,46 @@ fun AppNavigation(userPreferences: UserPreferences) {
             ) {
                 FavoriteItemsScreen(
                     navController = navController,
-                    menuViewModel = menuViewModel,
-                    onClose = { showFavoriteItems = false }
+                    userPreferences = userPreferences,
+                    onClose = { showFavoriteItems = false },
+                    onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId } // Pass callback
                 )
+            }
+
+            showFavoriteItemDetailScreen?.let { itemId ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                ) {
+                    MarketplaceItemDetailScreen(
+                        itemId = itemId,
+                        navController = navController,
+                        viewModel = marketplaceViewModel,
+                        onClose = { showFavoriteItemDetailScreen = null },
+                        onClickChat = { showChatSellerScreen = it },
+                        onLikeError = { errorMessage ->
+                            coroutineScope.launch {
+                                val snackbarResult = snackbarHostState.showSnackbar(
+                                    message = errorMessage,
+                                    actionLabel = "Retry",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (snackbarResult == SnackbarResult.ActionPerformed) {
+                                    try {
+                                        marketplaceViewModel.toggleLike(itemId)
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar(
+                                            message = "Retry failed: ${e.message}",
+                                            actionLabel = "Dismiss",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
             }
 
             AnimatedVisibility(

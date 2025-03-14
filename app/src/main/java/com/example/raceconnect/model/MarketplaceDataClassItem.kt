@@ -11,7 +11,7 @@ data class MarketplaceDataClassItem(
     @SerializedName("price") val price: String,
     @SerializedName("listing_status") val listing_status: String = "Available",
     @SerializedName("status") val status: String = "Active",
-    @SerializedName("image_url") val image_url: String?, // Made nullable
+    @SerializedName("image_url") val image_url: String?,
     @SerializedName("favorite_count") val favorite_count: Int = 0,
     @SerializedName("archived_at") val archived_at: String? = null,
     @SerializedName("report") val report: String = "none",
@@ -19,6 +19,12 @@ data class MarketplaceDataClassItem(
     @SerializedName("created_at") val created_at: String,
     @SerializedName("updated_at") val updated_at: String,
     @SerializedName("previous_status") val previous_status: String? = null
+)
+
+data class MarketplaceItemLikesResponse(
+    val status: String,
+    val data: List<MarketplaceItemLike>,
+    val message: String?
 )
 
 data class MarketplaceItemLike(
@@ -30,7 +36,10 @@ data class MarketplaceItemLike(
 )
 
 data class MarketplaceImageResponse(
-    @SerializedName("image_url") val image_url: String
+    @SerializedName("id") val id: Int,
+    @SerializedName("marketplace_item_id") val marketplaceItemId: Int,
+    @SerializedName("image_url") val image_url: String,
+    @SerializedName("created_at") val createdAt: String
 )
 
 data class itemPostResponse(

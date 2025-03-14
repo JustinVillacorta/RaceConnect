@@ -13,13 +13,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.raceconnect.datastore.UserPreferences
-import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemCard
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,9 +30,18 @@ fun MarketplaceScreen(
     onShowItemDetail: (Int) -> Unit,
     viewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
 ) {
-    val items by viewModel.items.collectAsState()
+    val marketplaceItems by viewModel.marketplaceItems.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     val currentUserId by viewModel.currentUserId.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        if (marketplaceItems.isEmpty() && !isRefreshing && errorMessage == null) {
+            viewModel.refreshMarketplaceItems()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -58,7 +67,17 @@ fun MarketplaceScreen(
                     titleContentColor = Color.White
                 )
             )
-        }
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        },
+        modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -70,33 +89,68 @@ fun MarketplaceScreen(
                 onRefresh = { viewModel.refreshMarketplaceItems() }
             ) {
                 Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                    // "Create and Sell" Button
                     Button(
                         onClick = onShowCreateListing,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp)
+                            .padding(bottom = 16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Red, // Background color
+                            contentColor = Color.White // Text color
+                        )
                     ) {
                         Text("Create and Sell")
                     }
 
-                    // Grid of Marketplace Items
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(items, key = { it.id }) { item ->
+                        items(marketplaceItems, key = { it.id }) { item ->
                             MarketplaceItemCard(
                                 item = item,
                                 navController = navController,
-                                viewModel = viewModel, // Pass the ViewModel instance
-                                onClick = { itemId -> onShowItemDetail(itemId) } // Pass item.id to onShowItemDetail
+                                viewModel = viewModel,
+                                onClick = { itemId -> onShowItemDetail(itemId) },
+                                onLikeError = { errorMessage ->
+                                    coroutineScope.launch {
+                                        val snackbarResult = snackbarHostState.showSnackbar(
+                                            message = errorMessage,
+                                            actionLabel = "Retry",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                        if (snackbarResult == SnackbarResult.ActionPerformed) {
+                                            try {
+                                                viewModel.toggleLike(item.id)
+                                            } catch (e: Exception) {
+                                                snackbarHostState.showSnackbar(
+                                                    message = "Retry failed: ${e.message}",
+                                                    actionLabel = "Dismiss",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             )
                         }
                     }
                 }
+            }
+        }
+    }
+
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = errorMessage ?: "Unknown error",
+                    actionLabel = "Dismiss",
+                    duration = SnackbarDuration.Short
+                )
+                viewModel.clearErrorMessage()
             }
         }
     }
