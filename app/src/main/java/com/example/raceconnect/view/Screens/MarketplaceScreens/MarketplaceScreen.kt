@@ -68,13 +68,15 @@ fun MarketplaceScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) { data ->
-            Snackbar(
-                snackbarData = data,
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer
-            )
-        }},
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        },
         modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
         Column(
@@ -91,7 +93,11 @@ fun MarketplaceScreen(
                         onClick = onShowCreateListing,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp)
+                            .padding(bottom = 16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Red, // Background color
+                            contentColor = Color.White // Text color
+                        )
                     ) {
                         Text("Create and Sell")
                     }

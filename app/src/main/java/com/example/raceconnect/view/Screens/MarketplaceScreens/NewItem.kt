@@ -73,6 +73,7 @@ fun CreateMarketplaceItemScreen(
     var category by remember { mutableStateOf("") }
     var selectedImageUris by remember { mutableStateOf<List<Uri>?>(null) } // List for multiple images
     val currentUserId by viewModel.currentUserId.collectAsState()
+    val user by userPreferences.user.collectAsState(initial = null) // Retrieve user data from UserPreferences
 
     // Define categories for the dropdown
     val categories = listOf("Formula 1", "24 Hours of Lemans", "World Rally Championship", "NASCAR", "Formula Drift", "GT Championship")
@@ -81,6 +82,9 @@ fun CreateMarketplaceItemScreen(
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri>? ->
         selectedImageUris = uris
     }
+
+    // Get the profile picture URL from UserPreferences (assuming it's stored there)
+    val profilePictureUrl = user?.profilePicture ?: "https://via.placeholder.com/150" // Fallback if null
 
     Scaffold(
         topBar = {
@@ -95,19 +99,18 @@ fun CreateMarketplaceItemScreen(
                     Button(
                         onClick = {
                             if (title.isNotEmpty() && price.isNotEmpty() && currentUserId != null) {
-                                // Call the new function that supports multiple image uploads
                                 viewModel.addMarketplaceItemWithImages(
                                     context = context,
                                     title = title,
                                     price = price,
                                     description = description,
                                     category = category,
-                                    imageUris = selectedImageUris // Pass the list of URIs directly
+                                    imageUris = selectedImageUris
                                 )
                                 onClose()
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF696666))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                     ) {
                         Text("Publish", color = Color.White)
                     }
@@ -122,22 +125,23 @@ fun CreateMarketplaceItemScreen(
                     .padding(horizontal = 16.dp)
             ) {
                 item {
-                    // Seller Profile Section (Simulated as "Justin Cuagdan")
+                    // Seller Profile Section (Using saved profile picture)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(vertical = 16.dp)
                     ) {
                         Image(
-                            painter = rememberAsyncImagePainter("https://example.com/justin_profile.jpg"), // Replace with actual URL or drawable
+                            painter = rememberAsyncImagePainter(profilePictureUrl), // Use saved profile picture
                             contentDescription = "Profile Picture",
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(Color.Gray)
+                                .background(Color.Gray),
+                            contentScale = ContentScale.Crop // Ensure the image fits nicely
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Justin",
+                            text = user?.username ?: "User", // Display user's name or fallback
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                         )
                     }
@@ -151,7 +155,7 @@ fun CreateMarketplaceItemScreen(
                             .fillMaxWidth()
                             .clickable { launcher.launch("image/*") }
                             .padding(bottom = 8.dp),
-                        enabled = false, // Non-editable but clickable for image selection
+                        enabled = false,
                         trailingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Image,
