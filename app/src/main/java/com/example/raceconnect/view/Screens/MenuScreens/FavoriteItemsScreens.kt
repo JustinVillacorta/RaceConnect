@@ -1,79 +1,72 @@
 package com.example.raceconnect.view.Screens.MenuScreens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallTopAppBar
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.raceconnect.R
-import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
+import coil.compose.AsyncImage
+import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.MarketplaceDataClassItem
+import com.example.raceconnect.view.Navigation.NavRoutes
+import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
+import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoriteItemsScreen(
     navController: NavController,
-    onClose: () -> Unit,
-    menuViewModel: MenuViewModel
+    userPreferences: UserPreferences,
+    onClose: () -> Unit
 ) {
-    // Example data; replace with real items from your MenuViewModel
-    val favoriteItems = listOf(
-        FavoriteItem(
-            name = "Men's NASCAR JH Design Black Raptor Uniform Jacket",
-            price = "₱8,510",
-            imageRes = R.drawable.raceconnectlogo // Replace with your drawable
-        ),
-        FavoriteItem(
-            name = "24H DU MANS 1959 Poster Men's T-shirt - blue",
-            price = "₱1,675",
-            imageRes = R.drawable.raceconnectlogo // Replace with your drawable
-        )
+    val viewModel: MarketplaceViewModel = viewModel(
+        factory = MarketplaceViewModelFactory(userPreferences)
     )
+
+    val userItems by viewModel.userItems.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val imagesMap by viewModel.marketplaceImages.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
 
     // State for the dropdown
     var expanded by remember { mutableStateOf(false) }
     val filterOptions = listOf("All items", "Jackets", "T-shirts")
     var selectedOption by remember { mutableStateOf(filterOptions[0]) }
 
+    // Filter items based on selected category
+    val filteredItems = if (selectedOption == "All items") {
+        userItems
+    } else {
+        userItems.filter { it.category == selectedOption }
+    }
+
+    // Trigger fetch of liked items when the screen is first loaded
+    LaunchedEffect(Unit) {
+        if (userItems.isEmpty() && !isRefreshing) {
+            viewModel.fetchUserMarketplaceItems() // Fetch liked items
+        }
+    }
+
     Scaffold(
         topBar = {
-            // Red top bar with white text and a back arrow
             SmallTopAppBar(
                 title = { Text("Favorite Items", color = Color.White) },
                 navigationIcon = {
@@ -93,58 +86,105 @@ fun FavoriteItemsScreen(
         },
         modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
         ) {
-            // 1) Dropdown filter (Exposed Dropdown Menu)
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
             ) {
-                OutlinedTextField(
-                    value = selectedOption,
-                    onValueChange = { /* no-op, read-only */ },
-                    label = { Text("All items") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                    },
-                    readOnly = true,
-                    modifier = Modifier
-                        .menuAnchor() // needed for M3 ExposedDropdownMenuBox
-                        .fillMaxWidth()
-                )
-
-                ExposedDropdownMenu(
+                // Dropdown filter (Exposed Dropdown Menu)
+                ExposedDropdownMenuBox(
                     expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    onExpandedChange = { expanded = !expanded },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    filterOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option) },
-                            onClick = {
-                                selectedOption = option
-                                expanded = false
-                            }
-                        )
+                    OutlinedTextField(
+                        value = selectedOption,
+                        onValueChange = { /* no-op, read-only */ },
+                        label = { Text("Filter by category") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        },
+                        readOnly = true,
+                        modifier = Modifier
+                            .menuAnchor() // needed for M3 ExposedDropdownMenuBox
+                            .fillMaxWidth()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        filterOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    selectedOption = option
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // 2) Grid of favorite items
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(favoriteItems.size) { index ->
-                    FavoriteItemCard(item = favoriteItems[index])
+                // Handle loading and empty states
+                when {
+                    isRefreshing -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            color = Red
+                        )
+                    }
+                    userItems.isEmpty() -> {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "You haven't liked any items yet",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        viewModel.fetchUserMarketplaceItems() // Refresh liked items
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Red)
+                            ) {
+                                Text("Refresh", color = Color.White)
+                            }
+                        }
+                    }
+                    else -> {
+                        // Grid of favorite items
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(filteredItems) { item ->
+                                FavoriteItemCard(
+                                    item = item,
+                                    imagesMap = imagesMap,
+                                    onClick = {
+                                        navController.navigate(NavRoutes.MarketplaceItemDetail.createRoute(item.id))
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -152,17 +192,26 @@ fun FavoriteItemsScreen(
 }
 
 @Composable
-fun FavoriteItemCard(item: FavoriteItem) {
+fun FavoriteItemCard(
+    item: MarketplaceDataClassItem,
+    imagesMap: Map<Int, List<String>>,
+    onClick: () -> Unit
+) {
+    val itemImages = imagesMap[item.id] ?: emptyList()
+    val displayImage = itemImages.firstOrNull() ?: item.image_url?.takeIf { it.isNotEmpty() } ?: "https://via.placeholder.com/150"
+
     Card(
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
     ) {
         Column {
             // Item image
-            Image(
-                painter = painterResource(id = item.imageRes),
-                contentDescription = item.name,
+            AsyncImage(
+                model = displayImage,
+                contentDescription = item.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -174,12 +223,13 @@ fun FavoriteItemCard(item: FavoriteItem) {
 
             // Name
             Text(
-                text = item.name,
+                text = item.title,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
                     .padding(horizontal = 8.dp)
-                    .padding(bottom = 8.dp)
+                    .padding(bottom = 8.dp),
+                maxLines = 2
             )
 
             // Price with red background
@@ -190,7 +240,7 @@ fun FavoriteItemCard(item: FavoriteItem) {
                     .padding(vertical = 4.dp, horizontal = 8.dp),
             ) {
                 Text(
-                    text = item.price,
+                    text = "₱${item.price}",
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
@@ -199,10 +249,3 @@ fun FavoriteItemCard(item: FavoriteItem) {
         }
     }
 }
-
-// Example data class for an item(to be changed)
-data class FavoriteItem(
-    val name: String,
-    val price: String,
-    val imageRes: Int
-)

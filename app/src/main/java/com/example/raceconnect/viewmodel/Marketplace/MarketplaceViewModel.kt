@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -22,29 +23,33 @@ import java.io.File
 
 class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewModel() {
 
-    private val _items = MutableStateFlow<List<MarketplaceDataClassItem>>(emptyList())
-    val items: StateFlow<List<MarketplaceDataClassItem>> = _items.asStateFlow()
+    // State for marketplace items
+    private val _marketplaceItems = MutableStateFlow<List<MarketplaceDataClassItem>>(emptyList())
+    val marketplaceItems: StateFlow<List<MarketplaceDataClassItem>> = _marketplaceItems.asStateFlow()
 
+    // State for user-specific items (e.g., liked items)
     private val _userItems = MutableStateFlow<List<MarketplaceDataClassItem>>(emptyList())
     val userItems: StateFlow<List<MarketplaceDataClassItem>> = _userItems.asStateFlow()
 
-    private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+    // State for error messages
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    // State for current user ID
     private val _currentUserId = MutableStateFlow<Int?>(null)
     val currentUserId: StateFlow<Int?> = _currentUserId.asStateFlow()
 
+    // State for like status (whether the current user has liked an item)
     private val _isLiked = MutableStateFlow<Map<Int, Boolean>>(emptyMap())
     val isLiked: StateFlow<Map<Int, Boolean>> = _isLiked.asStateFlow()
 
-    private val _likeCount = MutableStateFlow<Map<Int, Int>>(emptyMap())
-    val likeCount: StateFlow<Map<Int, Int>> = _likeCount.asStateFlow()
+    // State for refreshing status
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    // State for marketplace item images (map of item ID to list of image URLs)
     private val _marketplaceImages = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
     val marketplaceImages: StateFlow<Map<Int, List<String>>> = _marketplaceImages.asStateFlow()
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     init {
         fetchCurrentUser()
@@ -60,7 +65,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                 if (_currentUserId.value != null) {
                     Log.d("MarketplaceViewModel", "Initiating fetches for user ID: ${_currentUserId.value}")
                     fetchMarketplaceItems()
-                    fetchUserMarketplaceItems()
+                    fetchUserMarketplaceItems() // Fetch liked items initially
                 } else {
                     Log.e("MarketplaceViewModel", "No user logged in")
                     _errorMessage.value = "No user logged in"
@@ -72,96 +77,234 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         }
     }
 
-    private fun fetchMarketplaceItems() {
+    fun refreshMarketplaceItems() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                fetchMarketplaceItems()
+                fetchUserMarketplaceItems() // Refresh liked items
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
+
+    fun fetchMarketplaceItems() {
         viewModelScope.launch {
             try {
-                _isRefreshing.value = true
-                Log.d("MarketplaceViewModel", "Fetching marketplace items...")
                 val userId = _currentUserId.value
-                if (userId == null) {
-                    Log.e("MarketplaceViewModel", "Cannot fetch marketplace items: userId is null")
-                    _errorMessage.value = "Cannot fetch marketplace items: No user logged in"
-                    return@launch
-                }
                 val response = RetrofitInstance.api.getAllMarketplaceItems(
-                    excludeSellerId = userId,
                     limit = 10,
-                    offset = 0
+                    offset = 0,
+                    excludeSellerId = userId
                 )
-                Log.d("MarketplaceViewModel", "Marketplace items response: ${response.code()} - ${response.body()}")
                 if (response.isSuccessful) {
-                    val fetchedItems = response.body() ?: emptyList()
-                    _items.value = fetchedItems
-                    Log.d("MarketplaceViewModel", "Fetched ${fetchedItems.size} marketplace items")
-                    fetchedItems.forEach { item ->
-                        getMarketplaceItemImages(item.id)
+                    val body = response.body()
+                    if (body == null) {
+                        Log.e("MarketplaceViewModel", "Response body is null")
+                        _marketplaceItems.value = emptyList()
+                    } else {
+                        _marketplaceItems.value = body
+                    }
+                    _marketplaceItems.value.forEach { item ->
                         fetchLikeStatus(item.id)
+                        getMarketplaceItemImages(item.id)
                     }
                 } else {
-                    _items.value = emptyList()
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
                     Log.e("MarketplaceViewModel", "Failed to fetch marketplace items: $errorBody")
                     _errorMessage.value = "Failed to fetch marketplace items: $errorBody"
                 }
             } catch (e: Exception) {
                 Log.e("MarketplaceViewModel", "Error fetching marketplace items", e)
-                _items.value = emptyList()
                 _errorMessage.value = "Error fetching marketplace items: ${e.message}"
-            } finally {
-                _isRefreshing.value = false
-                Log.d("MarketplaceViewModel", "Finished fetching marketplace items")
             }
         }
     }
 
-    private fun fetchUserMarketplaceItems() {
+    fun fetchUserMarketplaceItems() {
         viewModelScope.launch {
             try {
-                val userId = _currentUserId.value
-                if (userId == null) {
-                    Log.e("MarketplaceViewModel", "Cannot fetch user items: userId is null")
-                    _errorMessage.value = "Cannot fetch user items: No user logged in"
-                    return@launch
-                }
-                Log.d("MarketplaceViewModel", "Fetching user marketplace items for user ID: $userId")
-                val response = RetrofitInstance.api.getMarketplaceItemsByUserId(
-                    userId = userId,
-                    limit = 10,
-                    offset = 0
-                )
-                Log.d("MarketplaceViewModel", "User marketplace items response: ${response.code()} - ${response.body()}")
+                val userId = _currentUserId.value ?: return@launch
+                val response = RetrofitInstance.api.getUserLikedItems(userId)
                 if (response.isSuccessful) {
-                    val fetchedItems = response.body() ?: emptyList()
-                    _userItems.value = fetchedItems
-                    Log.d("MarketplaceViewModel", "Fetched ${fetchedItems.size} user items for user $userId")
-                    fetchedItems.forEach { item ->
-                        getMarketplaceItemImages(item.id)
-                        fetchLikeStatus(item.id)
+                    val body = response.body()
+                    if (body == null) {
+                        Log.e("MarketplaceViewModel", "Response body is null for user $userId")
+                        _userItems.value = emptyList()
+                    } else {
+                        val items = body.data as? List<MarketplaceDataClassItem> ?: emptyList()
+                        _userItems.value = items
+                        Log.d("MarketplaceViewModel", "Fetched ${items.size} liked items for user $userId")
+                        items.forEach { item ->
+                            fetchLikeStatus(item.id)
+                            getMarketplaceItemImages(item.id)
+                        }
                     }
                 } else {
-                    _userItems.value = emptyList()
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                    Log.e("MarketplaceViewModel", "Failed to fetch user marketplace items: $errorBody")
-                    _errorMessage.value = "Failed to fetch user items: $errorBody (Code: ${response.code()})"
+                    Log.e("MarketplaceViewModel", "Failed to fetch user liked items: $errorBody")
+                    _errorMessage.value = "Failed to fetch user liked items: $errorBody"
                 }
             } catch (e: Exception) {
-                Log.e("MarketplaceViewModel", "Error fetching user marketplace items", e)
-                _userItems.value = emptyList()
-                _errorMessage.value = "Error fetching user items: ${e.message}"
+                Log.e("MarketplaceViewModel", "Error fetching user liked items", e)
+                _errorMessage.value = "Error fetching user liked items: ${e.message}"
             }
         }
     }
 
-    fun refreshMarketplaceItems() {
-        Log.d("MarketplaceViewModel", "Refreshing marketplace items")
-        _errorMessage.value = null // Clear previous errors on refresh
-        fetchMarketplaceItems()
-        fetchUserMarketplaceItems()
+    fun fetchUserListedItems() {
+        viewModelScope.launch {
+            try {
+                val userId = _currentUserId.value ?: return@launch
+                val response = RetrofitInstance.api.getMarketplaceItemsByUserId(userId)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body == null) {
+                        Log.e("MarketplaceViewModel", "Response body is null for user $userId")
+                        _userItems.value = emptyList()
+                    } else {
+                        _userItems.value = body
+                        Log.d("MarketplaceViewModel", "Fetched ${_userItems.value.size} listed items for user $userId")
+                        _userItems.value.forEach { item ->
+                            fetchLikeStatus(item.id)
+                            getMarketplaceItemImages(item.id)
+                        }
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                    Log.e("MarketplaceViewModel", "Failed to fetch user listed items: $errorBody")
+                    _errorMessage.value = "Failed to fetch user listed items: $errorBody"
+                }
+            } catch (e: Exception) {
+                Log.e("MarketplaceViewModel", "Error fetching user listed items", e)
+                _errorMessage.value = "Error fetching user listed items: ${e.message}"
+            }
+        }
     }
 
-    fun clearErrorMessage() {
-        _errorMessage.value = null
-        Log.d("MarketplaceViewModel", "Cleared error message")
+    fun fetchLikeStatus(itemId: Int) {
+        viewModelScope.launch {
+            try {
+                val userId = _currentUserId.value ?: return@launch
+                val response = RetrofitInstance.api.getMarketplaceItemLikes(itemId)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body == null) {
+                        Log.e("MarketplaceViewModel", "Response body is null for item $itemId")
+                        _errorMessage.value = "Failed to fetch like status for item $itemId: Response body is null"
+                        _isLiked.value = _isLiked.value.toMutableMap().apply {
+                            this[itemId] = false
+                        }
+                        return@launch
+                    }
+                    val likes = body.data as? List<MarketplaceItemLike> ?: emptyList()
+                    val isLikedByUser = likes.any { it.userId == userId }
+                    _isLiked.value = _isLiked.value.toMutableMap().apply {
+                        this[itemId] = isLikedByUser
+                    }
+                    Log.d("MarketplaceViewModel", "Fetched like status for item $itemId: liked=$isLikedByUser")
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                    Log.e("MarketplaceViewModel", "Failed to fetch like status for item $itemId: $errorBody")
+                    _errorMessage.value = "Failed to fetch like status for item $itemId: $errorBody"
+                    _isLiked.value = _isLiked.value.toMutableMap().apply {
+                        this[itemId] = false
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MarketplaceViewModel", "Error fetching like status for item $itemId", e)
+                _errorMessage.value = "Error fetching like status for item $itemId: ${e.message}"
+                _isLiked.value = _isLiked.value.toMutableMap().apply {
+                    this[itemId] = false
+                }
+            }
+        }
+    }
+
+    fun getMarketplaceItemImages(itemId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitInstance.api.getMarketplaceItemImages(itemId)
+                Log.d("MarketplaceViewModel", "Raw response: ${response.body()}")
+                if (response.isSuccessful) {
+                    val images = response.body()?.map { it.image_url } ?: emptyList()
+                    _marketplaceImages.value = _marketplaceImages.value.toMutableMap().apply {
+                        this[itemId] = images
+                    }
+                    Log.d("MarketplaceViewModel", "Fetched images for item $itemId: $images")
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                    Log.e("MarketplaceViewModel", "Failed to fetch images for item $itemId: $errorBody")
+                    _errorMessage.value = "Failed to fetch images for item $itemId: $errorBody"
+                }
+            } catch (e: Exception) {
+                Log.e("MarketplaceViewModel", "Error fetching images for item $itemId", e)
+                _errorMessage.value = "Error fetching images for item $itemId: ${e.message}"
+            }
+        }
+    }
+
+    fun fetchItemById(itemId: Int): MarketplaceDataClassItem? {
+        return runBlocking {
+            try {
+                val response = RetrofitInstance.api.getItemById(itemId)
+                if (response.isSuccessful) {
+                    response.body()
+                } else {
+                    Log.e("MarketplaceViewModel", "Failed to fetch item $itemId: ${response.errorBody()?.string()}")
+                    null
+                }
+            } catch (e: Exception) {
+                Log.e("MarketplaceViewModel", "Error fetching item $itemId", e)
+                null
+            }
+        }
+    }
+
+    fun toggleLike(itemId: Int) {
+        viewModelScope.launch {
+            val userId = _currentUserId.value ?: run {
+                Log.e("MarketplaceViewModel", "No user logged in, cannot toggle like")
+                _errorMessage.value = "Cannot toggle like: No user logged in"
+                return@launch
+            }
+            val item = _marketplaceItems.value.find { it.id == itemId } ?: _userItems.value.find { it.id == itemId }
+            if (item == null) {
+                Log.e("MarketplaceViewModel", "Item with ID $itemId not found")
+                _errorMessage.value = "Cannot toggle like: Item not found"
+                return@launch
+            }
+            val ownerId = item.seller_id ?: run {
+                Log.e("MarketplaceViewModel", "Seller ID not found for item $itemId")
+                _errorMessage.value = "Cannot toggle like: Seller ID not found"
+                return@launch
+            }
+            try {
+                val params = mapOf(
+                    "user_id" to userId,
+                    "marketplace_item_id" to itemId,
+                    "owner_id" to ownerId
+                )
+                val response = RetrofitInstance.api.toggleLike(params)
+                if (response.isSuccessful) {
+                    val result = response.body()
+                    val isLiked = result?.get("liked") as? Boolean ?: false
+                    _isLiked.value = _isLiked.value.toMutableMap().apply {
+                        this[itemId] = isLiked
+                    }
+                    Log.d("MarketplaceViewModel", if (isLiked) "Liked item $itemId" else "Unliked item $itemId")
+                    fetchUserMarketplaceItems() // Refresh liked items after toggling
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                    Log.e("MarketplaceViewModel", "Failed to toggle like for item $itemId: $errorBody")
+                    _errorMessage.value = "Failed to toggle like for item $itemId: $errorBody"
+                }
+            } catch (e: Exception) {
+                Log.e("MarketplaceViewModel", "Error toggling like for item $itemId", e)
+                _errorMessage.value = "Error toggling like for item $itemId: ${e.message}"
+            }
+        }
     }
 
     fun addMarketplaceItem(
@@ -181,30 +324,26 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
 
             try {
                 Log.d("MarketplaceViewModel", "Adding marketplace item without images...")
-                val newItem = MarketplaceDataClassItem(
-                    id = 0,
-                    seller_id = sellerId,
-                    title = title,
-                    description = description,
-                    price = price,
-                    category = category,
-                    image_url = imageUrl,
-                    favorite_count = 0,
-                    status = "Active",
-                    report = "none",
-                    reported_at = null,
-                    previous_status = null,
-                    listing_status = "Available",
-                    created_at = "",
-                    updated_at = "",
-                    archived_at = null
-                )
+                val sellerIdPart = sellerId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                val titlePart = title.toRequestBody("text/plain".toMediaTypeOrNull())
+                val pricePart = price.toRequestBody("text/plain".toMediaTypeOrNull())
+                val descriptionPart = description.toRequestBody("text/plain".toMediaTypeOrNull())
+                val categoryPart = category.toRequestBody("text/plain".toMediaTypeOrNull())
+                val statusPart = "Active".toRequestBody("text/plain".toMediaTypeOrNull())
 
-                val response = RetrofitInstance.api.createMarketplaceItem(newItem)
+                val response = RetrofitInstance.api.MarketplacePostImage(
+                    seller_id = sellerIdPart,
+                    description = descriptionPart,
+                    title = titlePart,
+                    category = categoryPart,
+                    price = pricePart,
+                    status = statusPart,
+                    images = null
+                )
 
                 if (response.isSuccessful) {
                     Log.d("MarketplaceViewModel", "Item added successfully: ${response.body()}")
-                    refreshMarketplaceItems()
+                    fetchMarketplaceItems()
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
                     Log.e("MarketplaceViewModel", "Failed to add item: $errorBody")
@@ -263,7 +402,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
 
                 if (response.isSuccessful) {
                     Log.d("MarketplaceViewModel", "Item added successfully with images: ${response.body()}")
-                    refreshMarketplaceItems()
+                    fetchMarketplaceItems()
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
                     Log.e("MarketplaceViewModel", "Failed to add item with images: $errorBody")
@@ -276,177 +415,23 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         }
     }
 
-    fun getFileFromUri(context: Context, uri: Uri): File? {
+    private fun getFileFromUri(context: Context, uri: Uri): File? {
         return try {
-            Log.d("MarketplaceViewModel", "Getting file from URI: $uri")
-            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-            val tempFile = File(context.cacheDir, "upload_${System.currentTimeMillis()}.jpg")
-            tempFile.outputStream().use { outputStream ->
-                inputStream.copyTo(outputStream)
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val file = File(context.cacheDir, "temp_image_${System.currentTimeMillis()}.jpg")
+            inputStream?.use { input ->
+                file.outputStream().use { output ->
+                    input.copyTo(output)
+                }
             }
-            Log.d("MarketplaceViewModel", "File created: ${tempFile.absolutePath}")
-            tempFile
+            file
         } catch (e: Exception) {
-            Log.e("MarketplaceViewModel", "Failed to get file from URI", e)
+            Log.e("MarketplaceViewModel", "Error converting URI to file", e)
             null
         }
     }
 
-    fun getMarketplaceItemImages(itemId: Int) {
-        viewModelScope.launch {
-            try {
-                Log.d("MarketplaceViewModel", "Fetching images for marketplace item ID: $itemId")
-                val response = RetrofitInstance.api.GetMarketplaceImage(itemId)
-                if (response.isSuccessful) {
-                    val imageResponses = response.body() ?: emptyList()
-                    val imageUrls = imageResponses.map { it.image_url }
-                    _marketplaceImages.value = _marketplaceImages.value.toMutableMap().apply {
-                        this[itemId] = imageUrls
-                    }
-                    Log.d("MarketplaceViewModel", "Fetched images for item $itemId: $imageUrls")
-                } else {
-                    _marketplaceImages.value = _marketplaceImages.value.toMutableMap().apply {
-                        this[itemId] = emptyList()
-                    }
-                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                    Log.e("MarketplaceViewModel", "Failed to fetch images for item $itemId: $errorBody")
-                    _errorMessage.value = "Failed to fetch images for item $itemId: $errorBody"
-                }
-            } catch (e: Exception) {
-                _marketplaceImages.value = _marketplaceImages.value.toMutableMap().apply {
-                    this[itemId] = emptyList()
-                }
-                Log.e("MarketplaceViewModel", "Error fetching images for item $itemId", e)
-                _errorMessage.value = "Error fetching images for item $itemId: ${e.message}"
-            }
-        }
-    }
-
-    suspend fun toggleLike(itemId: Int) {
-        val userId = _currentUserId.value ?: return
-        val currentLiked = _isLiked.value[itemId] ?: false
-        if (currentLiked) {
-            unlikeItem(itemId, userId)
-        } else {
-            likeItem(itemId, userId)
-        }
-    }
-
-    private suspend fun likeItem(itemId: Int, userId: Int) {
-        try {
-            val params = mapOf("item_id" to itemId, "user_id" to userId)
-            val response = RetrofitInstance.api.likeMarketplaceItem(params)
-            if (response.isSuccessful) {
-                _isLiked.value = _isLiked.value.toMutableMap().apply {
-                    this[itemId] = true
-                }
-                updateLikeCount(itemId)
-                Log.d("MarketplaceViewModel", "Liked item $itemId")
-            } else {
-                val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                Log.e("MarketplaceViewModel", "Failed to like item $itemId: $errorBody")
-                _errorMessage.value = "Failed to like item $itemId: $errorBody"
-            }
-        } catch (e: Exception) {
-            Log.e("MarketplaceViewModel", "Error liking item $itemId", e)
-            _errorMessage.value = "Error liking item $itemId: ${e.message}"
-        }
-    }
-
-    private suspend fun unlikeItem(itemId: Int, userId: Int) {
-        try {
-            val params = mapOf("item_id" to itemId, "user_id" to userId)
-            val response = RetrofitInstance.api.unlikeMarketplaceItem(params)
-            if (response.isSuccessful) {
-                _isLiked.value = _isLiked.value.toMutableMap().apply {
-                    this[itemId] = false
-                }
-                updateLikeCount(itemId)
-                Log.d("MarketplaceViewModel", "Unliked item $itemId")
-            } else {
-                val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                Log.e("MarketplaceViewModel", "Failed to unlike item $itemId: $errorBody")
-                _errorMessage.value = "Failed to unlike item $itemId: $errorBody"
-            }
-        } catch (e: Exception) {
-            Log.e("MarketplaceViewModel", "Error unliking item $itemId", e)
-            _errorMessage.value = "Error unliking item $itemId: ${e.message}"
-        }
-    }
-
-    private suspend fun updateLikeCount(itemId: Int) {
-        try {
-            val response = RetrofitInstance.api.getMarketplaceItemLikes(itemId)
-            if (response.isSuccessful) {
-                val likes = response.body() ?: emptyList()
-                _likeCount.value = _likeCount.value.toMutableMap().apply {
-                    this[itemId] = likes.size
-                }
-                Log.d("MarketplaceViewModel", "Updated like count for item $itemId: ${likes.size}")
-            } else {
-                val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                Log.e("MarketplaceViewModel", "Failed to update like count for item $itemId: $errorBody")
-                _errorMessage.value = "Failed to update like count for item $itemId: $errorBody"
-            }
-        } catch (e: Exception) {
-            Log.e("MarketplaceViewModel", "Error updating like count for item $itemId", e)
-            _errorMessage.value = "Error updating like count for item $itemId: ${e.message}"
-        }
-    }
-
-    fun fetchLikeStatus(itemId: Int) {
-        viewModelScope.launch {
-            try {
-                val userId = _currentUserId.value ?: return@launch
-                val response = RetrofitInstance.api.getMarketplaceItemLikes(itemId)
-                if (response.isSuccessful) {
-                    val likes = response.body() ?: emptyList()
-                    val isLikedByUser = likes.any { it.userId == userId }
-                    _isLiked.value = _isLiked.value.toMutableMap().apply {
-                        this[itemId] = isLikedByUser
-                    }
-                    _likeCount.value = _likeCount.value.toMutableMap().apply {
-                        this[itemId] = likes.size
-                    }
-                    Log.d("MarketplaceViewModel", "Fetched like status for item $itemId: liked=$isLikedByUser, count=${likes.size}")
-                } else {
-                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                    Log.e("MarketplaceViewModel", "Failed to fetch like status for item $itemId: $errorBody")
-                    _errorMessage.value = "Failed to fetch like status for item $itemId: $errorBody"
-                }
-            } catch (e: Exception) {
-                Log.e("MarketplaceViewModel", "Error fetching like status for item $itemId", e)
-                _errorMessage.value = "Error fetching like status for item $itemId: ${e.message}"
-            }
-        }
-    }
-
-    suspend fun fetchItemById(itemId: Int): MarketplaceDataClassItem? {
-        return try {
-            Log.d("MarketplaceViewModel", "Fetching item by ID: $itemId")
-            val response = RetrofitInstance.api.getItemById(itemId)
-            if (response.isSuccessful) {
-                val item = response.body()
-                if (item != null) {
-                    getMarketplaceItemImages(itemId)
-                    fetchLikeStatus(itemId)
-                    Log.d("MarketplaceViewModel", "Fetched item $itemId: $item")
-                    item
-                } else {
-                    Log.e("MarketplaceViewModel", "Item $itemId not found")
-                    _errorMessage.value = "Item $itemId not found"
-                    null
-                }
-            } else {
-                val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                Log.e("MarketplaceViewModel", "Failed to fetch item $itemId: $errorBody")
-                _errorMessage.value = "Failed to fetch item $itemId: $errorBody"
-                null
-            }
-        } catch (e: Exception) {
-            Log.e("MarketplaceViewModel", "Error fetching item $itemId", e)
-            _errorMessage.value = "Error fetching item $itemId: ${e.message}"
-            null
-        }
+    fun clearErrorMessage() {
+        _errorMessage.value = null
     }
 }

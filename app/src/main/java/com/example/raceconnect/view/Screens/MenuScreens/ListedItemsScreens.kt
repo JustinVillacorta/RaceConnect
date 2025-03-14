@@ -9,8 +9,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -21,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -44,13 +41,14 @@ fun ListedItemsScreen(
         factory = MarketplaceViewModelFactory(userPreferences)
     )
 
-    val listedItems by viewModel.userItems.collectAsState()
+    val userItems by viewModel.userItems.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
+    // Trigger fetch of listed items when the screen is first loaded
     LaunchedEffect(Unit) {
-        if (listedItems.isEmpty() && !isRefreshing) {
-            viewModel.refreshMarketplaceItems()
+        if (userItems.isEmpty() && !isRefreshing) {
+            viewModel.fetchUserListedItems() // Explicitly fetch listed items
         }
     }
 
@@ -87,7 +85,7 @@ fun ListedItemsScreen(
                         color = Red
                     )
                 }
-                listedItems.isEmpty() -> {
+                userItems.isEmpty() -> {
                     Column(
                         modifier = Modifier
                             .align(Alignment.Center)
@@ -103,7 +101,7 @@ fun ListedItemsScreen(
                         Button(
                             onClick = {
                                 coroutineScope.launch {
-                                    viewModel.refreshMarketplaceItems()
+                                    viewModel.fetchUserListedItems() // Refresh listed items
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Red)
@@ -118,7 +116,7 @@ fun ListedItemsScreen(
                             .fillMaxSize()
                             .padding(16.dp)
                     ) {
-                        Spacer(modifier = Modifier.height(16.dp)) // Replaced filter space with Spacer
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(2),
@@ -126,7 +124,7 @@ fun ListedItemsScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(listedItems) { item ->
+                            items(userItems) { item ->
                                 ListedItemCard(
                                     item = item,
                                     viewModel = viewModel,
@@ -150,14 +148,8 @@ fun ListedItemCard(
     onClick: () -> Unit
 ) {
     val imagesMap by viewModel.marketplaceImages.collectAsState()
-    val isLiked by viewModel.isLiked.collectAsState()
-    val likeCount by viewModel.likeCount.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
-
     val itemImages = imagesMap[item.id] ?: emptyList()
     val displayImage = itemImages.firstOrNull() ?: item.image_url?.takeIf { it.isNotEmpty() } ?: "https://via.placeholder.com/150"
-    val liked = isLiked[item.id] ?: false
-    val count = likeCount[item.id] ?: 0
 
     Card(
         shape = RoundedCornerShape(8.dp),

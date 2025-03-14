@@ -10,11 +10,8 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,17 +34,18 @@ fun MarketplaceItemDetailScreen(
     navController: NavController,
     viewModel: MarketplaceViewModel,
     onClose: () -> Unit,
-    onClickChat: (Int) -> Unit = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) }
+    onClickChat: (Int) -> Unit = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) },
+    onLikeError: (String) -> Unit
 ) {
-    val items by viewModel.items.collectAsState()
+    val marketplaceItems by viewModel.marketplaceItems.collectAsState()
     val imagesMap by viewModel.marketplaceImages.collectAsState()
     val isLiked by viewModel.isLiked.collectAsState()
-    val likeCount by viewModel.likeCount.collectAsState()
-    val item = items.find { it.id == itemId }
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val item = marketplaceItems.find { it.id == itemId }
     val itemImages = imagesMap[itemId] ?: emptyList()
     val liked = isLiked[itemId] ?: false
-    val count = likeCount[itemId] ?: 0
     val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(itemId) {
         viewModel.getMarketplaceItemImages(itemId)
@@ -78,6 +76,13 @@ fun MarketplaceItemDetailScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            )
+        }},
         modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
         val configuration = LocalConfiguration.current
@@ -170,7 +175,11 @@ fun MarketplaceItemDetailScreen(
                 Button(
                     onClick = {
                         coroutineScope.launch {
-                            viewModel.toggleLike(itemId)
+                            try {
+                                viewModel.toggleLike(itemId)
+                            } catch (e: Exception) {
+                                onLikeError("Failed to toggle favorite: ${e.message}")
+                            }
                         }
                     },
                     shape = RoundedCornerShape(8.dp),
@@ -189,11 +198,11 @@ fun MarketplaceItemDetailScreen(
                     ) {
                         Icon(
                             imageVector = if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Like",
+                            contentDescription = "Favorite",
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("${count} Like${if (count != 1) "s" else ""}")
+                        Text(text = if (liked) "Remove" else "Add")
                     }
                 }
 
@@ -219,6 +228,19 @@ fun MarketplaceItemDetailScreen(
                         Text("Chat Seller")
                     }
                 }
+            }
+        }
+    }
+
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = errorMessage ?: "Unknown error",
+                    actionLabel = "Dismiss",
+                    duration = SnackbarDuration.Short
+                )
+                viewModel.clearErrorMessage()
             }
         }
     }

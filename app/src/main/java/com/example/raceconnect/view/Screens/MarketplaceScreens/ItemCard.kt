@@ -1,29 +1,22 @@
 package com.example.raceconnect.view.Screens.MarketplaceScreens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -36,16 +29,17 @@ fun MarketplaceItemCard(
     item: MarketplaceDataClassItem,
     navController: NavController,
     viewModel: MarketplaceViewModel,
-    onClick: (Int) -> Unit = {}
+    onClick: (Int) -> Unit = {},
+    onLikeError: (String) -> Unit
 ) {
     val imagesMap by viewModel.marketplaceImages.collectAsState()
     val isLiked by viewModel.isLiked.collectAsState()
-    val likeCount by viewModel.likeCount.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
 
     val itemImages = imagesMap[item.id] ?: emptyList()
     val displayImage = itemImages.firstOrNull() ?: item.image_url?.takeIf { it.isNotEmpty() } ?: "https://via.placeholder.com/150"
+    val liked by remember { derivedStateOf { isLiked[item.id] ?: false } }
 
     Card(
         modifier = Modifier
@@ -70,7 +64,8 @@ fun MarketplaceItemCard(
                 text = item.title,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp),
-                maxLines = 2
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
 
             Text(
@@ -79,30 +74,6 @@ fun MarketplaceItemCard(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 4.dp)
             )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                IconButton(
-                    onClick = {
-                        coroutineScope.launch {
-                            viewModel.toggleLike(item.id)
-                        }
-                    }
-                ) {
-                    Icon(
-                        imageVector = if (isLiked[item.id] == true) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = "Like",
-                        tint = if (isLiked[item.id] == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Text(
-                    text = "${likeCount[item.id] ?: 0} Likes",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
         }
     }
 }
