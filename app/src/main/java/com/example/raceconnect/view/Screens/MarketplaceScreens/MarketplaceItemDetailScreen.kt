@@ -15,11 +15,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.view.Navigation.NavRoutes
@@ -76,13 +79,15 @@ fun MarketplaceItemDetailScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) { data ->
-            Snackbar(
-                snackbarData = data,
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer
-            )
-        }},
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        },
         modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
         val configuration = LocalConfiguration.current
@@ -184,13 +189,14 @@ fun MarketplaceItemDetailScreen(
                     },
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
-                        .weight(1f)
-                        .height(50.dp)
+                        .weight(1.5f)
+                        .height(56.dp)
                         .padding(end = 8.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                        contentColor = if (liked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                    )
+                        containerColor = if (liked) MaterialTheme.colorScheme.secondary else Color(0xFFB71C1C),
+                        contentColor = if (liked) MaterialTheme.colorScheme.onSecondary else Color.White
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -199,10 +205,15 @@ fun MarketplaceItemDetailScreen(
                         Icon(
                             imageVector = if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = "Favorite",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = if (liked) "Remove" else "Add")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (liked) "Remove from\nFavorites" else "Add to\nFavorites",
+                            fontSize = 14.sp,
+                            maxLines = 2, // Allow two lines
+                            textAlign = TextAlign.Center // Center the text
+                        )
                     }
                 }
 
@@ -212,8 +223,9 @@ fun MarketplaceItemDetailScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier
                         .weight(1f)
-                        .height(50.dp)
-                        .padding(start = 8.dp)
+                        .height(56.dp)
+                        .padding(start = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -222,10 +234,10 @@ fun MarketplaceItemDetailScreen(
                         Icon(
                             imageVector = Icons.Default.Chat,
                             contentDescription = "Chat Seller",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Chat Seller")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Chat Seller", fontSize = 14.sp)
                     }
                 }
             }

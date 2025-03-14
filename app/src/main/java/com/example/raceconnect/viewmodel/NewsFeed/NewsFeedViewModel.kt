@@ -17,6 +17,7 @@ import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.ReportRequest
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.network.RetrofitInstance
+import com.example.raceconnect.network.UserPostsPagingSource
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,22 +77,29 @@ class NewsFeedViewModel(
 
     val postsFlow: Flow<PagingData<NewsFeedDataClassItem>> = combine(
         currentUserId,
-        userPreferences.selectedCategories // Observe raw preferences
+        userPreferences.selectedCategories
     ) { userId, rawCategories ->
-        userId to mapCategories(rawCategories) // Map categories here
+        userId to mapCategories(rawCategories)
     }.flatMapLatest { (userId, mappedCategories) ->
         if (userId == null || userId == -1) {
-            Log.w("NewsFeedViewModel", "User ID is null or -1, returning empty PagingData")
-            flowOf(PagingData.empty())
+            Pager(
+                config = PagingConfig(pageSize = 10, enablePlaceholders = false),
+                pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService, userId ?: -1, mappedCategories, context) }
+            ).flow.cachedIn(viewModelScope)
         } else {
-            Log.d("NewsFeedViewModel", "Creating Pager with userId: $userId, categories: $mappedCategories")
             Pager(
                 config = PagingConfig(pageSize = 10, prefetchDistance = 2, enablePlaceholders = false),
-                pagingSourceFactory = {
-                    NewsFeedPagingSourceAllPosts(apiService, userId, mappedCategories, context)
-                }
+                pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService, userId, mappedCategories, context) }
             ).flow.cachedIn(viewModelScope)
         }
+    }
+
+    // Updated getPostsByUserId
+    fun getPostsByUserId(userId: Int): Flow<PagingData<NewsFeedDataClassItem>> {
+        return Pager(
+            config = PagingConfig(pageSize = 10, enablePlaceholders = false),
+            pagingSourceFactory = { UserPostsPagingSource(apiService, userId) }
+        ).flow.cachedIn(viewModelScope)
     }
 
     init {
@@ -100,7 +108,7 @@ class NewsFeedViewModel(
             userPreferences.user.collect { user ->
                 _currentUserId.value = user?.id
                 Log.d("NewsFeedViewModel", "User ID updated: ${_currentUserId.value}")
-                
+
                 // Reset post-related state when user changes
                 if (user == null) {
                     _postLikes.value = emptyMap()
@@ -339,12 +347,5 @@ class NewsFeedViewModel(
                 Log.e("NewsFeedViewModel", "❌ Error reposting post", e)
             }
         }
-    }
-
-    fun getPostsByUserId(userId: Int): Flow<PagingData<NewsFeedDataClassItem>> {
-        return Pager(
-            config = PagingConfig(pageSize = 10, enablePlaceholders = false),
-            pagingSourceFactory = { NewsFeedPagingSourceAllPosts(apiService, userId, selectedCategories.value, context) }
-        ).flow.cachedIn(viewModelScope)
     }
 }
