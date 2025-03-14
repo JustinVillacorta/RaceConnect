@@ -35,7 +35,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
     val userItems: StateFlow<List<MarketplaceDataClassItem>> = _userItems.asStateFlow()
 
     // State for error messages
-    private val _errorMessage = MutableStateFlow<String?>(null)
+    internal val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     // State for current user ID
@@ -518,6 +518,37 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
             } catch (e: Exception) {
                 Log.e("MarketplaceViewModel", "Error updating item $itemId", e)
                 _errorMessage.value = "Error updating item $itemId: ${e.message}"
+            }
+        }
+    }
+
+    fun deleteItem(itemId: Int, context: Context) {
+        viewModelScope.launch {
+            val userId = _currentUserId.value ?: run {
+                Log.e("MarketplaceViewModel", "No user logged in, cannot delete item")
+                _errorMessage.value = "Cannot delete item: No user logged in"
+                return@launch
+            }
+
+            try {
+                Log.d("MarketplaceViewModel", "Deleting item with ID: $itemId")
+
+                // Perform the DELETE request to delete the item
+                val deleteResponse = RetrofitInstance.api.deleteMarketplaceItem(itemId)
+                if (deleteResponse.isSuccessful) {
+                    Log.d("MarketplaceViewModel", "Item deleted successfully: ${deleteResponse.body()}")
+                    // Update local state by removing the deleted item
+                    val updatedItems = _userItems.value.filter { it.id != itemId }
+                    _userItems.value = updatedItems
+                    fetchUserListedItems() // Refresh listed items
+                } else {
+                    val errorBody = deleteResponse.errorBody()?.string() ?: "Unknown error"
+                    Log.e("MarketplaceViewModel", "Failed to delete item $itemId: $errorBody")
+                    _errorMessage.value = "Failed to delete item $itemId: $errorBody"
+                }
+            } catch (e: Exception) {
+                Log.e("MarketplaceViewModel", "Error deleting item $itemId", e)
+                _errorMessage.value = "Error deleting item $itemId: ${e.message}"
             }
         }
     }

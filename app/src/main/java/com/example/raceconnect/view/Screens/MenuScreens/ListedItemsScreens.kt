@@ -35,7 +35,8 @@ import kotlinx.coroutines.launch
 fun ListedItemsScreen(
     navController: NavController,
     userPreferences: UserPreferences,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onRefresh: () -> Unit = {} // Optional callback to trigger refresh
 ) {
     val viewModel: MarketplaceViewModel = viewModel(
         factory = MarketplaceViewModelFactory(userPreferences)
@@ -45,10 +46,20 @@ fun ListedItemsScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
-    // Trigger fetch of listed items when the screen is first loaded
+    // Trigger fetch of listed items when the screen is first loaded or refreshed
     LaunchedEffect(Unit) {
         if (userItems.isEmpty() && !isRefreshing) {
-            viewModel.fetchUserListedItems() // Explicitly fetch listed items
+            viewModel.fetchUserListedItems() // Initial fetch
+        }
+    }
+
+    // Trigger refresh when onRefresh is called
+    LaunchedEffect(onRefresh) {
+        onRefresh() // This will be a no-op unless called from outside
+        if (!isRefreshing) {
+            coroutineScope.launch {
+                viewModel.fetchUserListedItems() // Refresh the list
+            }
         }
     }
 
