@@ -17,11 +17,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Notification
@@ -41,15 +43,13 @@ fun NotificationsScreen(context: Context, navController: NavController) {
     val scope = rememberCoroutineScope()
     var userId by remember { mutableStateOf<Int?>(null) }
 
-    // Launch a coroutine to fetch the userId from DataStore
     LaunchedEffect(Unit) {
         scope.launch {
-            val user = userPreferences.user.first() // Blocking call to get the first value
+            val user = userPreferences.user.first()
             userId = user?.id
         }
     }
 
-    // If userId is null, show a message or redirect to login
     if (userId == null) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -120,10 +120,8 @@ fun NotificationsScreen(context: Context, navController: NavController) {
                                 }
                                 notification.postId?.let { postId ->
                                     if (notification.repostId != null) {
-                                        // Navigate to repost route
                                         navController.navigate(NavRoutes.Repost.createRoute(postId, notification.repostId!!))
                                     } else {
-                                        // Navigate to regular post route
                                         navController.navigate(NavRoutes.Post.createRoute(postId))
                                     }
                                 }
@@ -151,19 +149,40 @@ fun NotificationItem(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.baseline_account_circle_24),
-            contentDescription = "Profile Picture",
-            modifier = Modifier.size(48.dp).clip(CircleShape)
-        )
+        // Profile Picture
+        if (notification.triggerProfilePicture != null) {
+            Image(
+                painter = rememberAsyncImagePainter(notification.triggerProfilePicture),
+                contentDescription = "${notification.triggerUsername}'s Profile Picture",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+            )
+        } else {
+            Image(
+                painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                contentDescription = "Default Profile Picture",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+            )
+        }
 
         Spacer(modifier = Modifier.width(16.dp))
 
         Column(modifier = Modifier.weight(1f)) {
+            // Username and content
+            Text(
+                text = notification.triggerUsername ?: "Unknown User",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            )
             Text(
                 text = notification.content,
                 style = MaterialTheme.typography.bodyMedium,
-                fontSize = 16.sp,
+                fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onBackground
             )
         }
