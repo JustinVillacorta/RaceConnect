@@ -42,5 +42,5 @@ sealed class NavRoutes(val route: String) {
     object NewsFeedPreferences : NavRoutes("newsFeedPreferences")
     object ListedItems : NavRoutes("listedItems")
     object FriendListScreen : NavRoutes("FriendsListScreen")
-    object AddFriends : NavRoutes("addFriends") // For AddFriendsScreen
+
 }

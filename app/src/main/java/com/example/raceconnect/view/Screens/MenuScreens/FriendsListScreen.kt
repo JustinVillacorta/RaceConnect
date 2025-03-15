@@ -8,13 +8,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,24 +38,18 @@ fun FriendsListScreen(
     userPreferences: UserPreferences
 ) {
     val viewModel: FriendsViewModel = viewModel(factory = FriendsViewModelFactory(userPreferences))
-    val friends by viewModel.friends.collectAsState()
     val acceptedFriends by viewModel.acceptedFriends.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
     LaunchedEffect(Unit) {
         Log.d("FriendsListScreen", "Forcing refresh of friends data")
-        viewModel.fetchFriends()
         viewModel.fetchAcceptedFriends()
     }
 
     FriendsListScreenContent(
         onBackClick = onClose,
-        friends = friends,
         acceptedFriends = acceptedFriends,
         isLoading = isLoading,
-        onConfirm = viewModel::confirmFriendRequest,
-        onCancel = viewModel::cancelFriendRequest,
-        onAdd = viewModel::addFriend,
         onRemove = viewModel::removeFriend
     )
 }
@@ -68,41 +58,52 @@ fun FriendsListScreen(
 @Composable
 fun FriendsListScreenContent(
     onBackClick: () -> Unit,
-    friends: List<Friend>,
     acceptedFriends: List<Friend>,
     isLoading: Boolean,
-    onConfirm: (String) -> Unit,
-    onCancel: (String) -> Unit,
-    onAdd: (String) -> Unit,
     onRemove: (String) -> Unit
 ) {
-    val selectedTabIndex = remember { mutableIntStateOf(0) }
-    val tabTitles = listOf("Friends", "Add Friends")
-    val searchQuery = remember { mutableStateOf("") }
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Friends",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.Black
+            Column {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Friends",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.Black
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                )
+                Box(
+                    modifier = Modifier
+                        .padding(start = 16.dp, top = 8.dp, bottom = 12.dp)
+                        .background(
+                            color = Color(0xFFF5F5F5),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "${acceptedFriends.size} ${if (acceptedFriends.size == 1) "Friend" else "Friends"}",
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF616161),
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+            }
         },
         containerColor = Color(0xFFF5F5F5)
     ) { padding ->
@@ -111,127 +112,26 @@ fun FriendsListScreenContent(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            TabRow(
-                selectedTabIndex = selectedTabIndex.intValue,
-                containerColor = Color.White,
-                contentColor = Color.Black,
-                indicator = { tabPositions ->
-                    TabRowDefaults.Indicator(
-                        Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex.intValue]),
-                        height = 3.dp,
-                        color = Color(0xFF007AFF)
-                    )
-                }
-            ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex.intValue == index,
-                        onClick = { selectedTabIndex.intValue = index },
-                        text = {
-                            Text(
-                                text = title,
-                                fontSize = 16.sp,
-                                fontWeight = if (selectedTabIndex.intValue == index) FontWeight.Bold else FontWeight.Medium,
-                                color = if (selectedTabIndex.intValue == index) Color.Black else Color.Gray
-                            )
-                        }
-                    )
-                }
-            }
-
-            when (selectedTabIndex.intValue) {
-                0 -> {
-                    Log.d("FriendsListScreen", "Friends tab - acceptedFriends: $acceptedFriends, isLoading: $isLoading")
-                    when {
-                        isLoading -> LoadingState()
-                        acceptedFriends.isEmpty() -> EmptyState("No friends yet")
-                        else -> {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(top = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(acceptedFriends) { friend ->
-                                    Log.d("FriendsListScreen", "Rendering friend: ${friend.name}")
-                                    FriendItem(
-                                        friend = friend,
-                                        onRemove = onRemove
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                1 -> {
-                    Log.d("FriendsListScreen", "Add Friends tab - friends: $friends, isLoading: $isLoading")
-                    val nonAcceptedFriends = friends.filter { it.status != "Accepted" }
-                    val filteredNonFriends = nonAcceptedFriends.filter {
-                        it.name.contains(searchQuery.value, ignoreCase = true)
-                    }
-                    Column(
+            when {
+                isLoading -> LoadingState()
+                acceptedFriends.isEmpty() -> EmptyState("No friends yet")
+                else -> {
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp)
+                            .padding(top = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        SearchBar(searchQuery)
-                        when {
-                            isLoading -> LoadingState()
-                            filteredNonFriends.isEmpty() -> EmptyState("No users found")
-                            else -> {
-                                LazyColumn(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(top = 8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    items(filteredNonFriends) { friend ->
-                                        Log.d("FriendsListScreen", "Rendering non-accepted friend: ${friend.name}")
-                                        FriendItem(
-                                            friend = friend,
-                                            onConfirm = onConfirm,
-                                            onCancel = onCancel,
-                                            onAdd = onAdd,
-                                            onRemove = onRemove
-                                        )
-                                    }
-                                }
-                            }
+                        items(acceptedFriends) { friend ->
+                            Log.d("FriendsListScreen", "Rendering friend: ${friend.name}")
+                            FriendItem(
+                                friend = friend,
+                                onRemove = onRemove
+                            )
                         }
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun SearchBar(searchQuery: MutableState<String>) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 8.dp)
-            .background(Color.White, RoundedCornerShape(8.dp))
-            .padding(12.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = Color.Gray)
-            Spacer(modifier = Modifier.width(8.dp))
-            BasicTextField(
-                value = searchQuery.value,
-                onValueChange = { searchQuery.value = it },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.Black),
-                decorationBox = { innerTextField ->
-                    if (searchQuery.value.isEmpty()) {
-                        Text(text = "Search for friends", color = Color.Gray, fontSize = 16.sp)
-                    }
-                    innerTextField()
-                }
-            )
         }
     }
 }
@@ -263,9 +163,6 @@ private fun EmptyState(message: String) {
 @Composable
 fun FriendItem(
     friend: Friend,
-    onConfirm: ((String) -> Unit)? = null,
-    onCancel: ((String) -> Unit)? = null,
-    onAdd: ((String) -> Unit)? = null,
     onRemove: ((String) -> Unit)? = null
 ) {
     var showDialog by remember { mutableStateOf(false) }
@@ -301,64 +198,13 @@ fun FriendItem(
             )
         }
 
-        when (friend.status) {
-            "Pending" -> {
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = { onConfirm?.invoke(friend.id) },
-                        shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F), contentColor = Color.White),
-                        modifier = Modifier
-                            .width(100.dp)
-                            .height(40.dp)
-                    ) {
-                        Text("Confirm", fontSize = 14.sp)
-                    }
-                    Button(
-                        onClick = { onCancel?.invoke(friend.id) },
-                        shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0), contentColor = Color.Black),
-                        modifier = Modifier
-                            .width(100.dp)
-                            .height(40.dp)
-                    ) {
-                        Text("Delete", fontSize = 14.sp)
-                    }
-                }
-            }
-            "PendingSent" -> {
-                Button(
-                    onClick = { onRemove?.invoke(friend.id) },
-                    shape = RoundedCornerShape(6.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0), contentColor = Color.Black),
-                    modifier = Modifier.height(36.dp)
-                ) {
-                    Text("Pending", fontSize = 14.sp)
-                }
-            }
-            "NonFriends" -> {
-                Button(
-                    onClick = { onAdd?.invoke(friend.id) },
-                    shape = RoundedCornerShape(6.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C0C13), contentColor = Color.White),
-                    modifier = Modifier.height(36.dp)
-                ) {
-                    Text("Add Friend", fontSize = 14.sp)
-                }
-            }
-            "Accepted" -> {
-                Button(
-                    onClick = { showDialog = true },
-                    shape = RoundedCornerShape(6.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0), contentColor = Color.Black),
-                    modifier = Modifier.height(36.dp)
-                ) {
-                    Text("Unfriend", fontSize = 14.sp)
-                }
-            }
+        Button(
+            onClick = { showDialog = true },
+            shape = RoundedCornerShape(6.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0), contentColor = Color.Black),
+            modifier = Modifier.height(36.dp)
+        ) {
+            Text("Unfriend", fontSize = 14.sp)
         }
     }
 
