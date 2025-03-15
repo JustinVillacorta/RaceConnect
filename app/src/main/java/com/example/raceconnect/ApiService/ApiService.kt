@@ -279,4 +279,7 @@ interface ApiService {
     suspend fun deleteRepost(
         @Path("id") repostId: Int
     ): Response<SimpleResponse>
+
+    @POST("chat/action?SendMessage")
+    suspend fun createMessage(@Body request: SendMessageRequest): Response<SendMessageResponse>
 }

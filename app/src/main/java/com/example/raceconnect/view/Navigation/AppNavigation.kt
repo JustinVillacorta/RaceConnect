@@ -99,7 +99,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showCreatePostScreen by remember { mutableStateOf(false) }
     var showCreateListing by remember { mutableStateOf(false) }
     var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
-    var showChatSellerScreen by remember { mutableStateOf<Int?>(null) }
     var showFullScreenImage by remember { mutableStateOf<Pair<String, Int>?>(null) }
     var showRepostScreen by remember { mutableStateOf<NewsFeedDataClassItem?>(null) }
     var showFavoriteItems by remember { mutableStateOf(false) }
@@ -160,14 +159,13 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         }
                         composable(NavRoutes.Profile.route) {
                             val authViewModel: AuthenticationViewModel = viewModel()
-                            // Scope MarketplaceViewModel to this NavGraph
                             val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             MenuScreen(
                                 viewModel = authViewModel,
                                 menuViewModel = menuViewModel,
                                 profileDetailsViewModel = profileDetailsViewModel,
                                 marketplaceViewModel = marketplaceViewModel,
-                                    onLogoutSuccess = {
+                                onLogoutSuccess = {
                                     navController.navigate(NavRoutes.Login.route) {
                                         popUpTo(NavRoutes.Login.route) { inclusive = true }
                                     }
@@ -214,7 +212,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             )
                         }
                         composable(NavRoutes.Marketplace.route) {
-                            // Scope MarketplaceViewModel to this NavGraph
                             val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             MarketplaceScreen(
                                 userPreferences = userPreferences,
@@ -363,7 +360,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                         navController = navController,
                                         viewModel = marketplaceViewModel,
                                         onClose = { navController.popBackStack() },
-                                        onClickChat = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) },
                                         onLikeError = { errorMessage ->
                                             coroutineScope.launch {
                                                 snackbarHostState.showSnackbar(
@@ -372,7 +368,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                                     duration = SnackbarDuration.Short
                                                 )
                                             }
-                                        }
+                                        },
+                                        onNavigateToChat = { showItemDetailScreen = null } // Reset showItemDetailScreen
                                     )
                                 }
                             }
@@ -408,7 +405,12 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 onClose = { navController.popBackStack() }
                             )
                         }
-                        composable(NavRoutes.ChatSeller.route) { backStackEntry ->
+                        composable(
+                            route = NavRoutes.ChatSeller.route,
+                            arguments = listOf(navArgument("itemId") { type = NavType.IntType }),
+                            enterTransition = { slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)) },
+                            exitTransition = { slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300)) }
+                        ) { backStackEntry ->
                             val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
                             ChatSellerScreen(
                                 itemId = itemId,
@@ -474,7 +476,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         navController = navController,
                         viewModel = marketplaceViewModel,
                         onClose = { showItemDetailScreen = null },
-                        onClickChat = { showChatSellerScreen = it },
                         onLikeError = { errorMessage ->
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar(
@@ -483,21 +484,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     duration = SnackbarDuration.Short
                                 )
                             }
-                        }
-                    )
-                }
-            }
-
-            showChatSellerScreen?.let { itemId ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-                ) {
-                    ChatSellerScreen(
-                        itemId = itemId,
-                        navController = navController,
-                        onClose = { showChatSellerScreen = null }
+                        },
+                        onNavigateToChat = { showItemDetailScreen = null } // Reset showItemDetailScreen
                     )
                 }
             }
@@ -563,7 +551,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         navController = navController,
                         viewModel = marketplaceViewModel,
                         onClose = { showFavoriteItemDetailScreen = null },
-                        onClickChat = { showChatSellerScreen = it },
                         onLikeError = { errorMessage ->
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar(
@@ -572,7 +559,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     duration = SnackbarDuration.Short
                                 )
                             }
-                        }
+                        },
+                        onNavigateToChat = { showFavoriteItemDetailScreen = null } // Reset showFavoriteItemDetailScreen
                     )
                 }
             }

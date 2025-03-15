@@ -8,8 +8,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.MarketplaceItemLike
+import com.example.raceconnect.model.SendMessageRequest
+import com.example.raceconnect.model.SendMessageResponse
 import com.example.raceconnect.model.UpdateMarketplaceItemRequest
-import com.example.raceconnect.model.itemPostResponse
 import com.example.raceconnect.network.RetrofitInstance
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,7 +44,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
     private val _currentUserId = MutableStateFlow<Int?>(null)
     val currentUserId: StateFlow<Int?> = _currentUserId.asStateFlow()
 
-    // State for like status (whether the current user has liked an item)
+    // State for like status
     private val _isLiked = MutableStateFlow<Map<Int, Boolean>>(emptyMap())
     val isLiked: StateFlow<Map<Int, Boolean>> = _isLiked.asStateFlow()
 
@@ -51,12 +52,15 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    // State for marketplace item images (map of item ID to list of image URLs)
+    // State for marketplace item images
     private val _marketplaceImages = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
     val marketplaceImages: StateFlow<Map<Int, List<String>>> = _marketplaceImages.asStateFlow()
 
+    // State for message sending status
+    private val _messageSentStatus = MutableStateFlow<String?>(null)
+    val messageSentStatus: StateFlow<String?> = _messageSentStatus.asStateFlow()
+
     init {
-        // Observe user changes from UserPreferences
         viewModelScope.launch {
             userPreferences.user.collect { user ->
                 val newUserId = user?.id
@@ -64,12 +68,10 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                 if (newUserId != _currentUserId.value) {
                     _currentUserId.value = newUserId
                     if (newUserId != null) {
-                        // User logged in, fetch data
                         Log.d("MarketplaceViewModel", "Initiating fetches for user ID: $newUserId")
                         fetchMarketplaceItems()
                         fetchUserMarketplaceItems()
                     } else {
-                        // User logged out, clear data
                         Log.d("MarketplaceViewModel", "User logged out, clearing data")
                         clear()
                     }
@@ -77,7 +79,6 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
             }
         }
 
-        // Observe favorites from UserPreferences to initialize isLiked
         viewModelScope.launch {
             userPreferences.user.collect { user ->
                 val favorites = user?.favoriteMarketplaceItems?.toSet() ?: emptySet()
@@ -100,6 +101,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         _marketplaceImages.value = emptyMap()
         _errorMessage.value = null
         _isRefreshing.value = false
+        _messageSentStatus.value = null
         Log.d("MarketplaceViewModel", "Cleared all state")
     }
 
@@ -341,7 +343,6 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                     _isLiked.value = _isLiked.value.toMutableMap().apply {
                         this[itemId] = isLiked
                     }
-                    // Sync with UserPreferences
                     val currentFavorites = userPreferences.user.first()?.favoriteMarketplaceItems?.toSet() ?: emptySet()
                     if (isLiked) {
                         userPreferences.saveUser(
@@ -361,7 +362,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                         )
                     }
                     Log.d("MarketplaceViewModel", if (isLiked) "Liked item $itemId" else "Unliked item $itemId")
-                    fetchUserMarketplaceItems() // Refresh liked items after toggling
+                    fetchUserMarketplaceItems()
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
                     Log.e("MarketplaceViewModel", "Failed to toggle like for item $itemId: $errorBody")
@@ -413,7 +414,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                 if (response.isSuccessful) {
                     Log.d("MarketplaceViewModel", "Item added successfully: ${response.body()}")
                     fetchMarketplaceItems()
-                    fetchUserListedItems() // Refresh listed items
+                    fetchUserListedItems()
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
                     Log.e("MarketplaceViewModel", "Failed to add item: $errorBody")
@@ -475,7 +476,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                 if (response.isSuccessful) {
                     Log.d("MarketplaceViewModel", "Item added successfully with images: ${response.body()}")
                     fetchMarketplaceItems()
-                    fetchUserListedItems() // Refresh listed items
+                    fetchUserListedItems()
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
                     Log.e("MarketplaceViewModel", "Failed to add item with images: $errorBody")
@@ -494,8 +495,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         newImageUris: List<Uri>? = null,
         context: Context
     ) {
-        val gson = Gson() // Use a local Gson instance for debugging
-
+        val gson = Gson()
         viewModelScope.launch {
             val userId = _currentUserId.value ?: run {
                 Log.e("MarketplaceViewModel", "No user logged in, cannot update item")
@@ -505,8 +505,6 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
 
             try {
                 Log.d("MarketplaceViewModel", "Updating item with ID: $itemId")
-
-                // Prepare the update data using the request data class
                 val updateRequest = UpdateMarketplaceItemRequest(
                     title = updatedItem.title.takeIf { it.isNotEmpty() } ?: "",
                     description = updatedItem.description.takeIf { it.isNotEmpty() } ?: "",
@@ -516,20 +514,17 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                     status = updatedItem.status.takeIf { it.isNotEmpty() } ?: "Active"
                 )
 
-                // Debug the request payload
                 val requestJson = gson.toJson(updateRequest)
                 Log.d("MarketplaceViewModel", "Update request: $requestJson")
 
-                // Perform the PUT request to update the item
                 val updateResponse = RetrofitInstance.api.updateMarketplaceItem(itemId, updateRequest)
                 if (updateResponse.isSuccessful) {
                     Log.d("MarketplaceViewModel", "Item updated successfully: ${updateResponse.body()}")
-                    // Update local state
                     val updatedItems = _userItems.value.map {
                         if (it.id == itemId) updatedItem else it
                     }
                     _userItems.value = updatedItems
-                    fetchUserListedItems() // Refresh listed items
+                    fetchUserListedItems()
 
                     if (!newImageUris.isNullOrEmpty()) {
                         val imageParts = newImageUris.mapNotNull { uri ->
@@ -544,7 +539,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                             val uploadResponse = RetrofitInstance.api.uploadMarketplaceItemImages(itemId, imageParts)
                             if (uploadResponse.isSuccessful) {
                                 Log.d("MarketplaceViewModel", "Images uploaded successfully: ${uploadResponse.body()}")
-                                getMarketplaceItemImages(itemId) // Refresh images
+                                getMarketplaceItemImages(itemId)
                             } else {
                                 val errorBody = uploadResponse.errorBody()?.string() ?: "Unknown error"
                                 Log.e("MarketplaceViewModel", "Failed to upload images: $errorBody")
@@ -574,15 +569,12 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
 
             try {
                 Log.d("MarketplaceViewModel", "Deleting item with ID: $itemId")
-
-                // Perform the DELETE request to delete the item
                 val deleteResponse = RetrofitInstance.api.deleteMarketplaceItem(itemId)
                 if (deleteResponse.isSuccessful) {
                     Log.d("MarketplaceViewModel", "Item deleted successfully: ${deleteResponse.body()}")
-                    // Update local state by removing the deleted item
                     val updatedItems = _userItems.value.filter { it.id != itemId }
                     _userItems.value = updatedItems
-                    fetchUserListedItems() // Refresh listed items
+                    fetchUserListedItems()
                 } else {
                     val errorBody = deleteResponse.errorBody()?.string() ?: "Unknown error"
                     Log.e("MarketplaceViewModel", "Failed to delete item $itemId: $errorBody")
@@ -611,7 +603,61 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         }
     }
 
+    fun sendMessage(
+        buyerId: Int,
+        sellerId: Int,
+        productId: Int,
+        message: String,
+        messageType: String = "text",
+        mediaUrl: String? = null
+    ) {
+        viewModelScope.launch {
+            val senderId = _currentUserId.value ?: run {
+                Log.e("MarketplaceViewModel", "No user logged in, cannot send message")
+                _errorMessage.value = "Cannot send message: No user logged in"
+                return@launch
+            }
+
+            try {
+                Log.d("MarketplaceViewModel", "Sending message from $senderId to seller $sellerId about product $productId")
+                val request = SendMessageRequest(
+                    buyer_id = buyerId,
+                    seller_id = sellerId,
+                    product_id = productId,
+                    sender_id = buyerId,
+                    message = message,
+                    message_type = messageType,
+                    media_url = mediaUrl
+                )
+                val response = RetrofitInstance.api.createMessage(request) // Assuming endpoint is /send_message
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body?.success == true) {
+                        _messageSentStatus.value = "Message sent successfully"
+                        Log.d("MarketplaceViewModel", "Message sent successfully: Conversation ID ${body.conversation_id}")
+                    } else {
+                        val errorMsg = body?.error ?: "Unknown error"
+                        _errorMessage.value = "Failed to send message: $errorMsg"
+                        Log.e("MarketplaceViewModel", "Failed to send message: $errorMsg")
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                    _errorMessage.value = "Failed to send message: $errorBody"
+                    Log.e("MarketplaceViewModel", "API error: $errorBody")
+                }
+            } catch (e: Exception) {
+                Log.e("MarketplaceViewModel", "Error sending message", e)
+                _errorMessage.value = "Error sending message: ${e.message}"
+            }
+        }
+    }
+
+    fun clearMessageSentStatus() {
+        _messageSentStatus.value = null
+    }
+
     fun clearErrorMessage() {
         _errorMessage.value = null
+        _messageSentStatus.value = null
     }
 }

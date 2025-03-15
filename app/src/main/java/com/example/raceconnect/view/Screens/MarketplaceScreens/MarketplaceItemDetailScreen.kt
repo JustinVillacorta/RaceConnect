@@ -37,18 +37,20 @@ fun MarketplaceItemDetailScreen(
     navController: NavController,
     viewModel: MarketplaceViewModel,
     onClose: () -> Unit,
-    onClickChat: (Int) -> Unit = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) },
-    onLikeError: (String) -> Unit
+    onLikeError: (String) -> Unit,
+    onNavigateToChat: () -> Unit // New callback to notify navigation
 ) {
     val marketplaceItems by viewModel.marketplaceItems.collectAsState()
     val imagesMap by viewModel.marketplaceImages.collectAsState()
     val isLiked by viewModel.isLiked.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val messageSentStatus by viewModel.messageSentStatus.collectAsState()
     val item = marketplaceItems.find { it.id == itemId }
     val itemImages = imagesMap[itemId] ?: emptyList()
     val liked = isLiked[itemId] ?: false
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentUserId by viewModel.currentUserId.collectAsState()
 
     LaunchedEffect(itemId) {
         viewModel.getMarketplaceItemImages(itemId)
@@ -211,14 +213,33 @@ fun MarketplaceItemDetailScreen(
                         Text(
                             text = if (liked) "Remove from\nFavorites" else "Add to\nFavorites",
                             fontSize = 14.sp,
-                            maxLines = 2, // Allow two lines
-                            textAlign = TextAlign.Center // Center the text
+                            maxLines = 2,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
 
                 Button(
-                    onClick = { onClickChat(itemId) },
+                    onClick = {
+                        if (currentUserId != null) {
+                            coroutineScope.launch {
+                                viewModel.sendMessage(
+                                    buyerId = currentUserId!!,
+                                    sellerId = item.seller_id,
+                                    productId = itemId,
+                                    message = "Hi, I'm interested in your item: ${item.title}"
+                                )
+                            }
+                        } else {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Please log in to send a message",
+                                    actionLabel = "Dismiss",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
+                    },
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier
@@ -253,6 +274,22 @@ fun MarketplaceItemDetailScreen(
                     duration = SnackbarDuration.Short
                 )
                 viewModel.clearErrorMessage()
+            }
+        }
+    }
+
+    LaunchedEffect(messageSentStatus) {
+        if (messageSentStatus != null && messageSentStatus == "Message sent successfully") {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = messageSentStatus!!,
+                    actionLabel = "Dismiss",
+                    duration = SnackbarDuration.Short
+                )
+                // Notify AppNavigation to close this screen before navigating
+                onNavigateToChat()
+                navController.navigate(NavRoutes.ChatSeller.createRoute(itemId))
+                viewModel.clearMessageSentStatus()
             }
         }
     }
