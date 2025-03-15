@@ -23,11 +23,9 @@ class UserPreferences(private val context: Context) {
         private val AGE = intPreferencesKey("age")
         private val PROFILE_PICTURE = stringPreferencesKey("profile_picture")
         private val BIO = stringPreferencesKey("bio")
-        // New keys using stringSetPreferencesKey
         private val FAVORITE_CATEGORIES = stringSetPreferencesKey("favorite_categories_v2")
         private val FAVORITE_MARKETPLACE_ITEMS = stringSetPreferencesKey("favorite_marketplace_items_v2")
         private val FRIENDS_LIST = stringSetPreferencesKey("friends_list_v2")
-        // Old keys using stringPreferencesKey (for migration)
         private val OLD_FAVORITE_CATEGORIES = stringPreferencesKey("favorite_categories")
         private val OLD_FAVORITE_MARKETPLACE_ITEMS = stringPreferencesKey("favorite_marketplace_items")
         private val OLD_FRIENDS_LIST = stringPreferencesKey("friends_list")
@@ -40,33 +38,29 @@ class UserPreferences(private val context: Context) {
         private val UPDATED_AT = stringPreferencesKey("updated_at")
     }
 
-    // Perform migration if old data exists
     suspend fun migrateOldDataIfNeeded() {
         context.dataStore.edit { preferences ->
-            // Migrate favorite categories
             val oldFavoriteCategories = preferences[OLD_FAVORITE_CATEGORIES]
             if (oldFavoriteCategories != null) {
                 val categoriesSet = oldFavoriteCategories.split(",").filter { it.isNotEmpty() }.toSet()
                 preferences[FAVORITE_CATEGORIES] = categoriesSet
-                preferences.remove(OLD_FAVORITE_CATEGORIES) // Remove old key
+                preferences.remove(OLD_FAVORITE_CATEGORIES)
                 Log.d("UserPreferences", "Migrated favorite_categories to favorite_categories_v2: $categoriesSet")
             }
 
-            // Migrate favorite marketplace items
             val oldFavoriteMarketplaceItems = preferences[OLD_FAVORITE_MARKETPLACE_ITEMS]
             if (oldFavoriteMarketplaceItems != null) {
                 val itemsSet = oldFavoriteMarketplaceItems.split(",").filter { it.isNotEmpty() }.toSet()
                 preferences[FAVORITE_MARKETPLACE_ITEMS] = itemsSet
-                preferences.remove(OLD_FAVORITE_MARKETPLACE_ITEMS) // Remove old key
+                preferences.remove(OLD_FAVORITE_MARKETPLACE_ITEMS)
                 Log.d("UserPreferences", "Migrated favorite_marketplace_items to favorite_marketplace_items_v2: $itemsSet")
             }
 
-            // Migrate friends list
             val oldFriendsList = preferences[OLD_FRIENDS_LIST]
             if (oldFriendsList != null) {
                 val friendsSet = oldFriendsList.split(",").mapNotNull { it.toIntOrNull()?.toString() }.toSet()
                 preferences[FRIENDS_LIST] = friendsSet
-                preferences.remove(OLD_FRIENDS_LIST) // Remove old key
+                preferences.remove(OLD_FRIENDS_LIST)
                 Log.d("UserPreferences", "Migrated friends_list to friends_list_v2: $friendsSet")
             }
         }
@@ -103,23 +97,11 @@ class UserPreferences(private val context: Context) {
             number?.let { preferences[NUMBER] = it }
             address?.let { preferences[ADDRESS] = it }
             age?.let { preferences[AGE] = it }
-            profilePicture?.let {
-                preferences[PROFILE_PICTURE] = it
-                Log.d("UserPreferences", "Saving profile picture: $it")
-            }
+            profilePicture?.let { preferences[PROFILE_PICTURE] = it }
             bio?.let { preferences[BIO] = it }
-            favoriteCategories?.let {
-                preferences[FAVORITE_CATEGORIES] = it
-                Log.d("UserPreferences", "Saving favorite categories: $it")
-            }
-            favoriteMarketplaceItems?.let {
-                preferences[FAVORITE_MARKETPLACE_ITEMS] = it
-                Log.d("UserPreferences", "Saving favorite marketplace items: $it")
-            }
-            friendsList?.let {
-                preferences[FRIENDS_LIST] = it.map { it.toString() }.toSet()
-                Log.d("UserPreferences", "Saving friends list: $it")
-            }
+            favoriteCategories?.let { preferences[FAVORITE_CATEGORIES] = it }
+            favoriteMarketplaceItems?.let { preferences[FAVORITE_MARKETPLACE_ITEMS] = it }
+            friendsList?.let { preferences[FRIENDS_LIST] = it.map { it.toString() }.toSet() }
             friendPrivacy?.let { preferences[FRIEND_PRIVACY] = it }
             lastOnline?.let { preferences[LAST_ONLINE] = it }
             status?.let { preferences[STATUS] = it }
@@ -127,7 +109,6 @@ class UserPreferences(private val context: Context) {
             suspensionEndDate?.let { preferences[SUSPENSION_END_DATE] = it }
             createdAt?.let { preferences[CREATED_AT] = it }
             updatedAt?.let { preferences[UPDATED_AT] = it }
-            Log.d("UserPreferences", "User data saved: userId=$userId, username=$username, email=$email")
         }
     }
 
@@ -135,10 +116,6 @@ class UserPreferences(private val context: Context) {
         val id = preferences[USER_ID] ?: return@map null
         val username = preferences[USERNAME] ?: return@map null
         val email = preferences[EMAIL] ?: return@map null
-        val profilePicture = preferences[PROFILE_PICTURE]
-
-        Log.d("UserPreferences", "Retrieved user: id=$id, username=$username, email=$email, profilePicture=$profilePicture")
-
         users(
             id = id,
             username = username,
@@ -147,7 +124,7 @@ class UserPreferences(private val context: Context) {
             number = preferences[NUMBER],
             address = preferences[ADDRESS],
             age = preferences[AGE],
-            profilePicture = profilePicture,
+            profilePicture = preferences[PROFILE_PICTURE],
             bio = preferences[BIO],
             favoriteCategories = preferences[FAVORITE_CATEGORIES]?.toList() ?: emptyList(),
             favoriteMarketplaceItems = preferences[FAVORITE_MARKETPLACE_ITEMS]?.toList() ?: emptyList(),
@@ -167,25 +144,22 @@ class UserPreferences(private val context: Context) {
     }
 
     val selectedCategories: Flow<List<String>> = context.dataStore.data.map { preferences ->
-        // Only return categories if we have a valid user ID
         if (preferences[USER_ID] != null) {
             preferences[FAVORITE_CATEGORIES]?.toList() ?: listOf("F1")
         } else {
-            listOf("F1") // Default for logged out state
+            listOf("F1")
         }
     }
 
     suspend fun saveSelectedCategories(categories: List<String>) {
         context.dataStore.edit { preferences ->
             preferences[FAVORITE_CATEGORIES] = categories.toSet()
-            Log.d("UserPreferences", "Saved selected categories: $categories")
         }
     }
 
     suspend fun clearSelectedCategories() {
         context.dataStore.edit { preferences ->
             preferences.remove(FAVORITE_CATEGORIES)
-            Log.d("UserPreferences", "Cleared selected categories")
         }
     }
 
@@ -197,39 +171,10 @@ class UserPreferences(private val context: Context) {
         return token.first()
     }
 
-    suspend fun clearUser() {
+    suspend fun logout() {
         context.dataStore.edit { preferences ->
-            // Clear all preferences first
             preferences.clear()
-            
-            // Force clear critical user identifiers
-            preferences.remove(USER_ID)
-            preferences.remove(TOKEN)
-            
-            // Explicitly clear categories to ensure they don't persist
-            preferences.remove(FAVORITE_CATEGORIES)
-            preferences.remove(OLD_FAVORITE_CATEGORIES) // Clear old format too
-            
-            // Clear all other user data
-            preferences.remove(USERNAME)
-            preferences.remove(EMAIL)
-            preferences.remove(BIRTHDATE)
-            preferences.remove(NUMBER)
-            preferences.remove(ADDRESS)
-            preferences.remove(AGE)
-            preferences.remove(PROFILE_PICTURE)
-            preferences.remove(BIO)
-            preferences.remove(FAVORITE_MARKETPLACE_ITEMS)
-            preferences.remove(FRIENDS_LIST)
-            preferences.remove(FRIEND_PRIVACY)
-            preferences.remove(LAST_ONLINE)
-            preferences.remove(STATUS)
-            preferences.remove(REPORT)
-            preferences.remove(SUSPENSION_END_DATE)
-            preferences.remove(CREATED_AT)
-            preferences.remove(UPDATED_AT)
+            Log.d("UserPreferences", "Cleared all preferences, including favorites")
         }
-        // The user Flow will automatically emit null since USER_ID is cleared
-        Log.d("UserPreferences", "User state and preferences cleared")
     }
 }

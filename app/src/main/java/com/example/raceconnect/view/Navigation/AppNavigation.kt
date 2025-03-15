@@ -35,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.raceconnect.datastore.UserPreferences
@@ -106,7 +107,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
     var showFavoriteItemDetailScreen by remember { mutableStateOf<Int?>(null) }
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
-    val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
     val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences))
     val profileDetailsViewModel: ProfileDetailsViewModel = viewModel(factory = ProfileDetailsViewModelFactory(userPreferences))
 
@@ -131,286 +131,309 @@ fun AppNavigation(userPreferences: UserPreferences) {
             ) { paddingValues ->
                 NavHost(
                     navController = navController,
-                    startDestination = NavRoutes.NewsFeed.route,
+                    startDestination = "authenticated_graph",
                     modifier = Modifier.padding(paddingValues)
                 ) {
-                    composable(NavRoutes.NewsFeed.route) {
-                        NewsFeedScreen(
-                            navController = navController,
-                            userPreferences = userPreferences,
-                            onShowCreatePost = { showCreatePostScreen = true },
-                            onShowFullScreenImage = { imageUrl, postId -> showFullScreenImage = Pair(imageUrl, postId) },
-                            onShowProfileView = { navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) },
-                            onShowRepostScreen = { post -> showRepostScreen = post }
-                        )
-                    }
-                    composable(NavRoutes.Comments.route) { backStackEntry ->
-                        val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
-                        CommentSectionScreen(
-                            postId = postId,
-                            navController = navController,
-                            userPreferences = userPreferences,
-                            onShowProfileView = { navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) }
-                        )
-                    }
-                    composable(NavRoutes.Profile.route) {
-                        val authViewModel: AuthenticationViewModel = viewModel()
-                        ProfileScreen(
-                            viewModel = authViewModel,
-                            menuViewModel = menuViewModel,
-                            profileDetailsViewModel = profileDetailsViewModel,
-                            onLogoutSuccess = {
-                                navController.navigate(NavRoutes.Login.route) {
-                                    popUpTo(NavRoutes.Login.route) { inclusive = true }
-                                }
-                            },
-                            navController = navController,
-                            onShowFavoriteItems = { showFavoriteItems = true },
-                            onShowNewsFeedPreferences = { showNewsFeedPreferences = true },
-                            onShowListedItems = { navController.navigate(NavRoutes.ListedItems.route) },
-                            onShowSettings = { navController.navigate(NavRoutes.FriendListScreen.route) }, // Navigate to FriendsListScreen via NavHost
-                            userPreferences = userPreferences
-                        )
-                    }
-                    composable(
-                        NavRoutes.ProfileView.route,
-                        arguments = listOf(
-                            navArgument("userId") {
-                                type = NavType.IntType
-                                defaultValue = 0
-                                nullable = false
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val userId = backStackEntry.arguments?.getInt("userId") ?: 0
-                        if (userId == loggedInUserId && userId != 0) {
-                            UserProfileScreen(
+                    // Nested graph for authenticated routes
+                    navigation(
+                        startDestination = NavRoutes.NewsFeed.route,
+                        route = "authenticated_graph"
+                    ) {
+                        composable(NavRoutes.NewsFeed.route) {
+                            NewsFeedScreen(
                                 navController = navController,
-                                context = context,
+                                userPreferences = userPreferences,
+                                onShowCreatePost = { showCreatePostScreen = true },
+                                onShowFullScreenImage = { imageUrl, postId -> showFullScreenImage = Pair(imageUrl, postId) },
+                                onShowProfileView = { navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) },
+                                onShowRepostScreen = { post -> showRepostScreen = post }
+                            )
+                        }
+                        composable(NavRoutes.Comments.route) { backStackEntry ->
+                            val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
+                            CommentSectionScreen(
+                                postId = postId,
+                                navController = navController,
+                                userPreferences = userPreferences,
+                                onShowProfileView = { navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) }
+                            )
+                        }
+                        composable(NavRoutes.Profile.route) {
+                            val authViewModel: AuthenticationViewModel = viewModel()
+                            // Scope MarketplaceViewModel to this NavGraph
+                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
+                            ProfileScreen(
+                                viewModel = authViewModel,
+                                menuViewModel = menuViewModel,
+                                profileDetailsViewModel = profileDetailsViewModel,
+                                marketplaceViewModel = marketplaceViewModel,
+                                    onLogoutSuccess = {
+                                    navController.navigate(NavRoutes.Login.route) {
+                                        popUpTo(NavRoutes.Login.route) { inclusive = true }
+                                    }
+                                },
+                                navController = navController,
+                                onShowFavoriteItems = { showFavoriteItems = true },
+                                onShowNewsFeedPreferences = { showNewsFeedPreferences = true },
+                                onShowListedItems = { navController.navigate(NavRoutes.ListedItems.route) },
+                                onShowSettings = { navController.navigate(NavRoutes.FriendListScreen.route) },
+                                userPreferences = userPreferences,
+                            )
+                        }
+                        composable(
+                            NavRoutes.ProfileView.route,
+                            arguments = listOf(
+                                navArgument("userId") {
+                                    type = NavType.IntType
+                                    defaultValue = 0
+                                    nullable = false
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val userId = backStackEntry.arguments?.getInt("userId") ?: 0
+                            if (userId == loggedInUserId && userId != 0) {
+                                UserProfileScreen(
+                                    navController = navController,
+                                    context = context,
+                                    onClose = { navController.popBackStack() }
+                                )
+                            } else {
+                                PostUserProfileViewScreen(
+                                    navController = navController,
+                                    context = context,
+                                    userId = userId,
+                                    onClose = { navController.popBackStack() }
+                                )
+                            }
+                        }
+                        composable(NavRoutes.ProfileDetails.route) {
+                            MyProfileScreen(
+                                onClose = { navController.popBackStack() },
+                                profileDetailsViewModel = profileDetailsViewModel,
+                                userPreferences = userPreferences
+                            )
+                        }
+                        composable(NavRoutes.Marketplace.route) {
+                            // Scope MarketplaceViewModel to this NavGraph
+                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
+                            MarketplaceScreen(
+                                userPreferences = userPreferences,
+                                navController = navController,
+                                onShowCreateListing = { showCreateListing = true },
+                                onShowItemDetail = { itemId -> showItemDetailScreen = itemId },
+                                viewModel = marketplaceViewModel
+                            )
+                        }
+                        composable("notifications") {
+                            NotificationsScreen(context = LocalContext.current, navController = navController)
+                        }
+                        composable(
+                            NavRoutes.Post.route,
+                            arguments = listOf(
+                                navArgument("postId") {
+                                    type = NavType.IntType
+                                    defaultValue = 0
+                                    nullable = false
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val postId = backStackEntry.arguments?.getInt("postId") ?: 0
+                            if (postId != 0) {
+                                PostDetailScreen(
+                                    navController = navController,
+                                    postId = postId,
+                                    repostId = null,
+                                    userPreferences = userPreferences,
+                                    viewModel = viewModel(factory = NotificationClickedViewModelFactory())
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Invalid post ID",
+                                        color = MaterialTheme.colorScheme.error,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                        composable(
+                            NavRoutes.Repost.route,
+                            arguments = listOf(
+                                navArgument("postId") {
+                                    type = NavType.IntType
+                                    defaultValue = 0
+                                    nullable = false
+                                },
+                                navArgument("repostId") {
+                                    type = NavType.IntType
+                                    defaultValue = 0
+                                    nullable = false
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val postId = backStackEntry.arguments?.getInt("postId") ?: 0
+                            val repostId = backStackEntry.arguments?.getInt("repostId") ?: 0
+                            if (postId != 0 && repostId != 0) {
+                                PostDetailScreen(
+                                    navController = navController,
+                                    postId = postId,
+                                    repostId = repostId,
+                                    userPreferences = userPreferences,
+                                    viewModel = viewModel(factory = NotificationClickedViewModelFactory())
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (postId == 0) "Invalid post ID" else "Invalid repost ID",
+                                        color = MaterialTheme.colorScheme.error,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                        composable(NavRoutes.Friends.route) {
+                            FriendsScreen(
+                                userPreferences = userPreferences,
                                 onClose = { navController.popBackStack() }
                             )
-                        } else {
-                            PostUserProfileViewScreen(
+                        }
+                        composable(NavRoutes.FriendListScreen.route) {
+                            FriendsListScreen(
                                 navController = navController,
-                                context = context,
-                                userId = userId,
-                                onClose = { navController.popBackStack() }
+                                onClose = { navController.popBackStack() },
+                                userPreferences = userPreferences
                             )
                         }
-                    }
-                    composable(NavRoutes.ProfileDetails.route) {
-                        MyProfileScreen(
-                            onClose = { navController.popBackStack() },
-                            profileDetailsViewModel = profileDetailsViewModel,
-                            userPreferences = userPreferences
-                        )
-                    }
-                    composable(NavRoutes.Marketplace.route) {
-                        MarketplaceScreen(
-                            userPreferences = userPreferences,
-                            navController = navController,
-                            onShowCreateListing = { showCreateListing = true },
-                            onShowItemDetail = { itemId -> showItemDetailScreen = itemId }
-                        )
-                    }
-                    composable("notifications") {
-                        NotificationsScreen(context = LocalContext.current, navController = navController)
-                    }
-                    composable(
-                        NavRoutes.Post.route,
-                        arguments = listOf(
-                            navArgument("postId") {
-                                type = NavType.IntType
-                                defaultValue = 0
-                                nullable = false
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val postId = backStackEntry.arguments?.getInt("postId") ?: 0
-                        if (postId != 0) {
-                            PostDetailScreen(
-                                navController = navController,
-                                postId = postId,
-                                repostId = null,
-                                userPreferences = userPreferences,
-                                viewModel = viewModel(factory = NotificationClickedViewModelFactory())
+                        composable(
+                            route = NavRoutes.MarketplaceItemDetail.route,
+                            arguments = listOf(
+                                navArgument("itemId") {
+                                    type = NavType.IntType
+                                    defaultValue = -1
+                                    nullable = false
+                                }
                             )
-                        } else {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Invalid post ID",
-                                    color = MaterialTheme.colorScheme.error,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-                    composable(
-                        NavRoutes.Repost.route,
-                        arguments = listOf(
-                            navArgument("postId") {
-                                type = NavType.IntType
-                                defaultValue = 0
-                                nullable = false
-                            },
-                            navArgument("repostId") {
-                                type = NavType.IntType
-                                defaultValue = 0
-                                nullable = false
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val postId = backStackEntry.arguments?.getInt("postId") ?: 0
-                        val repostId = backStackEntry.arguments?.getInt("repostId") ?: 0
-                        if (postId != 0 && repostId != 0) {
-                            PostDetailScreen(
-                                navController = navController,
-                                postId = postId,
-                                repostId = repostId,
-                                userPreferences = userPreferences,
-                                viewModel = viewModel(factory = NotificationClickedViewModelFactory())
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = if (postId == 0) "Invalid post ID" else "Invalid repost ID",
-                                    color = MaterialTheme.colorScheme.error,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-                    composable(NavRoutes.Friends.route) {
-                        FriendsScreen(
-                            userPreferences = userPreferences,
-                            onClose = { navController.popBackStack() }
-                        )
-                    }
-                    composable(NavRoutes.FriendListScreen.route) { // Added route for FriendsListScreen
-                        FriendsListScreen(
-                            navController = navController,
-                            onClose = { navController.popBackStack() },
-                            userPreferences = userPreferences
-                        )
-                    }
-                    composable(
-                        route = NavRoutes.MarketplaceItemDetail.route,
-                        arguments = listOf(
-                            navArgument("itemId") {
-                                type = NavType.IntType
-                                defaultValue = -1
-                                nullable = false
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
-                        val items by marketplaceViewModel.marketplaceItems.collectAsState()
-                        val userItems by marketplaceViewModel.userItems.collectAsState()
-                        var item by remember { mutableStateOf<MarketplaceDataClassItem?>(items.find { it.id == itemId } ?: userItems.find { it.id == itemId }) }
+                        ) { backStackEntry ->
+                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
+                            val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
+                            val items by marketplaceViewModel.marketplaceItems.collectAsState()
+                            val userItems by marketplaceViewModel.userItems.collectAsState()
+                            var item by remember { mutableStateOf<MarketplaceDataClassItem?>(items.find { it.id == itemId } ?: userItems.find { it.id == itemId }) }
 
-                        LaunchedEffect(itemId) {
-                            if (item == null && itemId != -1) {
-                                Log.d("AppNavigation", "Item $itemId not found in local lists, fetching from API...")
-                                item = marketplaceViewModel.fetchItemById(itemId)
-                                Log.d("AppNavigation", "Fetched item: $item")
-                            }
-                        }
-
-                        var refreshListedItems by remember { mutableStateOf(false) } // State to trigger refresh
-
-                        when {
-                            itemId == -1 -> {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text("Invalid item ID", color = MaterialTheme.colorScheme.error)
+                            LaunchedEffect(itemId) {
+                                if (item == null && itemId != -1) {
+                                    Log.d("AppNavigation", "Item $itemId not found in local lists, fetching from API...")
+                                    item = marketplaceViewModel.fetchItemById(itemId)
+                                    Log.d("AppNavigation", "Fetched item: $item")
                                 }
                             }
-                            item == null -> {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator()
-                                    Text("Loading item...", color = MaterialTheme.colorScheme.onSurface)
+
+                            var refreshListedItems by remember { mutableStateOf(false) }
+
+                            when {
+                                itemId == -1 -> {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("Invalid item ID", color = MaterialTheme.colorScheme.error)
+                                    }
                                 }
-                            }
-                            item?.seller_id == loggedInUserId && loggedInUserId != 0 -> {
-                                SellerViewMarketplaceItemDetailScreen(
-                                    itemId = itemId,
-                                    navController = navController,
-                                    viewModel = marketplaceViewModel,
-                                    onClose = { navController.popBackStack() },
-                                    onRefreshListedItems = { refreshListedItems = true } // Pass refresh callback
-                                )
-                            }
-                            else -> {
-                                MarketplaceItemDetailScreen(
-                                    itemId = itemId,
-                                    navController = navController,
-                                    viewModel = marketplaceViewModel,
-                                    onClose = { navController.popBackStack() },
-                                    onClickChat = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) },
-                                    onLikeError = { errorMessage ->
-                                        coroutineScope.launch {
-                                            snackbarHostState.showSnackbar(
-                                                message = errorMessage,
-                                                actionLabel = "Retry",
-                                                duration = SnackbarDuration.Short
-                                            )
+                                item == null -> {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator()
+                                        Text("Loading item...", color = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                }
+                                item?.seller_id == loggedInUserId && loggedInUserId != 0 -> {
+                                    SellerViewMarketplaceItemDetailScreen(
+                                        itemId = itemId,
+                                        navController = navController,
+                                        viewModel = marketplaceViewModel,
+                                        onClose = { navController.popBackStack() },
+                                        onRefreshListedItems = { refreshListedItems = true }
+                                    )
+                                }
+                                else -> {
+                                    MarketplaceItemDetailScreen(
+                                        itemId = itemId,
+                                        navController = navController,
+                                        viewModel = marketplaceViewModel,
+                                        onClose = { navController.popBackStack() },
+                                        onClickChat = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) },
+                                        onLikeError = { errorMessage ->
+                                            coroutineScope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    message = errorMessage,
+                                                    actionLabel = "Retry",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
                                         }
-                                    }
-                                )
-                            }
-                        }
-
-                        // Trigger refresh of ListedItemsScreen when refreshListedItems changes
-                        LaunchedEffect(refreshListedItems) {
-                            if (refreshListedItems) {
-                                navController.navigate(NavRoutes.ListedItems.route) {
-                                    popUpTo(NavRoutes.ListedItems.route) {
-                                        inclusive = false
-                                    }
-                                    launchSingleTop = true
+                                    )
                                 }
-                                refreshListedItems = false
+                            }
+
+                            LaunchedEffect(refreshListedItems) {
+                                if (refreshListedItems) {
+                                    navController.navigate(NavRoutes.ListedItems.route) {
+                                        popUpTo(NavRoutes.ListedItems.route) {
+                                            inclusive = false
+                                        }
+                                        launchSingleTop = true
+                                    }
+                                    refreshListedItems = false
+                                }
                             }
                         }
-                    }
-                    composable(
-                        route = NavRoutes.EditMarketplaceItem.route,
-                        arguments = listOf(
-                            navArgument("itemId") {
-                                type = NavType.IntType
-                                defaultValue = -1
-                                nullable = false
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
-                        EditMarketplaceItemScreen(
-                            itemId = itemId,
-                            navController = navController,
-                            viewModel = marketplaceViewModel,
-                            onClose = { navController.popBackStack() }
-                        )
-                    }
-                    composable(NavRoutes.ChatSeller.route) { backStackEntry ->
-                        val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
-                        ChatSellerScreen(
-                            itemId = itemId,
-                            navController = navController,
-                            onClose = { navController.popBackStack() }
-                        )
-                    }
-                    composable(NavRoutes.ListedItems.route) {
-                        ListedItemsScreen(
-                            navController = navController,
-                            userPreferences = userPreferences,
-                            onClose = { navController.popBackStack() },
-                            onRefresh = { /* No-op here, handled by LaunchedEffect in ListedItemsScreen */ }
-                        )
+                        composable(
+                            route = NavRoutes.EditMarketplaceItem.route,
+                            arguments = listOf(
+                                navArgument("itemId") {
+                                    type = NavType.IntType
+                                    defaultValue = -1
+                                    nullable = false
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
+                            val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
+                            EditMarketplaceItemScreen(
+                                itemId = itemId,
+                                navController = navController,
+                                viewModel = marketplaceViewModel,
+                                onClose = { navController.popBackStack() }
+                            )
+                        }
+                        composable(NavRoutes.ChatSeller.route) { backStackEntry ->
+                            val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
+                            ChatSellerScreen(
+                                itemId = itemId,
+                                navController = navController,
+                                onClose = { navController.popBackStack() }
+                            )
+                        }
+                        composable(NavRoutes.ListedItems.route) {
+                            ListedItemsScreen(
+                                navController = navController,
+                                userPreferences = userPreferences,
+                                onClose = { navController.popBackStack() },
+                                onRefresh = { /* No-op here, handled by LaunchedEffect in ListedItemsScreen */ }
+                            )
+                        }
+                        composable(NavRoutes.FavoriteItems.route) {
+                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
+                            FavoriteItemsScreen(
+                                navController = navController,
+                                userPreferences = userPreferences,
+                                onClose = { navController.popBackStack() },
+                                onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId },
+                                viewModel = marketplaceViewModel
+                            )
+                        }
                     }
                 }
             }
@@ -431,6 +454,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
+                val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                 CreateMarketplaceItemScreen(
                     userPreferences = userPreferences,
                     onClose = { showCreateListing = false },
@@ -444,6 +468,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                     exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
                 ) {
+                    val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                     MarketplaceItemDetailScreen(
                         itemId = itemId,
                         navController = navController,
@@ -516,11 +541,13 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
+                val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                 FavoriteItemsScreen(
                     navController = navController,
                     userPreferences = userPreferences,
                     onClose = { showFavoriteItems = false },
-                    onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId }
+                    onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId },
+                    viewModel = marketplaceViewModel
                 )
             }
 
@@ -530,6 +557,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                     exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
                 ) {
+                    val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                     MarketplaceItemDetailScreen(
                         itemId = itemId,
                         navController = navController,
@@ -560,8 +588,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     factory = NewsFeedPreferenceViewModelFactory(userPreferences)
                 )
             }
-
-            // Removed AnimatedVisibility for FriendsListScreen since it's now handled via NavHost
         }
     }
 }

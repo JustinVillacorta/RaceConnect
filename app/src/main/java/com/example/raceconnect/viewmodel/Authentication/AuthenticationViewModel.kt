@@ -14,8 +14,8 @@ import com.example.raceconnect.model.ResetPasswordRequest
 import com.example.raceconnect.model.SignupRequest
 import com.example.raceconnect.model.VerifyOtpRequest
 import com.example.raceconnect.model.users
-import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
+import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -25,8 +25,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
-import okhttp3.Response
-
 
 open class AuthenticationViewModel(application: Application) : AndroidViewModel(application) {
     private val userPreferences = UserPreferences(application)
@@ -91,7 +89,8 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
             }
             ErrorMessage.value = message
             logout(
-                menuViewModel = null, // If not available, adjust accordingly
+                menuViewModel = null, // No MenuViewModel available in this context
+                marketplaceViewModel = null, // No MarketplaceViewModel available in this context
                 onLogoutResult = { success, error ->
                     if (success) {
                         Log.d("AuthenticationViewModel", "User logged out due to ban: $message")
@@ -171,41 +170,40 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
             Log.d("AuthenticationViewModel", "Loaded user: ${loggedInUser.value}")
         }
     }
-    // sign up
 
+    // Sign up
     fun signUp(context: Context, username: String, email: String, password: String, onToast: (String) -> Unit) {
         viewModelScope.launch {
             isLoading.value = true
             ErrorMessage.value = null
             try {
                 val signupRequest = SignupRequest(username, email, password)
-                val response = RetrofitInstance.api.signup(signupRequest) // Expecting Response<SignupResponse>
+                val response = RetrofitInstance.api.signup(signupRequest)
 
                 Log.d("AuthenticationViewModel", "Server response code: ${response.code()}")
                 Log.d("AuthenticationViewModel", "Raw response: ${response.raw()}")
 
-                if (response.isSuccessful || response.code() == 201) { // ✅ Handle HTTP 201
+                if (response.isSuccessful || response.code() == 201) {
                     val userResponse = response.body()
                     Log.d("AuthenticationViewModel", "Response body: $userResponse")
 
-                    if (userResponse?.token != null) { // Ensure response is valid
+                    if (userResponse?.token != null) {
                         loggedInUser.value = userResponse.user
                         Log.d("AuthenticationViewModel", "Signup successful: ${loggedInUser.value}")
 
                         // Save user data to DataStore
                         userPreferences.saveUser(
-                            userResponse.user!!.id,
-                            userResponse.user!!.username,
-                            userResponse.user!!.email,
-                            userResponse.token
+                            userId = userResponse.user!!.id,
+                            username = userResponse.user!!.username,
+                            email = userResponse.user!!.email,
+                            token = userResponse.token
                         )
 
                         onToast("Account Created Successfully!")
                     } else {
                         Log.e("AuthenticationViewModel", "Error: response.body() is null despite 201 status")
-                        onToast("Account Created Successfully!") // ✅ Show success even if body is null
+                        onToast("Account Created Successfully!")
                     }
-
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "Signup failed"
                     Log.e("AuthenticationViewModel", "Signup failed: $errorBody")
@@ -221,7 +219,6 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                     ErrorMessage.value = detailedMsg
                     onToast(detailedMsg)
                 }
-
             } catch (e: Exception) {
                 val errorMsg = e.message ?: "An unexpected error occurred. Please try again."
                 ErrorMessage.value = errorMsg
@@ -233,8 +230,11 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
         }
     }
 
-
-    fun logout(menuViewModel: MenuViewModel?, onLogoutResult: (Boolean, String?) -> Unit) {
+    fun logout(
+        menuViewModel: MenuViewModel?,
+        marketplaceViewModel: MarketplaceViewModel? = null,
+        onLogoutResult: (Boolean, String?) -> Unit
+    ) {
         viewModelScope.launch {
             try {
                 isLoading.value = true
@@ -248,38 +248,31 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                     true
                 }
                 if (logoutSuccessful) {
-                    // Clear preferences first and wait for completion
-                    withContext(Dispatchers.IO) {
-                        userPreferences.clearUser()
-                        // Verify preferences are cleared
-                        val userId = userPreferences.getUserId()
-                        if (userId != null) {
-                            Log.w("AuthViewModel", "User ID still present after logout!")
-                        }
+                    userPreferences.logout()
+                    val userAfterLogout = userPreferences.user.first()
+                    if (userAfterLogout != null) {
+                        Log.w("AuthViewModel", "User data still present after logout!")
                     }
-                    // Then clear other data
                     loggedInUser.value = null
                     menuViewModel?.clearData()
+                    marketplaceViewModel?.clear() // Clear MarketplaceViewModel state
                     onLogoutResult(true, null)
+                    Log.d("AuthViewModel", "Logout successful, favorites cleared")
                 } else {
-                    onLogoutResult(false, ErrorMessage.value)
+                    onLogoutResult(false, "Logout failed: Unable to reach server")
+                    Log.e("AuthViewModel", "Logout failed: Unable to reach server")
                 }
             } catch (e: Exception) {
                 ErrorMessage.value = "Logout error: ${e.message}"
                 onLogoutResult(false, ErrorMessage.value)
+                Log.e("AuthViewModel", "Error during logout: ${e.message}", e)
             } finally {
                 isLoading.value = false
             }
         }
     }
 
-
-
-
-
-
-    //forgot password
-
+    // Forgot Password
     fun requestOtp(email: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             Log.d("AuthenticationViewModel", "🔄 Requesting OTP for email: $email")
@@ -292,7 +285,7 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                 if (response.isSuccessful) {
                     _otpSent.value = true
                     Log.d("AuthenticationViewModel", "✅ OTP sent successfully to $email")
-                    onResult(true, email) // ✅ Pass email forward
+                    onResult(true, email)
                 } else {
                     _otpSent.value = false
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
@@ -306,7 +299,6 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
             }
         }
     }
-
 
     fun verifyOtp(email: String, otp: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
@@ -323,7 +315,7 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                 if (response.isSuccessful && (responseBody?.verified == true || responseBody?.message?.contains("OTP verified", ignoreCase = true) == true)) {
                     _otpVerified.value = true
                     Log.d("AuthenticationViewModel", "✅ OTP verification successful for email: $email")
-                    onResult(true, email) // ✅ Pass email forward to resetPassword
+                    onResult(true, email)
                 } else {
                     _otpVerified.value = false
                     Log.e("AuthenticationViewModel", "❌ OTP verification failed: ${responseBody?.message ?: "Invalid response format"}")
@@ -336,9 +328,6 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
             }
         }
     }
-
-
-
 
     fun resetPassword(email: String, password: String, confirmPassword: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
@@ -369,8 +358,4 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
     fun clearError() {
         _errorMessage.value = null
     }
-
-
-
-
 }

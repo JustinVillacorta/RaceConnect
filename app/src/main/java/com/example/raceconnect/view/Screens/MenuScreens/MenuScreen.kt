@@ -26,6 +26,7 @@ import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
+import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModel
 
@@ -36,6 +37,7 @@ fun ProfileScreen(
     viewModel: AuthenticationViewModel,
     menuViewModel: MenuViewModel,
     profileDetailsViewModel: ProfileDetailsViewModel,
+    marketplaceViewModel: MarketplaceViewModel, // Added MarketplaceViewModel as a parameter
     onLogoutSuccess: () -> Unit,
     navController: NavController,
     onShowFavoriteItems: () -> Unit,
@@ -245,18 +247,22 @@ fun ProfileScreen(
                     TextButton(
                         onClick = {
                             showLogoutDialog = false
-                            viewModel.logout(menuViewModel) { success, error ->
-                                if (success) {
-                                    profileDetailsViewModel.apply {
-                                        _profileData.value = null
-                                        _isEditMode.value = false
+                            viewModel.logout(
+                                menuViewModel = menuViewModel,
+                                marketplaceViewModel = marketplaceViewModel, // Pass the MarketplaceViewModel
+                                onLogoutResult = { success, error ->
+                                    if (success) {
+                                        profileDetailsViewModel.apply {
+                                            _profileData.value = null
+                                            _isEditMode.value = false
+                                        }
+                                        onLogoutSuccess()
+                                    } else {
+                                        Log.e("ProfileScreen", "Logout failed: $error")
+                                        // Optionally show a snackbar or toast with the error
                                     }
-                                    onLogoutSuccess()
-                                } else {
-                                    Log.e("ProfileScreen", "Logout failed: $error")
-                                    // Optionally show a snackbar or toast with the error
                                 }
-                            }
+                            )
                         }
                     ) {
                         Text("Yes")

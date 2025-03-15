@@ -15,6 +15,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -55,29 +56,51 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
     val marketplaceImages: StateFlow<Map<Int, List<String>>> = _marketplaceImages.asStateFlow()
 
     init {
-        fetchCurrentUser()
-    }
-
-    private fun fetchCurrentUser() {
+        // Observe user changes from UserPreferences
         viewModelScope.launch {
-            try {
-                Log.d("MarketplaceViewModel", "Fetching current user from UserPreferences")
-                val user = userPreferences.user.first()
-                _currentUserId.value = user?.id
-                Log.d("MarketplaceViewModel", "Current user ID set to: ${_currentUserId.value}")
-                if (_currentUserId.value != null) {
-                    Log.d("MarketplaceViewModel", "Initiating fetches for user ID: ${_currentUserId.value}")
-                    fetchMarketplaceItems()
-                    fetchUserMarketplaceItems()
-                } else {
-                    Log.e("MarketplaceViewModel", "No user logged in")
-                    _errorMessage.value = "No user logged in"
+            userPreferences.user.collect { user ->
+                val newUserId = user?.id
+                Log.d("MarketplaceViewModel", "User changed: $newUserId")
+                if (newUserId != _currentUserId.value) {
+                    _currentUserId.value = newUserId
+                    if (newUserId != null) {
+                        // User logged in, fetch data
+                        Log.d("MarketplaceViewModel", "Initiating fetches for user ID: $newUserId")
+                        fetchMarketplaceItems()
+                        fetchUserMarketplaceItems()
+                    } else {
+                        // User logged out, clear data
+                        Log.d("MarketplaceViewModel", "User logged out, clearing data")
+                        clear()
+                    }
                 }
-            } catch (e: Exception) {
-                Log.e("MarketplaceViewModel", "Error fetching current user", e)
-                _errorMessage.value = "Failed to fetch user: ${e.message}"
             }
         }
+
+        // Observe favorites from UserPreferences to initialize isLiked
+        viewModelScope.launch {
+            userPreferences.user.collect { user ->
+                val favorites = user?.favoriteMarketplaceItems?.toSet() ?: emptySet()
+                val updatedLikes = _isLiked.value.toMutableMap()
+                _marketplaceItems.value.forEach { item ->
+                    updatedLikes[item.id] = favorites.contains(item.id.toString())
+                }
+                _userItems.value.forEach { item ->
+                    updatedLikes[item.id] = favorites.contains(item.id.toString())
+                }
+                _isLiked.value = updatedLikes
+            }
+        }
+    }
+
+    fun clear() {
+        _marketplaceItems.value = emptyList()
+        _userItems.value = emptyList()
+        _isLiked.value = emptyMap()
+        _marketplaceImages.value = emptyMap()
+        _errorMessage.value = null
+        _isRefreshing.value = false
+        Log.d("MarketplaceViewModel", "Cleared all state")
     }
 
     fun refreshMarketplaceItems() {
@@ -95,7 +118,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
     fun fetchMarketplaceItems() {
         viewModelScope.launch {
             try {
-                val userId = _currentUserId.value
+                val userId = _currentUserId.value ?: return@launch
                 val response = RetrofitInstance.api.getAllMarketplaceItems(
                     limit = 10,
                     offset = 0,
@@ -317,6 +340,25 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                     val isLiked = result?.get("liked") as? Boolean ?: false
                     _isLiked.value = _isLiked.value.toMutableMap().apply {
                         this[itemId] = isLiked
+                    }
+                    // Sync with UserPreferences
+                    val currentFavorites = userPreferences.user.first()?.favoriteMarketplaceItems?.toSet() ?: emptySet()
+                    if (isLiked) {
+                        userPreferences.saveUser(
+                            userId = userId,
+                            username = userPreferences.user.first()?.username ?: "",
+                            email = userPreferences.user.first()?.email ?: "",
+                            token = userPreferences.getToken() ?: "",
+                            favoriteMarketplaceItems = currentFavorites + itemId.toString()
+                        )
+                    } else {
+                        userPreferences.saveUser(
+                            userId = userId,
+                            username = userPreferences.user.first()?.username ?: "",
+                            email = userPreferences.user.first()?.email ?: "",
+                            token = userPreferences.getToken() ?: "",
+                            favoriteMarketplaceItems = currentFavorites - itemId.toString()
+                        )
                     }
                     Log.d("MarketplaceViewModel", if (isLiked) "Liked item $itemId" else "Unliked item $itemId")
                     fetchUserMarketplaceItems() // Refresh liked items after toggling

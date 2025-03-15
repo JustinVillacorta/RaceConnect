@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.datastore.UserPreferences
@@ -27,7 +26,6 @@ import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
-import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,12 +34,9 @@ fun FavoriteItemsScreen(
     navController: NavController,
     userPreferences: UserPreferences,
     onClose: () -> Unit,
-    onShowItemDetail: (Int) -> Unit // Add this callback
+    onShowItemDetail: (Int) -> Unit,
+    viewModel: MarketplaceViewModel // Use the provided viewModel
 ) {
-    val viewModel: MarketplaceViewModel = viewModel(
-        factory = MarketplaceViewModelFactory(userPreferences)
-    )
-
     val userItems by viewModel.userItems.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val imagesMap by viewModel.marketplaceImages.collectAsState()
@@ -58,8 +53,8 @@ fun FavoriteItemsScreen(
     }
 
     LaunchedEffect(Unit) {
-        if (userItems.isEmpty() && !isRefreshing) {
-            viewModel.fetchUserMarketplaceItems()
+        coroutineScope.launch {
+            viewModel.fetchUserMarketplaceItems() // Ensure data is fetched on screen load
         }
     }
 
@@ -175,7 +170,7 @@ fun FavoriteItemsScreen(
                                 FavoriteItemCard(
                                     item = item,
                                     imagesMap = imagesMap,
-                                    onClick = { onShowItemDetail(item.id) } // Use callback instead of navigation
+                                    onClick = { onShowItemDetail(item.id) }
                                 )
                             }
                         }
