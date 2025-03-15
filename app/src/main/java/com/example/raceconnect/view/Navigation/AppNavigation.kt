@@ -43,7 +43,7 @@ import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.ui.BottomNavBar
 import com.example.raceconnect.ui.MarketplaceScreen
-import com.example.raceconnect.ui.ProfileScreen
+import com.example.raceconnect.ui.MenuScreen
 import com.example.raceconnect.view.FriendsScreen
 import com.example.raceconnect.view.Navigation.AuthenticationNavHost
 import com.example.raceconnect.view.Navigation.NavRoutes
@@ -162,7 +162,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             val authViewModel: AuthenticationViewModel = viewModel()
                             // Scope MarketplaceViewModel to this NavGraph
                             val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
-                            ProfileScreen(
+                            MenuScreen(
                                 viewModel = authViewModel,
                                 menuViewModel = menuViewModel,
                                 profileDetailsViewModel = profileDetailsViewModel,
@@ -176,7 +176,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 onShowFavoriteItems = { showFavoriteItems = true },
                                 onShowNewsFeedPreferences = { showNewsFeedPreferences = true },
                                 onShowListedItems = { navController.navigate(NavRoutes.ListedItems.route) },
-                                onShowSettings = { navController.navigate(NavRoutes.FriendListScreen.route) },
+                                onShowFriendListScreen = { navController.navigate(NavRoutes.FriendListScreen.route) },
                                 userPreferences = userPreferences,
                             )
                         }

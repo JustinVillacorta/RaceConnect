@@ -44,7 +44,8 @@ fun PostDetailScreen(
     postId: Int,
     repostId: Int? = null,
     userPreferences: UserPreferences,
-    viewModel: NotificationClickedViewModel = viewModel()
+    viewModel: NotificationClickedViewModel = viewModel(),
+    onClose: () -> Unit = {}
 ) {
     val repost by viewModel.repost.collectAsState()
     val originalPost by viewModel.originalPost.collectAsState()

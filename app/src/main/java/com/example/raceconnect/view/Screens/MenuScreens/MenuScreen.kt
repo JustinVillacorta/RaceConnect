@@ -33,7 +33,7 @@ import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.
 private val BrandRed = Color(0xFFC62828)
 
 @Composable
-fun ProfileScreen(
+fun MenuScreen(
     viewModel: AuthenticationViewModel,
     menuViewModel: MenuViewModel,
     profileDetailsViewModel: ProfileDetailsViewModel,
@@ -43,7 +43,7 @@ fun ProfileScreen(
     onShowFavoriteItems: () -> Unit,
     onShowNewsFeedPreferences: () -> Unit,
     onShowListedItems: () -> Unit,
-    onShowSettings: () -> Unit,
+    onShowFriendListScreen: () -> Unit,
     userPreferences: UserPreferences
 ) {
     val profileData by profileDetailsViewModel.profileData.collectAsState()
@@ -226,12 +226,18 @@ fun ProfileScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_people_24,
                             text = "Friends",
-                            onClick = onShowSettings
+                            onClick = onShowFriendListScreen
+                        )
+
+                        MenuOptionCard(
+                            iconResId = R.drawable.baseline_chat_24,
+                            text = "Conversations",
+                            onClick = onShowFriendListScreen
                         )
                     }
                 }
