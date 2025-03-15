@@ -36,6 +36,7 @@ fun ListedItemsScreen(
     navController: NavController,
     userPreferences: UserPreferences,
     onClose: () -> Unit,
+    onShowItemDetail: (Int) -> Unit, // Already matches the new logic
     onRefresh: () -> Unit = {} // Optional callback to trigger refresh
 ) {
     val viewModel: MarketplaceViewModel = viewModel(
@@ -139,9 +140,7 @@ fun ListedItemsScreen(
                                 ListedItemCard(
                                     item = item,
                                     viewModel = viewModel,
-                                    onClick = {
-                                        navController.navigate(NavRoutes.MarketplaceItemDetail.createRoute(item.id))
-                                    }
+                                    onClick = { onShowItemDetail(item.id) }
                                 )
                             }
                         }

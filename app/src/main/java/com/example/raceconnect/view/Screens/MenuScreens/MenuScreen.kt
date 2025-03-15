@@ -24,7 +24,6 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
-import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
@@ -37,13 +36,15 @@ fun MenuScreen(
     viewModel: AuthenticationViewModel,
     menuViewModel: MenuViewModel,
     profileDetailsViewModel: ProfileDetailsViewModel,
-    marketplaceViewModel: MarketplaceViewModel, // Added MarketplaceViewModel as a parameter
+    marketplaceViewModel: MarketplaceViewModel,
     onLogoutSuccess: () -> Unit,
     navController: NavController,
     onShowFavoriteItems: () -> Unit,
     onShowNewsFeedPreferences: () -> Unit,
     onShowListedItems: () -> Unit,
     onShowFriendListScreen: () -> Unit,
+    onShowProfileDetails: () -> Unit,
+    onShowUserProfile: () -> Unit, // New callback
     userPreferences: UserPreferences
 ) {
     val profileData by profileDetailsViewModel.profileData.collectAsState()
@@ -132,7 +133,7 @@ fun MenuScreen(
                         .padding(top = 16.dp)
                         .clickable {
                             if (loggedInUserId != 0) {
-                                navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId))
+                                onShowUserProfile() // Updated to use overlay callback
                             }
                         }
                 ) {
@@ -195,7 +196,7 @@ fun MenuScreen(
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_account_circle_24,
                             text = "Profile Details",
-                            onClick = { navController.navigate(NavRoutes.ProfileDetails.route) }
+                            onClick = onShowProfileDetails
                         )
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_favorite_24,
@@ -233,7 +234,6 @@ fun MenuScreen(
                             text = "Friends",
                             onClick = onShowFriendListScreen
                         )
-
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_chat_24,
                             text = "Conversations",
@@ -255,7 +255,7 @@ fun MenuScreen(
                             showLogoutDialog = false
                             viewModel.logout(
                                 menuViewModel = menuViewModel,
-                                marketplaceViewModel = marketplaceViewModel, // Pass the MarketplaceViewModel
+                                marketplaceViewModel = marketplaceViewModel,
                                 onLogoutResult = { success, error ->
                                     if (success) {
                                         profileDetailsViewModel.apply {
@@ -265,7 +265,6 @@ fun MenuScreen(
                                         onLogoutSuccess()
                                     } else {
                                         Log.e("ProfileScreen", "Logout failed: $error")
-                                        // Optionally show a snackbar or toast with the error
                                     }
                                 }
                             )

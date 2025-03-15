@@ -105,7 +105,7 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
                     number = contactNumber,
                     address = address,
                     bio = bio,
-                    favoriteCategories = TODO()
+                    favoriteCategories = emptyList()
                 )
 
                 val response = apiService.updateUser(userId, updateRequest)

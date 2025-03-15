@@ -39,7 +39,7 @@ import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 fun AddPostSection(
     navController: NavController,
     onAddPostClick: () -> Unit,
-    onShowProfileView: () -> Unit
+    onShowProfileView: () -> Unit // Updated to use overlay callback
 ) {
     Row(
         modifier = Modifier
@@ -54,7 +54,7 @@ fun AddPostSection(
             modifier = Modifier
                 .size(48.dp)
                 .padding(4.dp)
-                .clickable { onShowProfileView() }
+                .clickable { onShowProfileView() } // Updated to use overlay
         )
         Spacer(modifier = Modifier.width(8.dp))
         Box(

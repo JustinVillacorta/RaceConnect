@@ -40,6 +40,7 @@ fun SellerViewMarketplaceItemDetailScreen(
     navController: NavController,
     viewModel: MarketplaceViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     onClose: () -> Unit,
+    onEditItem: () -> Unit, // New callback
     onRefreshListedItems: () -> Unit = {} // Callback to refresh listed items
 ) {
     val userItems by viewModel.userItems.collectAsState()
@@ -206,7 +207,7 @@ fun SellerViewMarketplaceItemDetailScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         Button(
-                            onClick = { navController.navigate(NavRoutes.EditMarketplaceItem.createRoute(itemId)) },
+                            onClick = { onEditItem() },
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
                                 .weight(1f)

@@ -44,7 +44,8 @@ fun RepostScreen(
     navController: NavController,
     viewModel: NewsFeedViewModel,
     onClose: () -> Unit,
-    userPreferences: UserPreferences
+    userPreferences: UserPreferences,
+    onShowPostCardProfile: (Int) -> Unit // Add this parameter
 ) {
     val context = LocalContext.current
     var repostComment by remember { mutableStateOf("") }
@@ -138,7 +139,8 @@ fun RepostScreen(
                                 "Report User" -> viewModel.reportUser(userId, action, otherText)
                                 else -> Log.d("RepostScreen", "Unhandled action: $action")
                             }
-                        }
+                        },
+                        onShowPostCardProfile = onShowPostCardProfile // Pass the callback
                     )
                 }
             }
@@ -174,7 +176,8 @@ fun RepostCard(
     userPreferences: UserPreferences,
     onReportClick: (Int, String, String?) -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
-    onUserActionClick: (Int, String, String?) -> Unit
+    onUserActionClick: (Int, String, String?) -> Unit,
+    onShowRepostCardProfile: (Int) -> Unit // New callback
 ) {
     val user by userPreferences.user.collectAsState(initial = null)
     val context = LocalContext.current
@@ -204,12 +207,7 @@ fun RepostCard(
                             .clip(CircleShape)
                             .background(Color.Gray)
                             .clickable {
-                                val destination = if (user?.id == repost.user_id) {
-                                    NavRoutes.ProfileView.createRoute(repost.user_id)
-                                } else {
-                                    NavRoutes.ProfileView.createRoute(repost.user_id)
-                                }
-                                navController.navigate(destination)
+                                onShowRepostCardProfile(repost.user_id) // Use overlay callback
                             }
                     ) {
                         AsyncImage(
@@ -237,7 +235,7 @@ fun RepostCard(
                             )
                         }
                         Text(
-                            text = formatTime(repost.created_at), // Updated to use formatTime
+                            text = formatTime(repost.created_at),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray,
                             maxLines = 1
@@ -278,7 +276,8 @@ fun RepostCard(
                             userPreferences = userPreferences,
                             onReportClick = onReportClick,
                             onShowRepostScreen = onShowRepostScreen,
-                            onUserActionClick = onUserActionClick
+                            onUserActionClick = onUserActionClick,
+                            onShowPostCardProfile = onShowRepostCardProfile // Pass same callback for nested PostCard
                         )
                     }
                 } ?: run {
@@ -354,15 +353,15 @@ fun RepostCard(
         var otherText by remember { mutableStateOf("") }
 
         AlertDialog(
-            onDismissRequest = { showUserDialog = false },
-            title = { Text(text = "User Actions") },
+            onDismissRequest = { showReportDialog = false },
+            title = { Text(text = "Report Repost") },
             text = {
                 Column {
-                    Text(text = "Please select an action for this user:")
+                    Text(text = "Please select a reason for reporting this repost:")
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    val userOptions = listOf("Report User", "Others")
-                    userOptions.forEach { option ->
+                    val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
+                    reportOptions.forEach { option ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -387,6 +386,83 @@ fun RepostCard(
                         TextField(
                             value = otherText,
                             onValueChange = { otherText = it },
+                            label = { Text("Please specify") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Text(
+                    text = "Confirm",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (selectedOption.isNotEmpty() && (selectedOption != "Others" || otherText.isNotEmpty()))
+                        MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .clickable {
+                            if (selectedOption.isNotEmpty()) {
+                                if (selectedOption == "Others" && otherText.isEmpty()) {
+                                    Toast.makeText(context, "Please specify the reason", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    onReportClick(repost.id, selectedOption, if (selectedOption == "Others") otherText else null)
+                                    showReportDialog = false
+                                }
+                            }
+                        }
+                        .padding(8.dp)
+                )
+            },
+            dismissButton = {
+                Text(
+                    text = "Cancel",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .clickable { showReportDialog = false }
+                        .padding(8.dp)
+                )
+            }
+        )
+    }
+
+    // User Action Dialog
+    if (showUserDialog) {
+        var selectedOption by remember { mutableStateOf("") }
+        var otherText by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showUserDialog = false },
+            title = { Text("User Actions") },
+            text = {
+                Column {
+                    Text("Please select an action for this user:")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    val userOptions = listOf("Report User", "Others")
+                    userOptions.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedOption = option },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedOption == option,
+                                onClick = { selectedOption = option }
+                            )
+                            Text(
+                                text = option,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                    if (selectedOption == "Others") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextField(
+                            value = otherText,
+                            onValueChange = { otherText = it },
                             label = { Text("Please specify the action") },
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -397,23 +473,16 @@ fun RepostCard(
                 Text(
                     text = "Confirm",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (selectedOption.isNotEmpty() &&
-                        (selectedOption != "Others" || otherText.isNotEmpty()))
+                    color = if (selectedOption.isNotEmpty() && (selectedOption != "Others" || otherText.isNotEmpty()))
                         MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier
                         .clickable {
                             if (selectedOption.isNotEmpty()) {
                                 if (selectedOption == "Others" && otherText.isEmpty()) {
-                                    Toast.makeText(context,
-                                        "Please specify the action",
-                                        Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Please specify the action", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    Toast.makeText(context,
-                                        "User action performed: $selectedOption",
-                                        Toast.LENGTH_SHORT).show()
-                                    onUserActionClick(repost.user_id, selectedOption,
-                                        if (selectedOption == "Others") otherText else null)
+                                    onUserActionClick(repost.user_id, selectedOption, if (selectedOption == "Others") otherText else null)
                                     showUserDialog = false
                                 }
                             }
@@ -430,8 +499,7 @@ fun RepostCard(
                         .clickable { showUserDialog = false }
                         .padding(8.dp)
                 )
-            },
-            shape = RoundedCornerShape(12.dp)
+            }
         )
     }
 }

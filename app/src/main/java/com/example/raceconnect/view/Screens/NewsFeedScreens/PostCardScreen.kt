@@ -81,6 +81,7 @@ fun PostCard(
     onReportClick: (Int, String, String?) -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
     onUserActionClick: (Int, String, String?) -> Unit,
+    onShowPostCardProfile: (Int) -> Unit, // New callback
     context: Context = LocalContext.current
 ) {
     var isLiked by remember { mutableStateOf(post.isLiked) }
@@ -93,7 +94,6 @@ fun PostCard(
     var selectedReason by remember { mutableStateOf("") }
     var otherText by remember { mutableStateOf("") }
     val user by userPreferences.user.collectAsState(initial = null)
-    val loggedInUserId = user?.id
 
     LaunchedEffect(post.id) {
         viewModel.getPostImages(post.id)
@@ -120,13 +120,7 @@ fun PostCard(
                             .clip(CircleShape)
                             .background(Color.Gray)
                             .clickable {
-                                val destination = if (loggedInUserId != null && loggedInUserId == post.user_id) {
-                                    NavRoutes.ProfileView.createRoute(loggedInUserId)
-                                } else {
-                                    NavRoutes.ProfileView.createRoute(post.user_id)
-                                }
-                                Log.d("PostCard", "Navigating to $destination")
-                                navController.navigate(destination)
+                                onShowPostCardProfile(post.user_id) // Use overlay callback
                             }
                     ) {
                         AsyncImage(
@@ -144,7 +138,7 @@ fun PostCard(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = formatTime(post.created_at), // Updated to use relative time
+                            text = formatTime(post.created_at),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
@@ -399,7 +393,6 @@ fun PostCard(
         )
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullScreenImageViewer(

@@ -96,19 +96,30 @@ fun AppNavigation(userPreferences: UserPreferences) {
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id ?: 0
 
+    // State variables for overlays
     var showCreatePostScreen by remember { mutableStateOf(false) }
     var showCreateListing by remember { mutableStateOf(false) }
     var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
+    var showSellerItemDetailScreen by remember { mutableStateOf<Int?>(null) }
+    var showEditItemScreen by remember { mutableStateOf<Int?>(null) } // New overlay for edit screen
     var showChatSellerScreen by remember { mutableStateOf<Int?>(null) }
     var showFullScreenImage by remember { mutableStateOf<Pair<String, Int>?>(null) }
     var showRepostScreen by remember { mutableStateOf<NewsFeedDataClassItem?>(null) }
     var showFavoriteItems by remember { mutableStateOf(false) }
     var showNewsFeedPreferences by remember { mutableStateOf(false) }
     var showFavoriteItemDetailScreen by remember { mutableStateOf<Int?>(null) }
+    var showProfileDetails by remember { mutableStateOf(false) }
+    var showListedItems by remember { mutableStateOf(false) }
+    var showFriendsList by remember { mutableStateOf(false) }
+    var showUserProfile by remember { mutableStateOf(false) }
+    var showPostCardProfile by remember { mutableStateOf<Int?>(null) }
+    var showRepostCardProfile by remember { mutableStateOf<Int?>(null) }
 
+    // Shared ViewModels scoped to the navigation graph
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
     val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences))
     val profileDetailsViewModel: ProfileDetailsViewModel = viewModel(factory = ProfileDetailsViewModelFactory(userPreferences))
+    val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
 
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -134,7 +145,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     startDestination = "authenticated_graph",
                     modifier = Modifier.padding(paddingValues)
                 ) {
-                    // Nested graph for authenticated routes
                     navigation(
                         startDestination = NavRoutes.NewsFeed.route,
                         route = "authenticated_graph"
@@ -145,8 +155,10 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 userPreferences = userPreferences,
                                 onShowCreatePost = { showCreatePostScreen = true },
                                 onShowFullScreenImage = { imageUrl, postId -> showFullScreenImage = Pair(imageUrl, postId) },
-                                onShowProfileView = { navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) },
-                                onShowRepostScreen = { post -> showRepostScreen = post }
+                                onShowProfileView = { showUserProfile = true },
+                                onShowRepostScreen = { post -> showRepostScreen = post },
+                                onShowPostCardProfile = { userId -> showPostCardProfile = userId },
+                                onShowRepostCardProfile = { userId -> showRepostCardProfile = userId }
                             )
                         }
                         composable(NavRoutes.Comments.route) { backStackEntry ->
@@ -155,29 +167,32 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 postId = postId,
                                 navController = navController,
                                 userPreferences = userPreferences,
-                                onShowProfileView = { navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) }
+                                onShowProfileView = { showUserProfile = true }
                             )
                         }
                         composable(NavRoutes.Profile.route) {
                             val authViewModel: AuthenticationViewModel = viewModel()
-                            // Scope MarketplaceViewModel to this NavGraph
-                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             MenuScreen(
                                 viewModel = authViewModel,
                                 menuViewModel = menuViewModel,
                                 profileDetailsViewModel = profileDetailsViewModel,
                                 marketplaceViewModel = marketplaceViewModel,
-                                    onLogoutSuccess = {
+                                onLogoutSuccess = {
                                     navController.navigate(NavRoutes.Login.route) {
                                         popUpTo(NavRoutes.Login.route) { inclusive = true }
                                     }
                                 },
                                 navController = navController,
-                                onShowFavoriteItems = { showFavoriteItems = true },
+                                onShowFavoriteItems = {
+                                    Log.d("AppNavigation", "Showing FavoriteItemsScreen")
+                                    showFavoriteItems = true
+                                },
                                 onShowNewsFeedPreferences = { showNewsFeedPreferences = true },
-                                onShowListedItems = { navController.navigate(NavRoutes.ListedItems.route) },
-                                onShowFriendListScreen = { navController.navigate(NavRoutes.FriendListScreen.route) },
-                                userPreferences = userPreferences,
+                                onShowListedItems = { showListedItems = true },
+                                onShowFriendListScreen = { showFriendsList = true },
+                                onShowProfileDetails = { showProfileDetails = true },
+                                onShowUserProfile = { showUserProfile = true },
+                                userPreferences = userPreferences
                             )
                         }
                         composable(
@@ -191,31 +206,23 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             )
                         ) { backStackEntry ->
                             val userId = backStackEntry.arguments?.getInt("userId") ?: 0
-                            if (userId == loggedInUserId && userId != 0) {
-                                UserProfileScreen(
-                                    navController = navController,
-                                    context = context,
-                                    onClose = { navController.popBackStack() }
-                                )
-                            } else {
+                            if (userId != loggedInUserId && userId != 0) {
                                 PostUserProfileViewScreen(
                                     navController = navController,
                                     context = context,
                                     userId = userId,
                                     onClose = { navController.popBackStack() }
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Invalid user ID or handled via overlay", color = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
-                        composable(NavRoutes.ProfileDetails.route) {
-                            MyProfileScreen(
-                                onClose = { navController.popBackStack() },
-                                profileDetailsViewModel = profileDetailsViewModel,
-                                userPreferences = userPreferences
-                            )
-                        }
                         composable(NavRoutes.Marketplace.route) {
-                            // Scope MarketplaceViewModel to this NavGraph
-                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             MarketplaceScreen(
                                 userPreferences = userPreferences,
                                 navController = navController,
@@ -303,13 +310,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 onClose = { navController.popBackStack() }
                             )
                         }
-                        composable(NavRoutes.FriendListScreen.route) {
-                            FriendsListScreen(
-                                navController = navController,
-                                onClose = { navController.popBackStack() },
-                                userPreferences = userPreferences
-                            )
-                        }
                         composable(
                             route = NavRoutes.MarketplaceItemDetail.route,
                             arguments = listOf(
@@ -320,7 +320,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 }
                             )
                         ) { backStackEntry ->
-                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
                             val items by marketplaceViewModel.marketplaceItems.collectAsState()
                             val userItems by marketplaceViewModel.userItems.collectAsState()
@@ -333,8 +332,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     Log.d("AppNavigation", "Fetched item: $item")
                                 }
                             }
-
-                            var refreshListedItems by remember { mutableStateOf(false) }
 
                             when {
                                 itemId == -1 -> {
@@ -349,43 +346,12 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     }
                                 }
                                 item?.seller_id == loggedInUserId && loggedInUserId != 0 -> {
-                                    SellerViewMarketplaceItemDetailScreen(
-                                        itemId = itemId,
-                                        navController = navController,
-                                        viewModel = marketplaceViewModel,
-                                        onClose = { navController.popBackStack() },
-                                        onRefreshListedItems = { refreshListedItems = true }
-                                    )
+                                    showSellerItemDetailScreen = itemId
+                                    Box {}
                                 }
                                 else -> {
-                                    MarketplaceItemDetailScreen(
-                                        itemId = itemId,
-                                        navController = navController,
-                                        viewModel = marketplaceViewModel,
-                                        onClose = { navController.popBackStack() },
-                                        onClickChat = { navController.navigate(NavRoutes.ChatSeller.createRoute(it)) },
-                                        onLikeError = { errorMessage ->
-                                            coroutineScope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    message = errorMessage,
-                                                    actionLabel = "Retry",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-
-                            LaunchedEffect(refreshListedItems) {
-                                if (refreshListedItems) {
-                                    navController.navigate(NavRoutes.ListedItems.route) {
-                                        popUpTo(NavRoutes.ListedItems.route) {
-                                            inclusive = false
-                                        }
-                                        launchSingleTop = true
-                                    }
-                                    refreshListedItems = false
+                                    showItemDetailScreen = itemId
+                                    Box {}
                                 }
                             }
                         }
@@ -399,14 +365,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 }
                             )
                         ) { backStackEntry ->
-                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
-                            EditMarketplaceItemScreen(
-                                itemId = itemId,
-                                navController = navController,
-                                viewModel = marketplaceViewModel,
-                                onClose = { navController.popBackStack() }
-                            )
+                            showEditItemScreen = itemId // Trigger overlay instead of rendering here
+                            Box {} // Empty box to avoid rendering in NavHost
                         }
                         composable(NavRoutes.ChatSeller.route) { backStackEntry ->
                             val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
@@ -416,16 +377,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 onClose = { navController.popBackStack() }
                             )
                         }
-                        composable(NavRoutes.ListedItems.route) {
-                            ListedItemsScreen(
-                                navController = navController,
-                                userPreferences = userPreferences,
-                                onClose = { navController.popBackStack() },
-                                onRefresh = { /* No-op here, handled by LaunchedEffect in ListedItemsScreen */ }
-                            )
-                        }
                         composable(NavRoutes.FavoriteItems.route) {
-                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             FavoriteItemsScreen(
                                 navController = navController,
                                 userPreferences = userPreferences,
@@ -438,10 +390,112 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
+            // Overlays with tuned animations
+            AnimatedVisibility(
+                visible = showNewsFeedPreferences,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+            ) {
+                NewsFeedPreferencesScreen(
+                    navController = navController,
+                    onClose = { showNewsFeedPreferences = false },
+                    factory = NewsFeedPreferenceViewModelFactory(userPreferences)
+                )
+            }
+
+            AnimatedVisibility(
+                visible = showProfileDetails,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+            ) {
+                MyProfileScreen(
+                    onClose = { showProfileDetails = false },
+                    profileDetailsViewModel = profileDetailsViewModel,
+                    userPreferences = userPreferences
+                )
+            }
+
+            AnimatedVisibility(
+                visible = showListedItems,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+            ) {
+                ListedItemsScreen(
+                    navController = navController,
+                    userPreferences = userPreferences,
+                    onClose = { showListedItems = false },
+                    onRefresh = { coroutineScope.launch { marketplaceViewModel.fetchUserListedItems() } },
+                    onShowItemDetail = { itemId ->
+                        val item = marketplaceViewModel.userItems.value.find { it.id == itemId }
+                        if (item?.seller_id == loggedInUserId) {
+                            showSellerItemDetailScreen = itemId
+                        } else {
+                            showItemDetailScreen = itemId
+                        }
+                    }
+                )
+            }
+
+            AnimatedVisibility(
+                visible = showFriendsList,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+            ) {
+                FriendsListScreen(
+                    navController = navController,
+                    userPreferences = userPreferences,
+                    onClose = { showFriendsList = false }
+                )
+            }
+
+            AnimatedVisibility(
+                visible = showUserProfile,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+            ) {
+                UserProfileScreen(
+                    navController = navController,
+                    context = context,
+                    onClose = { showUserProfile = false }
+                )
+            }
+
+            AnimatedVisibility(
+                visible = showFavoriteItems,
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+            ) {
+                FavoriteItemsScreen(
+                    navController = navController,
+                    userPreferences = userPreferences,
+                    onClose = {
+                        Log.d("FavoriteItemsScreen", "Closing FavoriteItemsScreen")
+                        showFavoriteItems = false
+                    },
+                    onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId },
+                    viewModel = marketplaceViewModel
+                )
+            }
+
+            showPostCardProfile?.let { userId ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+                ) {
+                    PostUserProfileViewScreen(
+                        navController = navController,
+                        context = context,
+                        userId = userId,
+                        onClose = { showPostCardProfile = null }
+                    )
+                }
+            }
+
             AnimatedVisibility(
                 visible = showCreatePostScreen,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
             ) {
                 CreatePostScreen(
                     viewModel = newsFeedViewModel,
@@ -451,10 +505,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
 
             AnimatedVisibility(
                 visible = showCreateListing,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
             ) {
-                val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                 CreateMarketplaceItemScreen(
                     userPreferences = userPreferences,
                     onClose = { showCreateListing = false },
@@ -465,10 +518,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
             showItemDetailScreen?.let { itemId ->
                 AnimatedVisibility(
                     visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
                 ) {
-                    val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                     MarketplaceItemDetailScreen(
                         itemId = itemId,
                         navController = navController,
@@ -488,11 +540,46 @@ fun AppNavigation(userPreferences: UserPreferences) {
                 }
             }
 
+            showSellerItemDetailScreen?.let { itemId ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+                ) {
+                    SellerViewMarketplaceItemDetailScreen(
+                        itemId = itemId,
+                        navController = navController,
+                        viewModel = marketplaceViewModel,
+                        onClose = { showSellerItemDetailScreen = null },
+                        onRefreshListedItems = {
+                            showListedItems = true
+                            showSellerItemDetailScreen = null
+                        },
+                        onEditItem = { showEditItemScreen = itemId } // Trigger edit overlay
+                    )
+                }
+            }
+
+            showEditItemScreen?.let { itemId ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+                ) {
+                    EditMarketplaceItemScreen(
+                        itemId = itemId,
+                        navController = navController,
+                        viewModel = marketplaceViewModel,
+                        onClose = { showEditItemScreen = null }
+                    )
+                }
+            }
+
             showChatSellerScreen?.let { itemId ->
                 AnimatedVisibility(
                     visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
                 ) {
                     ChatSellerScreen(
                         itemId = itemId,
@@ -505,8 +592,8 @@ fun AppNavigation(userPreferences: UserPreferences) {
             showFullScreenImage?.let { (imageUrl, postId) ->
                 AnimatedVisibility(
                     visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
                 ) {
                     FullScreenImageViewer(
                         imageUrl = imageUrl,
@@ -523,41 +610,41 @@ fun AppNavigation(userPreferences: UserPreferences) {
             showRepostScreen?.let { post ->
                 AnimatedVisibility(
                     visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
                 ) {
                     RepostScreen(
                         post = post,
                         navController = navController,
                         viewModel = newsFeedViewModel,
                         onClose = { showRepostScreen = null },
-                        userPreferences = userPreferences
+                        userPreferences = userPreferences,
+                        onShowPostCardProfile = { userId -> showPostCardProfile = userId }
                     )
                 }
             }
 
-            AnimatedVisibility(
-                visible = showFavoriteItems,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-            ) {
-                val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
-                FavoriteItemsScreen(
-                    navController = navController,
-                    userPreferences = userPreferences,
-                    onClose = { showFavoriteItems = false },
-                    onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId },
-                    viewModel = marketplaceViewModel
-                )
+            showRepostCardProfile?.let { userId ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+                ) {
+                    PostUserProfileViewScreen(
+                        navController = navController,
+                        context = context,
+                        userId = userId,
+                        onClose = { showRepostCardProfile = null }
+                    )
+                }
             }
 
             showFavoriteItemDetailScreen?.let { itemId ->
                 AnimatedVisibility(
                     visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
                 ) {
-                    val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                     MarketplaceItemDetailScreen(
                         itemId = itemId,
                         navController = navController,
@@ -575,18 +662,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         }
                     )
                 }
-            }
-
-            AnimatedVisibility(
-                visible = showNewsFeedPreferences,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-            ) {
-                NewsFeedPreferencesScreen(
-                    navController = navController,
-                    onClose = { showNewsFeedPreferences = false },
-                    factory = NewsFeedPreferenceViewModelFactory(userPreferences)
-                )
             }
         }
     }

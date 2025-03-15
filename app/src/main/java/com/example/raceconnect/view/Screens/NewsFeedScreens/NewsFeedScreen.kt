@@ -55,7 +55,9 @@ fun NewsFeedScreen(
     onShowCreatePost: () -> Unit,
     onShowFullScreenImage: (String, Int) -> Unit,
     onShowProfileView: () -> Unit,
-    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
+    onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
+    onShowPostCardProfile: (Int) -> Unit, // New callback for PostCard
+    onShowRepostCardProfile: (Int) -> Unit // New callback for RepostCard
 ) {
     val authViewModel: AuthenticationViewModel = viewModel()
     val context = LocalContext.current
@@ -72,13 +74,11 @@ fun NewsFeedScreen(
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    // Log received items for debugging
     LaunchedEffect(posts.itemCount) {
         Log.d("NewsFeedScreen", "Received ${posts.itemCount} items in posts: ${posts.itemSnapshotList.items.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}, Content=${it.content}" }}")
         Log.d("NewsFeedScreen", "Full item list: ${posts.itemSnapshotList.items}")
     }
 
-    // Handle ban navigation
     LaunchedEffect(errorMessage) {
         if (errorMessage?.contains("banned", ignoreCase = true) == true) {
             navController.navigate("login") {
@@ -89,15 +89,14 @@ fun NewsFeedScreen(
         }
     }
 
-    // Single refresh trigger
     LaunchedEffect(Unit, newPostTriggerState) {
         if (!viewModel.isInitialRefreshDone || newPostTriggerState) {
             isRefreshing = true
-            NewsFeedPagingSourceAllPosts.clearCaches() // Clear caches to fetch fresh data
+            NewsFeedPagingSourceAllPosts.clearCaches()
             Log.d("NewsFeedScreen", "Caches cleared before refresh")
             viewModel.refreshPosts()
             posts.refresh()
-            delay(100) // Small debounce to ensure refresh stabilizes
+            delay(100)
             if (newPostTriggerState) viewModel.resetNewPostTrigger()
             viewModel.isInitialRefreshDone = true
             Log.d("NewsFeedScreen", "Refresh triggered: Initial=${!viewModel.isInitialRefreshDone}, NewPost=$newPostTriggerState")
@@ -135,7 +134,7 @@ fun NewsFeedScreen(
             state = rememberSwipeRefreshState(isRefreshing),
             onRefresh = {
                 isRefreshing = true
-                NewsFeedPagingSourceAllPosts.clearCaches() // Clear caches to fetch fresh data
+                NewsFeedPagingSourceAllPosts.clearCaches()
                 Log.d("NewsFeedScreen", "Caches cleared before swipe refresh")
                 viewModel.refreshPosts()
                 posts.refresh()
@@ -158,9 +157,8 @@ fun NewsFeedScreen(
                 items(posts.itemCount) { index ->
                     val post = posts[index]
                     post?.let { postItem ->
-                        // Fetch likes only once per post lifecycle
                         LaunchedEffect(postItem.id) {
-                            if (postLikes[postItem.id] == null) { // Avoid redundant fetches
+                            if (postLikes[postItem.id] == null) {
                                 viewModel.fetchPostLikes(postItem.id)
                                 Log.d("NewsFeedScreen", "Fetching likes for post ID: ${postItem.id}")
                             }
@@ -171,7 +169,6 @@ fun NewsFeedScreen(
                         Log.d("NewsFeedScreen", "Rendering Post ID: ${postItem.id}, IsRepost: ${postItem.isRepost}, OriginalPostId: ${postItem.original_post_id}, CreatedAt: ${postItem.created_at}, Content: ${postItem.content}")
 
                         if (postItem.isRepost == true) {
-                            // Find the original post in the list
                             val originalPost = posts.itemSnapshotList.items.find { it.id == postItem.original_post_id }
                             if (originalPost == null) {
                                 Log.w("NewsFeedScreen", "Original post ID ${postItem.original_post_id} not found for repost ID ${postItem.id}")
@@ -215,7 +212,8 @@ fun NewsFeedScreen(
                                 onShowRepostScreen = onShowRepostScreen,
                                 onUserActionClick = { userId, action, otherText ->
                                     if (action == "Report User") viewModel.reportUser(userId, action, otherText)
-                                }
+                                },
+                                onShowRepostCardProfile = onShowRepostCardProfile // Pass new callback
                             )
                         } else {
                             Log.d("NewsFeedScreen", "Rendering post ID: ${postItem.id} (original), Content: ${postItem.content}")
@@ -239,7 +237,8 @@ fun NewsFeedScreen(
                                 onShowRepostScreen = onShowRepostScreen,
                                 onUserActionClick = { userId, action, otherText ->
                                     if (action == "Report User") viewModel.reportUser(userId, action, otherText)
-                                }
+                                },
+                                onShowPostCardProfile = onShowPostCardProfile // Pass new callback
                             )
                         }
                     }
@@ -251,7 +250,7 @@ fun NewsFeedScreen(
                             Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) {
                                 CircularProgressIndicator()
                             }
-                            isRefreshing = false // Reset refreshing state
+                            isRefreshing = false
                             Log.d("NewsFeedScreen", "Refresh state: Loading")
                         }
                         is LoadState.Error -> item {
