@@ -23,6 +23,9 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _acceptedFriends = MutableStateFlow<List<Friend>>(emptyList())
+    val acceptedFriends: StateFlow<List<Friend>> = _acceptedFriends.asStateFlow()
+
     private val TAG = "FriendsViewModel"
 
     init {
@@ -102,6 +105,62 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
         }
     }
 
+    fun fetchAcceptedFriends() {
+        Log.d(TAG, "fetchAcceptedFriends: Starting to fetch accepted friends list")
+        viewModelScope.launch {
+            _isLoading.value = true
+            Log.i(TAG, "fetchAcceptedFriends: Set isLoading to true")
+            try {
+                val userId = userPreferences.user.first()?.id?.toString() ?: run {
+                    Log.e(TAG, "fetchAcceptedFriends: userId is null")
+                    return@launch
+                }
+                Log.d(TAG, "fetchAcceptedFriends: Logged-in userId: $userId")
+                val response = RetrofitInstance.api.getAcceptedFriends(userId = userId) // Updated endpoint
+                Log.d(TAG, "fetchAcceptedFriends: API call executed, response code: ${response.code()}")
+                if (response.isSuccessful) {
+                    response.body()?.let { rawFriends ->
+                        Log.i(TAG, "fetchAcceptedFriends: Raw friends response: $rawFriends")
+                        val acceptedFriendsList = rawFriends.mapNotNull { friend ->
+                            val id = friend["friend_id"]?.toString()?.replace(".0", "") ?: run {
+                                Log.e(TAG, "fetchAcceptedFriends: friend_id is null for friend: $friend")
+                                return@mapNotNull null
+                            }
+                            val name = friend["username"]?.toString() ?: run {
+                                Log.e(TAG, "fetchAcceptedFriends: username is null for friend: $friend")
+                                return@mapNotNull null
+                            }
+                            val status = friend["status"]?.toString() ?: run {
+                                Log.e(TAG, "fetchAcceptedFriends: status is null for friend: $friend")
+                                return@mapNotNull null
+                            }
+                            val profileImageUrl = friend["profile_picture"]?.toString()
+
+                            // Since the endpoint only returns "Accepted" friends, we can directly map
+                            Friend(id, name, status, profileImageUrl, null)
+                        }.distinctBy { it.id }.sortedBy { it.name }
+
+                        _acceptedFriends.value = acceptedFriendsList
+                        Log.i(TAG, "fetchAcceptedFriends: Updated accepted friends list with ${acceptedFriendsList.size} items: $acceptedFriendsList")
+                    } ?: run {
+                        Log.e(TAG, "fetchAcceptedFriends: Response body is null")
+                        _acceptedFriends.value = emptyList()
+                    }
+                } else {
+                    Log.e(TAG, "fetchAcceptedFriends: Failed with code ${response.code()} - ${response.message()}")
+                }
+            } catch (e: IOException) {
+                Log.e(TAG, "fetchAcceptedFriends: Network error: ${e.message}", e)
+            } catch (e: HttpException) {
+                Log.e(TAG, "fetchAcceptedFriends: HTTP error: ${e.code()} - ${e.message}", e)
+            } finally {
+                _isLoading.value = false
+                Log.i(TAG, "fetchAcceptedFriends: Set isLoading to false")
+            }
+            Log.d(TAG, "fetchAcceptedFriends: Completed")
+        }
+    }
+
     fun confirmFriendRequest(friendId: String) {
         viewModelScope.launch {
             try {
@@ -154,7 +213,11 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                 val userId = userPreferences.user.first()?.id?.toString() ?: return@launch
                 val response = RetrofitInstance.api.removeFriend(userId, friendId)
                 if (response.isSuccessful) {
-                    fetchFriends()
+                    Log.i(TAG, "removeFriend: Successfully removed friendId: $friendId")
+                    fetchFriends()           // Refresh full list for "Add Friends" tab
+                    fetchAcceptedFriends()   // Refresh accepted friends list for "Friends" tab
+                } else {
+                    Log.e(TAG, "removeFriend: Failed with code ${response.code()} - ${response.message()}")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "removeFriend: Error: ${e.message}", e)

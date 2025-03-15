@@ -32,6 +32,7 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Friend
 import com.example.raceconnect.viewmodel.FriendsViewModel
 import com.example.raceconnect.viewmodel.FriendsViewModelFactory
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,11 +43,19 @@ fun FriendsListScreen(
 ) {
     val viewModel: FriendsViewModel = viewModel(factory = FriendsViewModelFactory(userPreferences))
     val friends by viewModel.friends.collectAsState()
+    val acceptedFriends by viewModel.acceptedFriends.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+
+    LaunchedEffect(Unit) {
+        Log.d("FriendsListScreen", "Forcing refresh of friends data")
+        viewModel.fetchFriends()
+        viewModel.fetchAcceptedFriends()
+    }
 
     FriendsListScreenContent(
         onBackClick = onClose,
         friends = friends,
+        acceptedFriends = acceptedFriends,
         isLoading = isLoading,
         onConfirm = viewModel::confirmFriendRequest,
         onCancel = viewModel::cancelFriendRequest,
@@ -60,6 +69,7 @@ fun FriendsListScreen(
 fun FriendsListScreenContent(
     onBackClick: () -> Unit,
     friends: List<Friend>,
+    acceptedFriends: List<Friend>,
     isLoading: Boolean,
     onConfirm: (String) -> Unit,
     onCancel: (String) -> Unit,
@@ -131,7 +141,7 @@ fun FriendsListScreenContent(
 
             when (selectedTabIndex.intValue) {
                 0 -> {
-                    val acceptedFriends = friends.filter { it.status == "Accepted" }
+                    Log.d("FriendsListScreen", "Friends tab - acceptedFriends: $acceptedFriends, isLoading: $isLoading")
                     when {
                         isLoading -> LoadingState()
                         acceptedFriends.isEmpty() -> EmptyState("No friends yet")
@@ -143,9 +153,10 @@ fun FriendsListScreenContent(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(acceptedFriends) { friend ->
+                                    Log.d("FriendsListScreen", "Rendering friend: ${friend.name}")
                                     FriendItem(
                                         friend = friend,
-                                        onRemove = { onRemove(friend.id) }
+                                        onRemove = onRemove
                                     )
                                 }
                             }
@@ -153,8 +164,9 @@ fun FriendsListScreenContent(
                     }
                 }
                 1 -> {
-                    val nonFriends = friends.filter { it.status != "Accepted" }
-                    val filteredNonFriends = nonFriends.filter {
+                    Log.d("FriendsListScreen", "Add Friends tab - friends: $friends, isLoading: $isLoading")
+                    val nonAcceptedFriends = friends.filter { it.status != "Accepted" }
+                    val filteredNonFriends = nonAcceptedFriends.filter {
                         it.name.contains(searchQuery.value, ignoreCase = true)
                     }
                     Column(
@@ -174,12 +186,13 @@ fun FriendsListScreenContent(
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     items(filteredNonFriends) { friend ->
+                                        Log.d("FriendsListScreen", "Rendering non-accepted friend: ${friend.name}")
                                         FriendItem(
                                             friend = friend,
-                                            onConfirm = if (friend.status == "Pending") { { onConfirm(friend.id) } } else null,
-                                            onCancel = if (friend.status == "Pending") { { onCancel(friend.id) } } else null,
-                                            onAdd = if (friend.status == "NonFriends") { { onAdd(friend.id) } } else null,
-                                            onRemove = if (friend.status == "PendingSent") { { onRemove(friend.id) } } else null
+                                            onConfirm = onConfirm,
+                                            onCancel = onCancel,
+                                            onAdd = onAdd,
+                                            onRemove = onRemove
                                         )
                                     }
                                 }
@@ -250,12 +263,12 @@ private fun EmptyState(message: String) {
 @Composable
 fun FriendItem(
     friend: Friend,
-    onConfirm: (() -> Unit)? = null,
-    onCancel: (() -> Unit)? = null,
-    onAdd: (() -> Unit)? = null,
-    onRemove: (() -> Unit)? = null
+    onConfirm: ((String) -> Unit)? = null,
+    onCancel: ((String) -> Unit)? = null,
+    onAdd: ((String) -> Unit)? = null,
+    onRemove: ((String) -> Unit)? = null
 ) {
-    var showMenu by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
@@ -295,7 +308,7 @@ fun FriendItem(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
-                        onClick = { onConfirm?.invoke() },
+                        onClick = { onConfirm?.invoke(friend.id) },
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F), contentColor = Color.White),
                         modifier = Modifier
@@ -305,7 +318,7 @@ fun FriendItem(
                         Text("Confirm", fontSize = 14.sp)
                     }
                     Button(
-                        onClick = { onCancel?.invoke() },
+                        onClick = { onCancel?.invoke(friend.id) },
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0), contentColor = Color.Black),
                         modifier = Modifier
@@ -318,7 +331,7 @@ fun FriendItem(
             }
             "PendingSent" -> {
                 Button(
-                    onClick = { onRemove?.invoke() },
+                    onClick = { onRemove?.invoke(friend.id) },
                     shape = RoundedCornerShape(6.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0), contentColor = Color.Black),
                     modifier = Modifier.height(36.dp)
@@ -328,7 +341,7 @@ fun FriendItem(
             }
             "NonFriends" -> {
                 Button(
-                    onClick = { onAdd?.invoke() },
+                    onClick = { onAdd?.invoke(friend.id) },
                     shape = RoundedCornerShape(6.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C0C13), contentColor = Color.White),
                     modifier = Modifier.height(36.dp)
@@ -337,30 +350,42 @@ fun FriendItem(
                 }
             }
             "Accepted" -> {
-                Box {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More options",
-                        tint = Color.Gray,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clickable { showMenu = true }
-                    )
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Unfriend", color = Color.Black, fontSize = 14.sp) },
-                            onClick = {
-                                onRemove?.invoke()
-                                showMenu = false
-                            }
-                        )
-                    }
+                Button(
+                    onClick = { showDialog = true },
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0), contentColor = Color.Black),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("Unfriend", fontSize = 14.sp)
                 }
             }
         }
+    }
+
+    // Alert Dialog for unfriend confirmation
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Confirm Unfriend") },
+            text = { Text("Are you sure you want to unfriend ${friend.name}? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onRemove?.let { remove ->
+                            remove(friend.id)
+                            Log.d("FriendItem", "Unfriend action triggered for friendId: ${friend.id}")
+                        }
+                        showDialog = false
+                    }
+                ) {
+                    Text("Yes", color = Color(0xFFD32F2F))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("No", color = Color.Gray)
+                }
+            }
+        )
     }
 }

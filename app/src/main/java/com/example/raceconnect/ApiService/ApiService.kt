@@ -186,6 +186,9 @@ interface ApiService {
     @GET("friends/list")
     suspend fun getFriendsList(@Query("user_id") userId: String): Response<List<Map<String, Any?>>>
 
+    @GET("friends/accepted")
+    suspend fun getAcceptedFriends(@Query("user_id") userId: String): Response<List<Map<String, Any>>>
+
     @GET("friends/pending")
     suspend fun getPendingRequests(
         @Query("action") action: String = "pending",
