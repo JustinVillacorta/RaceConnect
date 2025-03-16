@@ -60,6 +60,9 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
     private val _messageSentStatus = MutableStateFlow<String?>(null)
     val messageSentStatus: StateFlow<String?> = _messageSentStatus.asStateFlow()
 
+    private val _lastConversationId = MutableStateFlow<Int?>(null)
+    val lastConversationId: StateFlow<Int?> = _lastConversationId.asStateFlow()
+
     init {
         viewModelScope.launch {
             userPreferences.user.collect { user ->
@@ -612,41 +615,25 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         mediaUrl: String? = null
     ) {
         viewModelScope.launch {
-            val senderId = _currentUserId.value ?: run {
-                Log.e("MarketplaceViewModel", "No user logged in, cannot send message")
-                _errorMessage.value = "Cannot send message: No user logged in"
-                return@launch
-            }
-
+            val senderId = _currentUserId.value ?: return@launch
             try {
-                Log.d("MarketplaceViewModel", "Sending message from $senderId to seller $sellerId about product $productId")
                 val request = SendMessageRequest(
                     buyer_id = buyerId,
                     seller_id = sellerId,
                     product_id = productId,
-                    sender_id = buyerId,
+                    sender_id = senderId,
                     message = message,
                     message_type = messageType,
                     media_url = mediaUrl
                 )
-                val response = RetrofitInstance.api.createMessage(request) // Assuming endpoint is /send_message
-                if (response.isSuccessful) {
-                    val body = response.body()
-                    if (body?.success == true) {
-                        _messageSentStatus.value = "Message sent successfully"
-                        Log.d("MarketplaceViewModel", "Message sent successfully: Conversation ID ${body.conversation_id}")
-                    } else {
-                        val errorMsg = body?.error ?: "Unknown error"
-                        _errorMessage.value = "Failed to send message: $errorMsg"
-                        Log.e("MarketplaceViewModel", "Failed to send message: $errorMsg")
-                    }
+                val response = RetrofitInstance.api.createMessage(request)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    _messageSentStatus.value = "Message sent successfully"
+                    _lastConversationId.value = response.body()?.conversation_id
                 } else {
-                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                    _errorMessage.value = "Failed to send message: $errorBody"
-                    Log.e("MarketplaceViewModel", "API error: $errorBody")
+                    _errorMessage.value = "Failed to send message: ${response.body()?.error}"
                 }
             } catch (e: Exception) {
-                Log.e("MarketplaceViewModel", "Error sending message", e)
                 _errorMessage.value = "Error sending message: ${e.message}"
             }
         }

@@ -280,6 +280,6 @@ interface ApiService {
         @Path("id") repostId: Int
     ): Response<SimpleResponse>
 
-    @POST("chat/action?SendMessage")
+    @POST("chat")
     suspend fun createMessage(@Body request: SendMessageRequest): Response<SendMessageResponse>
 }

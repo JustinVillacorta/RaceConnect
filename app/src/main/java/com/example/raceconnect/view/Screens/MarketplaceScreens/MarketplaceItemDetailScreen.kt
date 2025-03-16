@@ -286,9 +286,15 @@ fun MarketplaceItemDetailScreen(
                     actionLabel = "Dismiss",
                     duration = SnackbarDuration.Short
                 )
-                // Notify AppNavigation to close this screen before navigating
+                val conversationId = viewModel.lastConversationId.value ?: 0
                 onNavigateToChat()
-                navController.navigate(NavRoutes.ChatSeller.createRoute(itemId))
+                navController.navigate(
+                    NavRoutes.ChatSeller.createRoute(
+                        itemId = itemId,
+                        conversationId = conversationId,
+                        sellerId = item.seller_id
+                    )
+                )
                 viewModel.clearMessageSentStatus()
             }
         }

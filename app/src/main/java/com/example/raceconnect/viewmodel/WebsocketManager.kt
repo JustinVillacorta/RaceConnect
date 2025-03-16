@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 
 object WebSocketManager {
     // Replace with your server IP and port from .env (e.g., ws://your-server-ip:8080)
-    private const val BASE_URL = "ws://localhost:8080"
+    private const val BASE_URL = "ws://192.168.5.157:8080" // Replace with your server's IP
     private const val TAG = "WebSocketManager"
 
     private val client = OkHttpClient.Builder()
@@ -60,9 +60,9 @@ object WebSocketManager {
                             val messageList = messages.map { map ->
                                 MessageData(
                                     message_id = (map["id"] as? Double)?.toInt(),
-                                    conversation_id = map["conversation_id"] as? String,
-                                    sender_id = map["sender_id"] as? String,
-                                    receiver_id = map["receiver_id"] as? String,
+                                    conversation_id = (map["conversation_id"] as? Double)?.toInt(),
+                                    sender_id = (map["sender_id"] as? Double)?.toInt(),
+                                    receiver_id = (map["receiver_id"] as? Double)?.toInt(),
                                     message_type = map["message_type"] as? String,
                                     message = map["message"] as? String,
                                     media_url = map["media_url"] as? String,
@@ -73,11 +73,9 @@ object WebSocketManager {
                             _incomingMessages.update { messageList }
                         }
                         "message_status" -> {
-                            // Handle read status updates if needed
                             Log.d(TAG, "Message status update: $text")
                         }
                         "typing" -> {
-                            // Handle typing indicator if needed
                             Log.d(TAG, "Typing indicator: $text")
                         }
                         "error" -> {

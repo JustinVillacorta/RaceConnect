@@ -22,9 +22,9 @@ data class Message(
 
 data class MessageData(
     val message_id: Int?,
-    val conversation_id: String?,
-    val sender_id: String?,
-    val receiver_id: String?,
+    val conversation_id: Int?,
+    val sender_id: Int?,
+    val receiver_id: Int?,
     val message_type: String?,
     val message: String?,
     val media_url: String?,

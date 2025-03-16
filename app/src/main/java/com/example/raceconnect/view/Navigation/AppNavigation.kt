@@ -1,5 +1,6 @@
 package com.example.raceconnect.navigation
 
+import ChatSellerScreen
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -49,7 +50,6 @@ import com.example.raceconnect.view.Navigation.AuthenticationNavHost
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.NotificationsScreen
 import com.example.raceconnect.view.PostDetailScreen
-import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.EditMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
@@ -407,15 +407,24 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         }
                         composable(
                             route = NavRoutes.ChatSeller.route,
-                            arguments = listOf(navArgument("itemId") { type = NavType.IntType }),
-                            enterTransition = { slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)) },
-                            exitTransition = { slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300)) }
+                            arguments = listOf(
+                                navArgument("itemId") { type = NavType.IntType },
+                                navArgument("conversationId") { type = NavType.IntType },
+                                navArgument("sellerId") { type = NavType.IntType }
+                            )
                         ) { backStackEntry ->
-                            val itemId = backStackEntry.arguments?.getString("itemId")?.toIntOrNull() ?: -1
+                            val itemId = backStackEntry.arguments?.getInt("itemId") ?: 0
+                            val conversationId = backStackEntry.arguments?.getInt("conversationId") ?: 0
+                            val sellerId = backStackEntry.arguments?.getInt("sellerId") ?: 0
                             ChatSellerScreen(
                                 itemId = itemId,
+                                conversationId = conversationId,
+                                sellerId = sellerId,
                                 navController = navController,
-                                onClose = { navController.popBackStack() }
+                                userPreferences = userPreferences,
+                                onClose = {
+                                    navController.popBackStack()
+                                }
                             )
                         }
                         composable(NavRoutes.ListedItems.route) {
