@@ -1,6 +1,9 @@
 package com.example.raceconnect.view.Navigation
 
+import android.net.Uri
+
 sealed class NavRoutes(val route: String) {
+    // Existing routes (unchanged unless noted)
     object Login : NavRoutes("login")
     object Signup : NavRoutes("signup")
     object ForgotPassword : NavRoutes("forgot_password")
@@ -15,7 +18,7 @@ sealed class NavRoutes(val route: String) {
         fun createRoute(postId: Int) = "comments/$postId"
     }
     object Profile : NavRoutes("profile")
-    object CreatePost : NavRoutes("createPost")
+    object CreatePost : NavRoutes("createPost") // Already exists
     object Marketplace : NavRoutes("marketplace")
     object Notifications : NavRoutes("notifications")
     object Post : NavRoutes("postDetail/{postId}") {
@@ -38,9 +41,22 @@ sealed class NavRoutes(val route: String) {
         fun createRoute(itemId: Int, conversationId: Int, sellerId: Int) = "chatSeller/$itemId/$conversationId/$sellerId"
     }
     object ProfileDetails : NavRoutes("profileDetails")
-    object FavoriteItems : NavRoutes("favoriteItems")
-    object NewsFeedPreferences : NavRoutes("newsFeedPreferences")
+    object FavoriteItems : NavRoutes("favoriteItems") // Already exists
+    object NewsFeedPreferences : NavRoutes("newsFeedPreferences") // Already exists
     object ListedItems : NavRoutes("listedItems")
     object FriendListScreen : NavRoutes("FriendsListScreen")
     object Conversations : NavRoutes("conversations")
+
+    // New routes for remaining overlay screens
+    object CreateMarketplaceItem : NavRoutes("createMarketplaceItem")
+    object FullScreenImage : NavRoutes("fullScreenImage/{postId}/{imageUrl}") {
+        fun createRoute(postId: Int, imageUrl: String) = "fullScreenImage/$postId/${imageUrl.replace("/", "%2F")}"
+    }
+
+
+
+    object RepostScreen {
+        const val route = "repost_screen/{postJson}"
+        fun createRoute(postJson: String) = "repost_screen/${Uri.encode(postJson)}"
+    }
 }

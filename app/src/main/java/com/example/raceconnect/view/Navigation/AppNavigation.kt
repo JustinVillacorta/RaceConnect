@@ -1,33 +1,13 @@
 package com.example.raceconnect.navigation
 
 import ChatSellerScreen
+import android.net.Uri
 import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -68,7 +48,6 @@ import com.example.raceconnect.view.Screens.NewsFeedScreens.NewsFeedScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.RepostScreen
 import com.example.raceconnect.view.Screens.ProfileScreens.MyProfileScreen
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
-import com.example.raceconnect.viewmodel.FriendsViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModelFactory
@@ -80,31 +59,22 @@ import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewMo
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModelFactory
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModelFactory
+import com.google.gson.Gson
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.navigation.compose.currentBackStackEntryAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavigation(userPreferences: UserPreferences) {
     val navController = rememberNavController()
-    runBlocking {
-        userPreferences.migrateOldDataIfNeeded()
-        Log.d("AppNavigation", "DataStore migration completed")
-    }
-
     val token by userPreferences.token.collectAsState(initial = null)
     val context = LocalContext.current
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id ?: 0
-
-    var showCreatePostScreen by remember { mutableStateOf(false) }
-    var showCreateListing by remember { mutableStateOf(false) }
-    var showItemDetailScreen by remember { mutableStateOf<Int?>(null) }
-    var showFullScreenImage by remember { mutableStateOf<Pair<String, Int>?>(null) }
-    var showRepostScreen by remember { mutableStateOf<NewsFeedDataClassItem?>(null) }
-    var showFavoriteItems by remember { mutableStateOf(false) }
-    var showNewsFeedPreferences by remember { mutableStateOf(false) }
-    var showFavoriteItemDetailScreen by remember { mutableStateOf<Int?>(null) }
 
     val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, context))
     val menuViewModel: MenuViewModel = viewModel(factory = MenuViewModelFactory(userPreferences))
@@ -113,12 +83,26 @@ fun AppNavigation(userPreferences: UserPreferences) {
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Define main routes where bottom nav should be visible
+    val mainRoutes = listOf(
+        NavRoutes.NewsFeed.route,
+        NavRoutes.Friends.route,
+        NavRoutes.Marketplace.route,
+        "notifications",
+        NavRoutes.Profile.route
+    )
+
     if (token == null) {
         AuthenticationNavHost()
     } else {
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
-                bottomBar = { BottomNavBar(navController) },
+                bottomBar = {
+                    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route ?: ""
+                    if (currentRoute in mainRoutes) {
+                        BottomNavBar(navController)
+                    }
+                },
                 snackbarHost = {
                     SnackbarHost(hostState = snackbarHostState) { data ->
                         Snackbar(
@@ -134,22 +118,97 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     startDestination = "newsfeed",
                     modifier = Modifier.padding(paddingValues)
                 ) {
-                    // Nested graph for authenticated routes
                     navigation(
                         startDestination = NavRoutes.NewsFeed.route,
                         route = "newsfeed"
                     ) {
-                        composable(NavRoutes.NewsFeed.route) {
+                        composable(
+                            route = NavRoutes.NewsFeed.route,
+                            enterTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex > initialIndex) {
+                                        slideInHorizontally(initialOffsetX = { it }) // Slide in from right
+                                    } else {
+                                        slideInHorizontally(initialOffsetX = { -it }) // Slide in from left
+                                    }
+                                } else {
+                                    slideInHorizontally(initialOffsetX = { it }) // Default: from right
+                                }
+                            },
+                            exitTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex > initialIndex) {
+                                        slideOutHorizontally(targetOffsetX = { -it }) // Slide out to left
+                                    } else {
+                                        slideOutHorizontally(targetOffsetX = { it }) // Slide out to right
+                                    }
+                                } else {
+                                    slideOutHorizontally(targetOffsetX = { -it }) // Default: to left
+                                }
+                            },
+                            popEnterTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex < initialIndex) {
+                                        slideInHorizontally(initialOffsetX = { -it }) // Slide in from left
+                                    } else {
+                                        slideInHorizontally(initialOffsetX = { it }) // Slide in from right
+                                    }
+                                } else {
+                                    slideInHorizontally(initialOffsetX = { -it }) // Default: from left
+                                }
+                            },
+                            popExitTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex < initialIndex) {
+                                        slideOutHorizontally(targetOffsetX = { it }) // Slide out to right
+                                    } else {
+                                        slideOutHorizontally(targetOffsetX = { -it }) // Slide out to left
+                                    }
+                                } else {
+                                    slideOutHorizontally(targetOffsetX = { it }) // Default: to right
+                                }
+                            }
+                        ) {
                             NewsFeedScreen(
                                 navController = navController,
                                 userPreferences = userPreferences,
-                                onShowCreatePost = { showCreatePostScreen = true },
-                                onShowFullScreenImage = { imageUrl, postId -> showFullScreenImage = Pair(imageUrl, postId) },
-                                onShowProfileView = { navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) },
-                                onShowRepostScreen = { post -> showRepostScreen = post }
+                                onShowCreatePost = { navController.navigate(NavRoutes.CreatePost.route) },
+                                onShowFullScreenImage = { imageUrl, postId ->
+                                    navController.navigate(NavRoutes.FullScreenImage.createRoute(postId, imageUrl))
+                                },
+                                onShowProfileView = {
+                                    navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId))
+                                },
+                                onShowRepostScreen = { post ->
+                                    val postJson = Gson().toJson(post)
+                                    navController.navigate(NavRoutes.RepostScreen.createRoute(postJson))
+                                }
                             )
                         }
-                        composable(NavRoutes.Comments.route) { backStackEntry ->
+                        composable(
+                            route = NavRoutes.Comments.route,
+                            arguments = listOf(navArgument("postId") { type = NavType.IntType }),
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                        ) { backStackEntry ->
                             val postId = backStackEntry.arguments?.getString("postId")?.toIntOrNull() ?: -1
                             CommentSectionScreen(
                                 postId = postId,
@@ -158,7 +217,69 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 onShowProfileView = { navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) }
                             )
                         }
-                        composable(NavRoutes.Profile.route) {
+                        composable(
+                            route = NavRoutes.Profile.route,
+                            enterTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex > initialIndex) {
+                                        slideInHorizontally(initialOffsetX = { it })
+                                    } else {
+                                        slideInHorizontally(initialOffsetX = { -it })
+                                    }
+                                } else {
+                                    slideInHorizontally(initialOffsetX = { it })
+                                }
+                            },
+                            exitTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex > initialIndex) {
+                                        slideOutHorizontally(targetOffsetX = { -it })
+                                    } else {
+                                        slideOutHorizontally(targetOffsetX = { it })
+                                    }
+                                } else {
+                                    slideOutHorizontally(targetOffsetX = { -it })
+                                }
+                            },
+                            popEnterTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex < initialIndex) {
+                                        slideInHorizontally(initialOffsetX = { -it })
+                                    } else {
+                                        slideInHorizontally(initialOffsetX = { it })
+                                    }
+                                } else {
+                                    slideInHorizontally(initialOffsetX = { -it })
+                                }
+                            },
+                            popExitTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex < initialIndex) {
+                                        slideOutHorizontally(targetOffsetX = { it })
+                                    } else {
+                                        slideOutHorizontally(targetOffsetX = { -it })
+                                    }
+                                } else {
+                                    slideOutHorizontally(targetOffsetX = { it })
+                                }
+                            }
+                        ) {
                             val authViewModel: AuthenticationViewModel = viewModel()
                             val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             MenuScreen(
@@ -173,11 +294,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     }
                                 },
                                 navController = navController,
-                                onShowFavoriteItems = { showFavoriteItems = true },
-                                onShowNewsFeedPreferences = { showNewsFeedPreferences = true },
+                                onShowFavoriteItems = { navController.navigate(NavRoutes.FavoriteItems.route) },
+                                onShowNewsFeedPreferences = { navController.navigate(NavRoutes.NewsFeedPreferences.route) },
                                 onShowListedItems = { navController.navigate(NavRoutes.ListedItems.route) },
                                 onShowFriendListScreen = { navController.navigate(NavRoutes.FriendListScreen.route) },
-                                userPreferences = userPreferences,
+                                userPreferences = userPreferences
                             )
                         }
                         composable(
@@ -188,7 +309,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     defaultValue = 0
                                     nullable = false
                                 }
-                            )
+                            ),
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
                         ) { backStackEntry ->
                             val userId = backStackEntry.arguments?.getInt("userId") ?: 0
                             if (userId == loggedInUserId && userId != 0) {
@@ -206,24 +331,83 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 )
                             }
                         }
-                        composable(NavRoutes.ProfileDetails.route) {
+                        composable(
+                            route = NavRoutes.ProfileDetails.route,
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                        ) {
                             MyProfileScreen(
                                 onClose = { navController.popBackStack() },
                                 profileDetailsViewModel = profileDetailsViewModel,
                                 userPreferences = userPreferences
                             )
                         }
-                        composable(NavRoutes.Marketplace.route) {
-                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
-                            MarketplaceScreen(
-                                userPreferences = userPreferences,
-                                navController = navController,
-                                onShowCreateListing = { showCreateListing = true },
-                                onShowItemDetail = { itemId -> showItemDetailScreen = itemId },
-                                viewModel = marketplaceViewModel
-                            )
-                        }
-                        composable("notifications") {
+
+                        composable(
+                            route = "notifications",
+                            enterTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex > initialIndex) {
+                                        slideInHorizontally(initialOffsetX = { it })
+                                    } else {
+                                        slideInHorizontally(initialOffsetX = { -it })
+                                    }
+                                } else {
+                                    slideInHorizontally(initialOffsetX = { it })
+                                }
+                            },
+                            exitTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex > initialIndex) {
+                                        slideOutHorizontally(targetOffsetX = { -it })
+                                    } else {
+                                        slideOutHorizontally(targetOffsetX = { it })
+                                    }
+                                } else {
+                                    slideOutHorizontally(targetOffsetX = { -it })
+                                }
+                            },
+                            popEnterTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex < initialIndex) {
+                                        slideInHorizontally(initialOffsetX = { -it })
+                                    } else {
+                                        slideInHorizontally(initialOffsetX = { it })
+                                    }
+                                } else {
+                                    slideInHorizontally(initialOffsetX = { -it })
+                                }
+                            },
+                            popExitTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex < initialIndex) {
+                                        slideOutHorizontally(targetOffsetX = { it })
+                                    } else {
+                                        slideOutHorizontally(targetOffsetX = { -it })
+                                    }
+                                } else {
+                                    slideOutHorizontally(targetOffsetX = { it })
+                                }
+                            }
+                        ) {
                             NotificationsScreen(context = LocalContext.current, navController = navController)
                         }
                         composable(
@@ -234,7 +418,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     defaultValue = 0
                                     nullable = false
                                 }
-                            )
+                            ),
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
                         ) { backStackEntry ->
                             val postId = backStackEntry.arguments?.getInt("postId") ?: 0
                             if (postId != 0) {
@@ -271,7 +459,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     defaultValue = 0
                                     nullable = false
                                 }
-                            )
+                            ),
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
                         ) { backStackEntry ->
                             val postId = backStackEntry.arguments?.getInt("postId") ?: 0
                             val repostId = backStackEntry.arguments?.getInt("repostId") ?: 0
@@ -296,13 +488,81 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 }
                             }
                         }
-                        composable(NavRoutes.Friends.route) {
+                        composable(
+                            route = NavRoutes.Friends.route,
+                            enterTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex > initialIndex) {
+                                        slideInHorizontally(initialOffsetX = { it })
+                                    } else {
+                                        slideInHorizontally(initialOffsetX = { -it })
+                                    }
+                                } else {
+                                    slideInHorizontally(initialOffsetX = { it })
+                                }
+                            },
+                            exitTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex > initialIndex) {
+                                        slideOutHorizontally(targetOffsetX = { -it })
+                                    } else {
+                                        slideOutHorizontally(targetOffsetX = { it })
+                                    }
+                                } else {
+                                    slideOutHorizontally(targetOffsetX = { -it })
+                                }
+                            },
+                            popEnterTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex < initialIndex) {
+                                        slideInHorizontally(initialOffsetX = { -it })
+                                    } else {
+                                        slideInHorizontally(initialOffsetX = { it })
+                                    }
+                                } else {
+                                    slideInHorizontally(initialOffsetX = { -it })
+                                }
+                            },
+                            popExitTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex < initialIndex) {
+                                        slideOutHorizontally(targetOffsetX = { it })
+                                    } else {
+                                        slideOutHorizontally(targetOffsetX = { -it })
+                                    }
+                                } else {
+                                    slideOutHorizontally(targetOffsetX = { it })
+                                }
+                            }
+                        ) {
                             FriendsScreen(
                                 userPreferences = userPreferences,
                                 onClose = { navController.popBackStack() }
                             )
                         }
-                        composable(NavRoutes.FriendListScreen.route) {
+                        composable(
+                            route = NavRoutes.FriendListScreen.route,
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                        ) {
                             FriendsListScreen(
                                 navController = navController,
                                 onClose = { navController.popBackStack() },
@@ -317,7 +577,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     defaultValue = -1
                                     nullable = false
                                 }
-                            )
+                            ),
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
                         ) { backStackEntry ->
                             val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
@@ -371,7 +635,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                                 )
                                             }
                                         },
-                                        onNavigateToChat = { showItemDetailScreen = null } // Reset showItemDetailScreen
+                                        onNavigateToChat = { /* No longer needed */ }
                                     )
                                 }
                             }
@@ -379,9 +643,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             LaunchedEffect(refreshListedItems) {
                                 if (refreshListedItems) {
                                     navController.navigate(NavRoutes.ListedItems.route) {
-                                        popUpTo(NavRoutes.ListedItems.route) {
-                                            inclusive = false
-                                        }
+                                        popUpTo(NavRoutes.ListedItems.route) { inclusive = false }
                                         launchSingleTop = true
                                     }
                                     refreshListedItems = false
@@ -396,7 +658,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     defaultValue = -1
                                     nullable = false
                                 }
-                            )
+                            ),
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
                         ) { backStackEntry ->
                             val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             val itemId = backStackEntry.arguments?.getInt("itemId") ?: -1
@@ -413,7 +679,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 navArgument("itemId") { type = NavType.IntType },
                                 navArgument("conversationId") { type = NavType.IntType },
                                 navArgument("sellerId") { type = NavType.IntType }
-                            )
+                            ),
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
                         ) { backStackEntry ->
                             val itemId = backStackEntry.arguments?.getInt("itemId") ?: 0
                             val conversationId = backStackEntry.arguments?.getInt("conversationId") ?: 0
@@ -424,12 +694,16 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 sellerId = sellerId,
                                 navController = navController,
                                 userPreferences = userPreferences,
-                                onClose = {
-                                    navController.popBackStack()
-                                }
+                                onClose = { navController.popBackStack() }
                             )
                         }
-                        composable(NavRoutes.ListedItems.route) {
+                        composable(
+                            route = NavRoutes.ListedItems.route,
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                        ) {
                             ListedItemsScreen(
                                 navController = navController,
                                 userPreferences = userPreferences,
@@ -437,163 +711,201 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 onRefresh = { /* No-op here, handled by LaunchedEffect in ListedItemsScreen */ }
                             )
                         }
-                        composable(NavRoutes.FavoriteItems.route) {
+                        composable(
+                            route = NavRoutes.FavoriteItems.route,
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                        ) {
                             val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             FavoriteItemsScreen(
                                 navController = navController,
                                 userPreferences = userPreferences,
                                 onClose = { navController.popBackStack() },
-                                onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId },
+                                onShowItemDetail = { itemId -> navController.navigate(NavRoutes.MarketplaceItemDetail.createRoute(itemId)) },
                                 viewModel = marketplaceViewModel
                             )
                         }
-                        composable(NavRoutes.Conversations.route) {
+                        composable(
+                            route = NavRoutes.Conversations.route,
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                        ) {
                             ConversationsScreen(
                                 navController = navController,
-                                userPreferences = userPreferences // Pass your UserPreferences instance
+                                userPreferences = userPreferences
+                            )
+                        }
+                        composable(
+                            route = NavRoutes.CreatePost.route,
+                            enterTransition = { slideInVertically(initialOffsetY = { it }) },
+                            exitTransition = { slideOutVertically(targetOffsetY = { it }) },
+                            popEnterTransition = { slideInVertically(initialOffsetY = { it }) },
+                            popExitTransition = { slideOutVertically(targetOffsetY = { it }) }
+                        ) {
+                            CreatePostScreen(
+                                viewModel = newsFeedViewModel,
+                                onClose = { navController.popBackStack() }
+                            )
+                        }
+                        composable(
+                            route = NavRoutes.Marketplace.route,
+                            enterTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex > initialIndex) {
+                                        slideInHorizontally(initialOffsetX = { it })
+                                    } else {
+                                        slideInHorizontally(initialOffsetX = { -it })
+                                    }
+                                } else {
+                                    slideInHorizontally(initialOffsetX = { it })
+                                }
+                            },
+                            exitTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex > initialIndex) {
+                                        slideOutHorizontally(targetOffsetX = { -it })
+                                    } else {
+                                        slideOutHorizontally(targetOffsetX = { it })
+                                    }
+                                } else {
+                                    slideOutHorizontally(targetOffsetX = { -it })
+                                }
+                            },
+                            popEnterTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex < initialIndex) {
+                                        slideInHorizontally(initialOffsetX = { -it })
+                                    } else {
+                                        slideInHorizontally(initialOffsetX = { it })
+                                    }
+                                } else {
+                                    slideInHorizontally(initialOffsetX = { -it })
+                                }
+                            },
+                            popExitTransition = {
+                                val initialRoute = initialState.destination.route
+                                val targetRoute = targetState.destination.route
+                                val initialIndex = tabOrder[initialRoute] ?: -1
+                                val targetIndex = tabOrder[targetRoute] ?: -1
+                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+                                    if (targetIndex < initialIndex) {
+                                        slideOutHorizontally(targetOffsetX = { it })
+                                    } else {
+                                        slideOutHorizontally(targetOffsetX = { -it })
+                                    }
+                                } else {
+                                    slideOutHorizontally(targetOffsetX = { it })
+                                }
+                            }
+                        ) {
+                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
+                            MarketplaceScreen(
+                                userPreferences = userPreferences,
+                                navController = navController,
+                                onShowCreateListing = { navController.navigate(NavRoutes.CreateMarketplaceItem.route) },
+                                onShowItemDetail = { itemId -> navController.navigate(NavRoutes.MarketplaceItemDetail.createRoute(itemId)) },
+                                viewModel = marketplaceViewModel
+                            )
+                        }
+                        composable(
+                            route = NavRoutes.CreateMarketplaceItem.route,
+                            enterTransition = { slideInVertically(initialOffsetY = { it }) },
+                            exitTransition = { slideOutVertically(targetOffsetY = { it }) },
+                            popEnterTransition = { slideInVertically(initialOffsetY = { it }) },
+                            popExitTransition = { slideOutVertically(targetOffsetY = { it }) }
+                        ) {
+                            val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
+                            CreateMarketplaceItemScreen(
+                                userPreferences = userPreferences,
+                                onClose = { navController.popBackStack() },
+                                viewModel = marketplaceViewModel
+                            )
+                        }
+                        composable(
+                            route = NavRoutes.FullScreenImage.route,
+                            arguments = listOf(
+                                navArgument("postId") { type = NavType.IntType },
+                                navArgument("imageUrl") { type = NavType.StringType }
+                            ),
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                        ) { backStackEntry ->
+                            val postId = backStackEntry.arguments?.getInt("postId") ?: 0
+                            val imageUrl = backStackEntry.arguments?.getString("imageUrl")?.replace("%2F", "/") ?: ""
+                            FullScreenImageViewer(
+                                imageUrl = imageUrl,
+                                onDismiss = { navController.popBackStack() },
+                                onLikeClick = { isLiked ->
+                                    if (isLiked) newsFeedViewModel.toggleLike(postId, 0)
+                                    else newsFeedViewModel.unlikePost(postId)
+                                },
+                                onCommentClick = { navController.navigate(NavRoutes.Comments.createRoute(postId)) }
+                            )
+                        }
+                        composable(
+                            route = NavRoutes.RepostScreen.route,
+                            arguments = listOf(navArgument("postJson") { type = NavType.StringType }),
+                            enterTransition = { slideInVertically(initialOffsetY = { it }) },
+                            exitTransition = { slideOutVertically(targetOffsetY = { it }) },
+                            popEnterTransition = { slideInVertically(initialOffsetY = { it }) },
+                            popExitTransition = { slideOutVertically(targetOffsetY = { it }) }
+                        ) { backStackEntry ->
+                            val postJson = backStackEntry.arguments?.getString("postJson")?.let { Uri.decode(it) }
+                            val post = postJson?.let { Gson().fromJson(it, NewsFeedDataClassItem::class.java) }
+                            if (post != null) {
+                                RepostScreen(
+                                    post = post,
+                                    navController = navController,
+                                    viewModel = newsFeedViewModel,
+                                    onClose = { navController.popBackStack() },
+                                    userPreferences = userPreferences
+                                )
+                            } else {
+                                LaunchedEffect(Unit) { navController.popBackStack() }
+                            }
+                        }
+                        composable(
+                            route = NavRoutes.NewsFeedPreferences.route,
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                        ) {
+                            NewsFeedPreferencesScreen(
+                                navController = navController,
+                                onClose = { navController.popBackStack() },
+                                factory = NewsFeedPreferenceViewModelFactory(userPreferences)
                             )
                         }
                     }
                 }
             }
-
-            AnimatedVisibility(
-                visible = showCreatePostScreen,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-            ) {
-                CreatePostScreen(
-                    viewModel = newsFeedViewModel,
-                    onClose = { showCreatePostScreen = false }
-                )
-            }
-
-            AnimatedVisibility(
-                visible = showCreateListing,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-            ) {
-                val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
-                CreateMarketplaceItemScreen(
-                    userPreferences = userPreferences,
-                    onClose = { showCreateListing = false },
-                    viewModel = marketplaceViewModel
-                )
-            }
-
-            showItemDetailScreen?.let { itemId ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-                ) {
-                    val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
-                    MarketplaceItemDetailScreen(
-                        itemId = itemId,
-                        navController = navController,
-                        viewModel = marketplaceViewModel,
-                        onClose = { showItemDetailScreen = null },
-                        onLikeError = { errorMessage ->
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = errorMessage,
-                                    actionLabel = "Retry",
-                                    duration = SnackbarDuration.Short
-                                )
-                            }
-                        },
-                        onNavigateToChat = { showItemDetailScreen = null } // Reset showItemDetailScreen
-                    )
-                }
-            }
-
-            showFullScreenImage?.let { (imageUrl, postId) ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-                ) {
-                    FullScreenImageViewer(
-                        imageUrl = imageUrl,
-                        onDismiss = { showFullScreenImage = null },
-                        onLikeClick = { isLiked ->
-                            if (isLiked) newsFeedViewModel.toggleLike(postId, 0)
-                            else newsFeedViewModel.unlikePost(postId)
-                        },
-                        onCommentClick = { navController.navigate(NavRoutes.Comments.createRoute(postId)) }
-                    )
-                }
-            }
-
-            showRepostScreen?.let { post ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-                ) {
-                    RepostScreen(
-                        post = post,
-                        navController = navController,
-                        viewModel = newsFeedViewModel,
-                        onClose = { showRepostScreen = null },
-                        userPreferences = userPreferences
-                    )
-                }
-            }
-
-            AnimatedVisibility(
-                visible = showFavoriteItems,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-            ) {
-                val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
-                FavoriteItemsScreen(
-                    navController = navController,
-                    userPreferences = userPreferences,
-                    onClose = { showFavoriteItems = false },
-                    onShowItemDetail = { itemId -> showFavoriteItemDetailScreen = itemId },
-                    viewModel = marketplaceViewModel
-                )
-            }
-
-            showFavoriteItemDetailScreen?.let { itemId ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-                ) {
-                    val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
-                    MarketplaceItemDetailScreen(
-                        itemId = itemId,
-                        navController = navController,
-                        viewModel = marketplaceViewModel,
-                        onClose = { showFavoriteItemDetailScreen = null },
-                        onLikeError = { errorMessage ->
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = errorMessage,
-                                    actionLabel = "Retry",
-                                    duration = SnackbarDuration.Short
-                                )
-                            }
-                        },
-                        onNavigateToChat = { showFavoriteItemDetailScreen = null } // Reset showFavoriteItemDetailScreen
-                    )
-                }
-            }
-
-            AnimatedVisibility(
-                visible = showNewsFeedPreferences,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
-            ) {
-                NewsFeedPreferencesScreen(
-                    navController = navController,
-                    onClose = { showNewsFeedPreferences = false },
-                    factory = NewsFeedPreferenceViewModelFactory(userPreferences)
-                )
-            }
-            
         }
     }
 }
+
+val tabOrder = mapOf(
+    NavRoutes.NewsFeed.route to 0,    // "newsfeed"
+    NavRoutes.Friends.route to 1,     // "friends"
+    NavRoutes.Marketplace.route to 2, // "marketplace"
+    "notifications" to 3,             // "notifications"
+    NavRoutes.Profile.route to 4      // "profile"
+)
