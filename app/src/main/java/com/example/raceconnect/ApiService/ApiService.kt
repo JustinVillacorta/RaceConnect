@@ -282,4 +282,7 @@ interface ApiService {
 
     @POST("chat")
     suspend fun createMessage(@Body request: SendMessageRequest): Response<SendMessageResponse>
+
+    @GET("chat/{userId}")
+    suspend fun getUserConversations(@Path("userId") userId: Int): ConversationsResponse
 }

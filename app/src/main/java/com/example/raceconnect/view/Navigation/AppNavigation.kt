@@ -54,6 +54,7 @@ import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplace
 import com.example.raceconnect.view.Screens.MarketplaceScreens.EditMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.SellerViewMarketplaceItemDetailScreen
+import com.example.raceconnect.view.Screens.MenuScreens.ConversationsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.FavoriteItemsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.FriendsListScreen
 import com.example.raceconnect.view.Screens.MenuScreens.ListedItemsScreen
@@ -445,6 +446,12 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 viewModel = marketplaceViewModel
                             )
                         }
+                        composable(NavRoutes.Conversations.route) {
+                            ConversationsScreen(
+                                navController = navController,
+                                userPreferences = userPreferences // Pass your UserPreferences instance
+                            )
+                        }
                     }
                 }
             }
@@ -585,6 +592,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                     factory = NewsFeedPreferenceViewModelFactory(userPreferences)
                 )
             }
+            
         }
     }
 }

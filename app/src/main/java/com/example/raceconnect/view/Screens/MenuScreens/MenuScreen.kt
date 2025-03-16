@@ -37,7 +37,7 @@ fun MenuScreen(
     viewModel: AuthenticationViewModel,
     menuViewModel: MenuViewModel,
     profileDetailsViewModel: ProfileDetailsViewModel,
-    marketplaceViewModel: MarketplaceViewModel, // Added MarketplaceViewModel as a parameter
+    marketplaceViewModel: MarketplaceViewModel,
     onLogoutSuccess: () -> Unit,
     navController: NavController,
     onShowFavoriteItems: () -> Unit,
@@ -233,11 +233,11 @@ fun MenuScreen(
                             text = "Friends",
                             onClick = onShowFriendListScreen
                         )
-
+                        // Updated Conversations option
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_chat_24,
                             text = "Conversations",
-                            onClick = onShowFriendListScreen
+                            onClick = { navController.navigate(NavRoutes.Conversations.route) }
                         )
                     }
                 }
@@ -255,7 +255,7 @@ fun MenuScreen(
                             showLogoutDialog = false
                             viewModel.logout(
                                 menuViewModel = menuViewModel,
-                                marketplaceViewModel = marketplaceViewModel, // Pass the MarketplaceViewModel
+                                marketplaceViewModel = marketplaceViewModel,
                                 onLogoutResult = { success, error ->
                                     if (success) {
                                         profileDetailsViewModel.apply {

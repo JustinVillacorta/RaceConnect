@@ -1,5 +1,7 @@
 package com.example.raceconnect.model
 
+import com.google.gson.annotations.SerializedName;
+
 data class NotificationData(
     val title: String?,
     val message: String?
@@ -56,16 +58,20 @@ data class WebSocketClient(
 )
 
 data class Conversation(
-    val id: Int?,
-    val buyer_id: Int,
-    val seller_id: Int,
-    val product_id: Int,
-    val last_message: String?,
-    val last_message_time: String?,
-    val created_at: String?,
-    val status: String?,
-    val unread_count_buyer: Int?,
-    val unread_count_seller: Int?,
-    val last_activity_at: String?
+    @SerializedName("conversation_id") val conversationId: Int,
+    @SerializedName("buyer_id") val buyerId: Int,
+    @SerializedName("seller_id") val sellerId: Int,
+    @SerializedName("product_id") val productId: Int,
+    @SerializedName("last_message") val lastMessage: String?,
+    @SerializedName("last_message_time") val lastMessageTime: String?,
+    @SerializedName("last_activity_at") val lastActivityAt: String?,
+    @SerializedName("buyer_username") val buyerUsername: String?,
+    @SerializedName("seller_username") val sellerUsername: String?,
+    @SerializedName("product_title") val productTitle: String?
 )
 
+data class ConversationsResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("conversations") val conversations: List<Conversation>?,
+    @SerializedName("error") val error: String?
+)
