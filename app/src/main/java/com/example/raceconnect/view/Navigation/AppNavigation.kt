@@ -167,8 +167,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 profileDetailsViewModel = profileDetailsViewModel,
                                 marketplaceViewModel = marketplaceViewModel,
                                 onLogoutSuccess = {
-                                    navController.navigate(NavRoutes.Login.route) {
-                                        popUpTo(NavRoutes.Login.route) { inclusive = true }
+                                    navController.navigate(NavRoutes.NewsFeed.route) {
+                                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                                        launchSingleTop = true
                                     }
                                 },
                                 navController = navController,

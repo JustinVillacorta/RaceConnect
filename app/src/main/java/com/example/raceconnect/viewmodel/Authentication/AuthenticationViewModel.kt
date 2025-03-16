@@ -249,23 +249,24 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                 }
                 if (logoutSuccessful) {
                     userPreferences.logout()
+                    // Debug: Check token and user data after logout
+                    val tokenAfterLogout = userPreferences.getToken() // Assuming a synchronous getter
                     val userAfterLogout = userPreferences.user.first()
-                    if (userAfterLogout != null) {
-                        Log.w("AuthViewModel", "User data still present after logout!")
+                    Log.d("AuthViewModel", "Token after logout: $tokenAfterLogout")
+                    Log.d("AuthViewModel", "User after logout: $userAfterLogout")
+                    if (tokenAfterLogout != null || userAfterLogout != null) {
+                        Log.w("AuthViewModel", "Data not fully cleared after logout!")
                     }
                     loggedInUser.value = null
                     menuViewModel?.clearData()
-                    marketplaceViewModel?.clear() // Clear MarketplaceViewModel state
+                    marketplaceViewModel?.clear()
                     onLogoutResult(true, null)
-                    Log.d("AuthViewModel", "Logout successful, favorites cleared")
                 } else {
                     onLogoutResult(false, "Logout failed: Unable to reach server")
-                    Log.e("AuthViewModel", "Logout failed: Unable to reach server")
                 }
             } catch (e: Exception) {
                 ErrorMessage.value = "Logout error: ${e.message}"
                 onLogoutResult(false, ErrorMessage.value)
-                Log.e("AuthViewModel", "Error during logout: ${e.message}", e)
             } finally {
                 isLoading.value = false
             }
