@@ -131,13 +131,13 @@ fun AppNavigation(userPreferences: UserPreferences) {
             ) { paddingValues ->
                 NavHost(
                     navController = navController,
-                    startDestination = "authenticated_graph",
+                    startDestination = "newsfeed",
                     modifier = Modifier.padding(paddingValues)
                 ) {
                     // Nested graph for authenticated routes
                     navigation(
                         startDestination = NavRoutes.NewsFeed.route,
-                        route = "authenticated_graph"
+                        route = "newsfeed"
                     ) {
                         composable(NavRoutes.NewsFeed.route) {
                             NewsFeedScreen(
