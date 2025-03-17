@@ -291,28 +291,6 @@ fun RepostCard(
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ReactionIcon(
-                        icon = Icons.Default.Favorite,
-                        isLiked = repost.isLiked,
-                        onClick = { onLikeClick(!repost.isLiked) }
-                    )
-                    Text(
-                        text = "${repost.like_count}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(start = 4.dp, end = 12.dp)
-                    )
-                    ReactionIcon(icon = Icons.Default.ChatBubble, onClick = onCommentClick)
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
             }
 
             Box(modifier = Modifier.align(Alignment.TopEnd)) {

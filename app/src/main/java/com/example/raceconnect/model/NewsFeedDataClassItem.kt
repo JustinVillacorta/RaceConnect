@@ -63,3 +63,10 @@ data class ReportResponse(
     val message: String,
     val report_id: Int?
 )
+
+
+data class LikeRequest(
+    val user_id: Int,
+    val post_id: Int,
+    val owner_id: Int
+)

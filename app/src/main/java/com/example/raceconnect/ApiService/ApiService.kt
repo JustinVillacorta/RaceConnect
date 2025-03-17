@@ -96,14 +96,14 @@ interface ApiService {
     @GET("posts/{id}/images")
     suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostResponse>>
 
+    @GET("post-likes/{post_id}")
+    suspend fun getPostLikes(@Path("post_id") postId: Int): Response<List<PostLike>>
+
     @POST("post-likes")
-    suspend fun likePost(@Body requestBody: Map<String, Int>): Response<ResponseBody>
+    suspend fun likePost(@Body request: LikeRequest): Response<ResponseBody>
 
-    @DELETE("likes/{id}")
-    suspend fun unlikePost(@Path("id") likeId: Int): Response<ResponseBody>
-
-    @GET("post-likes")
-    suspend fun getPostLikes(@Query("post_id") postId: Int): Response<List<PostLike>>
+    @DELETE("post-likes/{like_id}")
+    suspend fun unlikePost(@Path("like_id") likeId: Int): Response<ResponseBody>
 
     @POST("reports")
     suspend fun createReport(@Body report: ReportRequest): Response<ReportResponse>

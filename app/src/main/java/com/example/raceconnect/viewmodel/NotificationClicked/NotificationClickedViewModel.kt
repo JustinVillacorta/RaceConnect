@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.raceconnect.model.LikeRequest
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.PostComment
 import com.example.raceconnect.model.PostLike
@@ -164,26 +165,11 @@ class NotificationClickedViewModel(private val apiService: ApiService = Retrofit
         }
     }
 
-    fun fetchRepostLikes(repostId: Int) {
-        viewModelScope.launch {
-            try {
-                val response = apiService.getPostLikes(repostId)
-                if (response.isSuccessful) {
-                    val likes = response.body() ?: emptyList()
-                    _isRepostLiked.value = likes.any { it.userId == userId }
-                    _repostLikeCount.value = likes.size
-                    _error.value = null
-                } else {
-                    _error.value = "Failed to fetch repost likes: ${response.code()} - ${response.errorBody()?.string()}"
-                }
-            } catch (e: Exception) {
-                _error.value = "Error fetching repost likes: ${e.message}"
-                Log.e("NotificationClickedViewModel", "Exception in fetchRepostLikes", e)
-            }
-        }
-    }
 
-    fun toggleLike(postId: Int) {
+
+
+
+    fun toggleLike(postId: Int, ownerId: Int) {
         viewModelScope.launch {
             try {
                 val token = authToken ?: run {
@@ -203,7 +189,11 @@ class NotificationClickedViewModel(private val apiService: ApiService = Retrofit
                         }
                     }
                 } else {
-                    val requestBody = mapOf("post_id" to postId, "user_id" to userId)
+                    val requestBody = LikeRequest(
+                        user_id = userId,
+                        post_id = postId,
+                        owner_id = ownerId
+                    )
                     val response = apiService.likePost(requestBody)
                     if (response.isSuccessful) {
                         _isLiked.value = true
@@ -216,43 +206,6 @@ class NotificationClickedViewModel(private val apiService: ApiService = Retrofit
             } catch (e: Exception) {
                 _error.value = "Error toggling like: ${e.message}"
                 Log.e("NotificationClickedViewModel", "Exception in toggleLike", e)
-            }
-        }
-    }
-
-    fun toggleRepostLike(repostId: Int) {
-        viewModelScope.launch {
-            try {
-                val token = authToken ?: run {
-                    _error.value = "Authentication token is missing"
-                    return@launch
-                }
-                if (_isRepostLiked.value) {
-                    val like = apiService.getPostLikes(repostId).body()?.find { it.userId == userId }
-                    like?.id?.let { likeId ->
-                        val response = apiService.unlikePost(likeId)
-                        if (response.isSuccessful) {
-                            _isRepostLiked.value = false
-                            _repostLikeCount.value = (_repostLikeCount.value - 1).coerceAtLeast(0)
-                            _error.value = null
-                        } else {
-                            _error.value = "Failed to unlike repost: ${response.code()} - ${response.errorBody()?.string()}"
-                        }
-                    }
-                } else {
-                    val requestBody = mapOf("post_id" to repostId, "user_id" to userId)
-                    val response = apiService.likePost(requestBody)
-                    if (response.isSuccessful) {
-                        _isRepostLiked.value = true
-                        _repostLikeCount.value = _repostLikeCount.value + 1
-                        _error.value = null
-                    } else {
-                        _error.value = "Failed to like repost: ${response.code()} - ${response.errorBody()?.string()}"
-                    }
-                }
-            } catch (e: Exception) {
-                _error.value = "Error toggling repost like: ${e.message}"
-                Log.e("NotificationClickedViewModel", "Exception in toggleRepostLike", e)
             }
         }
     }

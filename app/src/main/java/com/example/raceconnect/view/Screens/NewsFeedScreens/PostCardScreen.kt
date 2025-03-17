@@ -74,7 +74,7 @@ fun PostCard(
     post: NewsFeedDataClassItem,
     navController: NavController,
     onCommentClick: () -> Unit,
-    onLikeClick: (Boolean) -> Unit,
+    onLikeClick: (Boolean) -> Unit, // Can remove if unused
     viewModel: NewsFeedViewModel,
     onShowFullScreenImage: (String) -> Unit,
     userPreferences: UserPreferences,
@@ -83,8 +83,13 @@ fun PostCard(
     onUserActionClick: (Int, String, String?) -> Unit,
     context: Context = LocalContext.current
 ) {
-    var isLiked by remember { mutableStateOf(post.isLiked) }
-    var likeCount by remember { mutableStateOf(post.like_count) }
+    // Observe like status and count from the ViewModel
+    val postLikes by viewModel.postLikes.collectAsState()
+    val isLiked = postLikes[post.id] ?: post.isLiked
+
+    val likeCounts by viewModel.likeCounts.collectAsState()
+    val likeCount = likeCounts[post.id] ?: post.like_count
+
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: post.images ?: emptyList()
     var showReportDialog by remember { mutableStateOf(false) }
@@ -144,7 +149,7 @@ fun PostCard(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = formatTime(post.created_at), // Updated to use relative time
+                            text = formatTime(post.created_at),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
@@ -196,9 +201,7 @@ fun PostCard(
                         icon = Icons.Default.Favorite,
                         isLiked = isLiked,
                         onClick = {
-                            isLiked = !isLiked
-                            likeCount = if (isLiked) likeCount + 1 else likeCount - 1
-                            onLikeClick(isLiked)
+                            viewModel.toggleLike(post.id, post.user_id)
                         }
                     )
                     Text(
@@ -247,6 +250,7 @@ fun PostCard(
                 }
             }
         }
+
     }
 
     // Report Dialog
