@@ -145,7 +145,7 @@ class NewsFeedViewModel(
     }
 
     fun resetNewPostTrigger() {
-        _newPostTrigger.value = false
+        _newPostTrigger.value = true
     }
 
     fun addPost(context: Context, content: String, title: String, imageUri: Uri?, category: String, privacy: String) {

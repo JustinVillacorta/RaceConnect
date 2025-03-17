@@ -1,6 +1,7 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -99,7 +102,6 @@ fun PostCard(
     var otherText by remember { mutableStateOf("") }
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id
-
     LaunchedEffect(post.id) {
         viewModel.getPostImages(post.id)
         Log.d("PostCard", "Post ID: ${post.id}, Image URLs: $imageUrls")
@@ -134,12 +136,23 @@ fun PostCard(
                                 navController.navigate(destination)
                             }
                     ) {
-                        AsyncImage(
-                            model = "https://via.placeholder.com/40",
-                            contentDescription = "User Profile",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        if (post.profile_picture != null) {
+                            AsyncImage(
+                                model = post.profile_picture,
+                                contentDescription = "User Profile",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                                error = painterResource(id = android.R.drawable.ic_menu_gallery),
+                                placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "User Profile",
+                                modifier = Modifier.fillMaxSize(),
+                                tint = Color.White // Adjust color for visibility on gray background
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {

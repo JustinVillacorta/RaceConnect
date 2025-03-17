@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -212,12 +214,23 @@ fun RepostCard(
                                 navController.navigate(destination)
                             }
                     ) {
-                        AsyncImage(
-                            model = "https://via.placeholder.com/40",
-                            contentDescription = "Reposter Profile",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        if (repost.profile_picture != null) {
+                            AsyncImage(
+                                model = repost.profile_picture,
+                                contentDescription = "Reposter Profile",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                                error = painterResource(id = android.R.drawable.ic_menu_gallery),
+                                placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "Reposter Profile",
+                                modifier = Modifier.fillMaxSize(),
+                                tint = Color.White
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {

@@ -111,12 +111,18 @@ class NewsFeedPagingSourceAllPosts(
 
                                 reposts.map { repost ->
                                     val originalPost = posts.find { it.id == repost.postId }
-                                    // Fetch username based on userId
+                                    // Fetch username and profile picture based on userId
                                     val userResponse = apiService.getUser(repost.userId!!)
                                     val username = if (userResponse.isSuccessful) {
                                         userResponse.body()?.username
                                     } else {
                                         Log.e("PagingSourceAllPosts", "Failed to fetch user for userId ${repost.userId}: ${userResponse.code()}")
+                                        null
+                                    }
+                                    val profilePicture = if (userResponse.isSuccessful) {
+                                        userResponse.body()?.profilePicture // Adjust field name if necessary
+                                    } else {
+                                        Log.e("PagingSourceAllPosts", "Failed to fetch profile picture for userId ${repost.userId}: ${userResponse.code()}")
                                         null
                                     }
                                     NewsFeedDataClassItem(
@@ -134,7 +140,8 @@ class NewsFeedPagingSourceAllPosts(
                                         type = originalPost?.type ?: "text",
                                         postType = originalPost?.postType ?: "normal",
                                         title = originalPost?.title ?: "Repost",
-                                        username = username // Set based on userId
+                                        profile_picture = profilePicture,
+                                        username = username
                                     )
                                 }
                             } else {
