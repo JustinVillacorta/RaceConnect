@@ -3,6 +3,9 @@ package com.example.raceconnect.navigation
 import ChatSellerScreen
 import android.net.Uri
 import android.util.Log
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -65,6 +68,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.currentBackStackEntryAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,75 +119,19 @@ fun AppNavigation(userPreferences: UserPreferences) {
             ) { paddingValues ->
                 NavHost(
                     navController = navController,
-                    startDestination = "newsfeed",
+                    startDestination = "newsfeed_tab",
                     modifier = Modifier.padding(paddingValues)
                 ) {
                     navigation(
                         startDestination = NavRoutes.NewsFeed.route,
-                        route = "newsfeed"
+                        route = "newsfeed_tab"
                     ) {
                         composable(
                             route = NavRoutes.NewsFeed.route,
-                            enterTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex > initialIndex) {
-                                        slideInHorizontally(initialOffsetX = { it }) // Slide in from right
-                                    } else {
-                                        slideInHorizontally(initialOffsetX = { -it }) // Slide in from left
-                                    }
-                                } else {
-                                    slideInHorizontally(initialOffsetX = { it }) // Default: from right
-                                }
-                            },
-                            exitTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex > initialIndex) {
-                                        slideOutHorizontally(targetOffsetX = { -it }) // Slide out to left
-                                    } else {
-                                        slideOutHorizontally(targetOffsetX = { it }) // Slide out to right
-                                    }
-                                } else {
-                                    slideOutHorizontally(targetOffsetX = { -it }) // Default: to left
-                                }
-                            },
-                            popEnterTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex < initialIndex) {
-                                        slideInHorizontally(initialOffsetX = { -it }) // Slide in from left
-                                    } else {
-                                        slideInHorizontally(initialOffsetX = { it }) // Slide in from right
-                                    }
-                                } else {
-                                    slideInHorizontally(initialOffsetX = { -it }) // Default: from left
-                                }
-                            },
-                            popExitTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex < initialIndex) {
-                                        slideOutHorizontally(targetOffsetX = { it }) // Slide out to right
-                                    } else {
-                                        slideOutHorizontally(targetOffsetX = { -it }) // Slide out to left
-                                    }
-                                } else {
-                                    slideOutHorizontally(targetOffsetX = { it }) // Default: to right
-                                }
-                            }
+                            enterTransition = mainScreenEnterTransition(),
+                            exitTransition = mainScreenExitTransition(),
+                            popEnterTransition = mainScreenPopEnterTransition(),
+                            popExitTransition = mainScreenPopExitTransition()
                         ) {
                             NewsFeedScreen(
                                 navController = navController,
@@ -219,66 +167,10 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         }
                         composable(
                             route = NavRoutes.Profile.route,
-                            enterTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex > initialIndex) {
-                                        slideInHorizontally(initialOffsetX = { it })
-                                    } else {
-                                        slideInHorizontally(initialOffsetX = { -it })
-                                    }
-                                } else {
-                                    slideInHorizontally(initialOffsetX = { it })
-                                }
-                            },
-                            exitTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex > initialIndex) {
-                                        slideOutHorizontally(targetOffsetX = { -it })
-                                    } else {
-                                        slideOutHorizontally(targetOffsetX = { it })
-                                    }
-                                } else {
-                                    slideOutHorizontally(targetOffsetX = { -it })
-                                }
-                            },
-                            popEnterTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex < initialIndex) {
-                                        slideInHorizontally(initialOffsetX = { -it })
-                                    } else {
-                                        slideInHorizontally(initialOffsetX = { it })
-                                    }
-                                } else {
-                                    slideInHorizontally(initialOffsetX = { -it })
-                                }
-                            },
-                            popExitTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex < initialIndex) {
-                                        slideOutHorizontally(targetOffsetX = { it })
-                                    } else {
-                                        slideOutHorizontally(targetOffsetX = { -it })
-                                    }
-                                } else {
-                                    slideOutHorizontally(targetOffsetX = { it })
-                                }
-                            }
+                            enterTransition = mainScreenEnterTransition(),
+                            exitTransition = mainScreenExitTransition(),
+                            popEnterTransition = mainScreenPopEnterTransition(),
+                            popExitTransition = mainScreenPopExitTransition()
                         ) {
                             val authViewModel: AuthenticationViewModel = viewModel()
                             val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
@@ -347,66 +239,10 @@ fun AppNavigation(userPreferences: UserPreferences) {
 
                         composable(
                             route = "notifications",
-                            enterTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex > initialIndex) {
-                                        slideInHorizontally(initialOffsetX = { it })
-                                    } else {
-                                        slideInHorizontally(initialOffsetX = { -it })
-                                    }
-                                } else {
-                                    slideInHorizontally(initialOffsetX = { it })
-                                }
-                            },
-                            exitTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex > initialIndex) {
-                                        slideOutHorizontally(targetOffsetX = { -it })
-                                    } else {
-                                        slideOutHorizontally(targetOffsetX = { it })
-                                    }
-                                } else {
-                                    slideOutHorizontally(targetOffsetX = { -it })
-                                }
-                            },
-                            popEnterTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex < initialIndex) {
-                                        slideInHorizontally(initialOffsetX = { -it })
-                                    } else {
-                                        slideInHorizontally(initialOffsetX = { it })
-                                    }
-                                } else {
-                                    slideInHorizontally(initialOffsetX = { -it })
-                                }
-                            },
-                            popExitTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex < initialIndex) {
-                                        slideOutHorizontally(targetOffsetX = { it })
-                                    } else {
-                                        slideOutHorizontally(targetOffsetX = { -it })
-                                    }
-                                } else {
-                                    slideOutHorizontally(targetOffsetX = { it })
-                                }
-                            }
+                            enterTransition = mainScreenEnterTransition(),
+                            exitTransition = mainScreenExitTransition(),
+                            popEnterTransition = mainScreenPopEnterTransition(),
+                            popExitTransition = mainScreenPopExitTransition()
                         ) {
                             NotificationsScreen(context = LocalContext.current, navController = navController)
                         }
@@ -490,66 +326,10 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         }
                         composable(
                             route = NavRoutes.Friends.route,
-                            enterTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex > initialIndex) {
-                                        slideInHorizontally(initialOffsetX = { it })
-                                    } else {
-                                        slideInHorizontally(initialOffsetX = { -it })
-                                    }
-                                } else {
-                                    slideInHorizontally(initialOffsetX = { it })
-                                }
-                            },
-                            exitTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex > initialIndex) {
-                                        slideOutHorizontally(targetOffsetX = { -it })
-                                    } else {
-                                        slideOutHorizontally(targetOffsetX = { it })
-                                    }
-                                } else {
-                                    slideOutHorizontally(targetOffsetX = { -it })
-                                }
-                            },
-                            popEnterTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex < initialIndex) {
-                                        slideInHorizontally(initialOffsetX = { -it })
-                                    } else {
-                                        slideInHorizontally(initialOffsetX = { it })
-                                    }
-                                } else {
-                                    slideInHorizontally(initialOffsetX = { -it })
-                                }
-                            },
-                            popExitTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex < initialIndex) {
-                                        slideOutHorizontally(targetOffsetX = { it })
-                                    } else {
-                                        slideOutHorizontally(targetOffsetX = { -it })
-                                    }
-                                } else {
-                                    slideOutHorizontally(targetOffsetX = { it })
-                                }
-                            }
+                            enterTransition = mainScreenEnterTransition(),
+                            exitTransition = mainScreenExitTransition(),
+                            popEnterTransition = mainScreenPopEnterTransition(),
+                            popExitTransition = mainScreenPopExitTransition()
                         ) {
                             FriendsScreen(
                                 userPreferences = userPreferences,
@@ -753,66 +533,10 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         }
                         composable(
                             route = NavRoutes.Marketplace.route,
-                            enterTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex > initialIndex) {
-                                        slideInHorizontally(initialOffsetX = { it })
-                                    } else {
-                                        slideInHorizontally(initialOffsetX = { -it })
-                                    }
-                                } else {
-                                    slideInHorizontally(initialOffsetX = { it })
-                                }
-                            },
-                            exitTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex > initialIndex) {
-                                        slideOutHorizontally(targetOffsetX = { -it })
-                                    } else {
-                                        slideOutHorizontally(targetOffsetX = { it })
-                                    }
-                                } else {
-                                    slideOutHorizontally(targetOffsetX = { -it })
-                                }
-                            },
-                            popEnterTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex < initialIndex) {
-                                        slideInHorizontally(initialOffsetX = { -it })
-                                    } else {
-                                        slideInHorizontally(initialOffsetX = { it })
-                                    }
-                                } else {
-                                    slideInHorizontally(initialOffsetX = { -it })
-                                }
-                            },
-                            popExitTransition = {
-                                val initialRoute = initialState.destination.route
-                                val targetRoute = targetState.destination.route
-                                val initialIndex = tabOrder[initialRoute] ?: -1
-                                val targetIndex = tabOrder[targetRoute] ?: -1
-                                if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-                                    if (targetIndex < initialIndex) {
-                                        slideOutHorizontally(targetOffsetX = { it })
-                                    } else {
-                                        slideOutHorizontally(targetOffsetX = { -it })
-                                    }
-                                } else {
-                                    slideOutHorizontally(targetOffsetX = { it })
-                                }
-                            }
+                            enterTransition = mainScreenEnterTransition(),
+                            exitTransition = mainScreenExitTransition(),
+                            popEnterTransition = mainScreenPopEnterTransition(),
+                            popExitTransition = mainScreenPopExitTransition()
                         ) {
                             val marketplaceViewModel: MarketplaceViewModel = viewModel(factory = MarketplaceViewModelFactory(userPreferences))
                             MarketplaceScreen(
@@ -909,3 +633,69 @@ val tabOrder = mapOf(
     "notifications" to 3,             // "notifications"
     NavRoutes.Profile.route to 4      // "profile"
 )
+
+
+// Reusable animation functions for main screens
+fun mainScreenEnterTransition(): @JvmSuppressWildcards() (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = {
+    val initialRoute = initialState.destination.route
+    val targetRoute = targetState.destination.route
+    val initialIndex = tabOrder[initialRoute] ?: -1
+    val targetIndex = tabOrder[targetRoute] ?: -1
+    if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+        if (targetIndex > initialIndex) {
+            slideInHorizontally(initialOffsetX = { it }) // From right
+        } else {
+            slideInHorizontally(initialOffsetX = { -it }) // From left
+        }
+    } else {
+        slideInHorizontally(initialOffsetX = { it }) // Default: from right
+    }
+}
+
+fun mainScreenExitTransition(): @JvmSuppressWildcards() (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = {
+    val initialRoute = initialState.destination.route
+    val targetRoute = targetState.destination.route
+    val initialIndex = tabOrder[initialRoute] ?: -1
+    val targetIndex = tabOrder[targetRoute] ?: -1
+    if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+        if (targetIndex > initialIndex) {
+            slideOutHorizontally(targetOffsetX = { -it }) // To left
+        } else {
+            slideOutHorizontally(targetOffsetX = { it }) // To right
+        }
+    } else {
+        slideOutHorizontally(targetOffsetX = { -it }) // Default: to left
+    }
+}
+
+fun mainScreenPopEnterTransition(): @JvmSuppressWildcards() (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = {
+    val initialRoute = initialState.destination.route
+    val targetRoute = targetState.destination.route
+    val initialIndex = tabOrder[initialRoute] ?: -1
+    val targetIndex = tabOrder[targetRoute] ?: -1
+    if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+        if (targetIndex < initialIndex) {
+            slideInHorizontally(initialOffsetX = { -it }) // From left
+        } else {
+            slideInHorizontally(initialOffsetX = { it }) // From right
+        }
+    } else {
+        slideInHorizontally(initialOffsetX = { -it }) // Default: from left
+    }
+}
+
+fun mainScreenPopExitTransition(): @JvmSuppressWildcards() (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = {
+    val initialRoute = initialState.destination.route
+    val targetRoute = targetState.destination.route
+    val initialIndex = tabOrder[initialRoute] ?: -1
+    val targetIndex = tabOrder[targetRoute] ?: -1
+    if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+        if (targetIndex < initialIndex) {
+            slideOutHorizontally(targetOffsetX = { it }) // To right
+        } else {
+            slideOutHorizontally(targetOffsetX = { -it }) // To left
+        }
+    } else {
+        slideOutHorizontally(targetOffsetX = { it }) // Default: to right
+    }
+}
