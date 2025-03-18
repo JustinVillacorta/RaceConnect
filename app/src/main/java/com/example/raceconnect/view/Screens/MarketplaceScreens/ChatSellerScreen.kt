@@ -470,28 +470,38 @@ private fun adjustTimestamp(timestamp: String?): String? {
     }
 }
 
-// Function to format the timestamp to show local date and time
 private fun formatTime(timestamp: String?): String {
     return if (timestamp != null) {
         try {
-            val utcFormat = if (timestamp.contains("T")) {
+            val inputFormat = if (timestamp.contains("T")) {
                 SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
             } else {
                 SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             }
-            utcFormat.timeZone = TimeZone.getTimeZone("UTC")
+            // Assume input is UTC (common for server timestamps)
+            inputFormat.timeZone = TimeZone.getTimeZone("UTC")
 
-            val date = utcFormat.parse(timestamp)
-            val localFormat = SimpleDateFormat("MMM dd, yyyy, h:mm a", Locale.getDefault())
-            localFormat.timeZone = TimeZone.getDefault()
+            val date = inputFormat.parse(timestamp)
+            val outputFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+            outputFormat.timeZone = TimeZone.getTimeZone("Asia/Manila") // GMT+8 Philippines
 
-            localFormat.format(date ?: Date())
+            // Optional: Add 4-minute offset if server time is behind
+            val adjustedDate = Date(date.time + (4 * 60 * 1000)) // Add 4 minutes
+            val formattedTime = outputFormat.format(adjustedDate)
+
+            // Log for diagnostics
+            val currentSystemTime = outputFormat.format(Date())
+            Log.d("ConversationTime", "Raw timestamp: $timestamp")
+            Log.d("ConversationTime", "Formatted time (with +4min): $formattedTime")
+            Log.d("ConversationTime", "Current system time (GMT+8): $currentSystemTime")
+
+            formattedTime
         } catch (e: Exception) {
-            Log.e("ChatSellerScreen", "Error parsing timestamp for display: ${e.message}, raw: $timestamp")
-            timestamp
+            Log.e("ConversationTime", "Error parsing timestamp: ${e.message}, raw: $timestamp")
+            timestamp // Fallback to raw timestamp if parsing fails
         }
     } else {
-        "N/A"
+        ""
     }
 }
 

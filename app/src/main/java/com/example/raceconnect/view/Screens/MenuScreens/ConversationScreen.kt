@@ -1,5 +1,6 @@
 package com.example.raceconnect.view.Screens.MenuScreens
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,22 +22,22 @@ import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.view.Navigation.NavRoutes
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationsScreen(
     navController: NavController,
-    userPreferences: UserPreferences // Inject UserPreferences to get logged-in user
+    userPreferences: UserPreferences
 ) {
     val scope = rememberCoroutineScope()
     val currentUser by userPreferences.user.collectAsState(initial = null)
     val currentUserId = currentUser?.id ?: 0
 
-    // State to hold conversations
     var conversations by remember { mutableStateOf<List<Conversation>?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Fetch conversations when user ID is available
     LaunchedEffect(currentUserId) {
         if (currentUserId != 0) {
             scope.launch {
@@ -166,10 +167,44 @@ fun ConversationItem(
                 )
             }
             Text(
-                text = conversation.lastMessageTime?.split(" ")?.get(1) ?: "",
+                text = formatTime(conversation.lastMessageTime),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+// Function to format timestamp assuming it's already in GMT+8
+private fun formatTime(timestamp: String?): String {
+    return if (timestamp != null) {
+        try {
+            val inputFormat = if (timestamp.contains("T")) {
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+            } else {
+                SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            }
+            inputFormat.timeZone = TimeZone.getTimeZone("Asia/Manila") // Input is already GMT+8
+
+            val date = inputFormat.parse(timestamp)
+            val outputFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+            outputFormat.timeZone = TimeZone.getTimeZone("Asia/Manila") // Output in GMT+8
+
+            val adjustedDate = Date(date.time + (4 * 60 * 1000)) // Add 4 minutes
+            val formattedTime = outputFormat.format(adjustedDate)
+
+            // Log for diagnostics
+            val currentSystemTime = outputFormat.format(Date())
+            Log.d("ConversationTime", "Raw timestamp: $timestamp")
+            Log.d("ConversationTime", "Formatted time: $formattedTime")
+            Log.d("ConversationTime", "Current system time (GMT+8): $currentSystemTime")
+
+            formattedTime
+        } catch (e: Exception) {
+            Log.e("ConversationTime", "Error parsing timestamp: ${e.message}, raw: $timestamp")
+            timestamp // Fallback to raw timestamp if parsing fails
+        }
+    } else {
+        ""
     }
 }
