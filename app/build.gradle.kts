@@ -65,6 +65,7 @@ dependencies {
     implementation (libs.accompanist.swiperefresh)
 
     implementation (libs.androidx.material.icons.extended)
+    implementation("org.java-websocket:Java-WebSocket:1.5.4")
 
 
     implementation(libs.androidx.core.ktx)

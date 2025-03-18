@@ -606,6 +606,26 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         }
     }
 
+    fun checkConversationExists(buyerId: Int, sellerId: Int, productId: Int, onResult: (Boolean, Int?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitInstance.api.checkConversationExists(buyerId, sellerId, productId)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    val exists = body?.get("exists") as? Boolean ?: false
+                    val conversationId = if (exists) (body["conversation_id"] as? Number)?.toInt() else null
+                    onResult(exists, conversationId)
+                } else {
+                    Log.e("MarketplaceViewModel", "Failed to check conversation: ${response.errorBody()?.string()}")
+                    onResult(false, null)
+                }
+            } catch (e: Exception) {
+                Log.e("MarketplaceViewModel", "Error checking conversation: ${e.message}")
+                onResult(false, null)
+            }
+        }
+    }
+
     fun sendMessage(
         buyerId: Int,
         sellerId: Int,
@@ -631,7 +651,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                     _messageSentStatus.value = "Message sent successfully"
                     _lastConversationId.value = response.body()?.conversation_id
                 } else {
-                    _errorMessage.value = "Failed to send message: ${response.body()?.error}"
+                    _errorMessage.value = "Failed to send message: ${response.body()?.error ?: "Unknown error"}"
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Error sending message: ${e.message}"

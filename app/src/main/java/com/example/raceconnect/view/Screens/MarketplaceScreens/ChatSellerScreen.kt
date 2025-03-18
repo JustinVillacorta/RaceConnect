@@ -1,13 +1,29 @@
+package com.example.raceconnect.view.Screens.MarketplaceScreens
+
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import android.util.Base64
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,25 +31,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.Message
+import com.example.raceconnect.model.MessageData
 import com.example.raceconnect.view.ui.theme.Red
-import com.example.raceconnect.viewmodel.WebSocketManager
+import com.google.gson.Gson
+import okhttp3.*
+import okio.ByteString
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.text.style.TextAlign
-import com.example.raceconnect.model.MessageData
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,243 +58,521 @@ fun ChatSellerScreen(
     conversationId: Int,
     sellerId: Int,
     navController: NavController,
-    userPreferences: UserPreferences, // Inject UserPreferences
-    onClose: () -> Unit = { navController.popBackStack() }
+    userPreferences: UserPreferences,
+    onClose: () -> Unit
 ) {
     val context = LocalContext.current
-    val currentUser by userPreferences.user.collectAsState(initial = null)
-    val currentUserId = currentUser?.id ?: 0
+    val coroutineScope = rememberCoroutineScope()
+    var userId by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(Unit) {
+        userId = userPreferences.getUserId()
+    }
+    val messages = remember { mutableStateListOf<Message>() }
+    val messageIds = remember { mutableSetOf<Int>() }
+    var inputText by remember { mutableStateOf("") }
+    var attachedImageUri by remember { mutableStateOf<Uri?>(null) } // State to hold the attached image
+    var webSocket by remember { mutableStateOf<WebSocket?>(null) }
+    val gson = Gson()
+    val client = remember { OkHttpClient() }
+    val listState = rememberLazyListState()
 
-    // WebSocket messages
-    val messages by WebSocketManager.incomingMessages.collectAsState()
-    val chatMessages = messages.filter { it.conversation_id == conversationId }
-        .map { it.toChatMessage() }
-        .sortedBy { it.timestamp }
-
-    // Local state for input and photo
-    var messageInput by remember { mutableStateOf("") }
-    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
-
-    // Photo picker launcher
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-        onResult = { uri: Uri? -> selectedPhotoUri = uri }
-    )
-
-    // Connect to WebSocket when screen is composed
-    DisposableEffect(currentUserId) {
-        if (currentUserId != 0) {
-            WebSocketManager.connect(currentUserId.toString())
-            WebSocketManager.fetchMessages(conversationId.toString())
+    // Launcher for picking an image from the gallery
+    val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri ->
+                attachedImageUri = uri // Attach the image URI for preview
+                Log.d("ChatSellerScreen", "Image selected: $uri")
+            }
+        } else {
+            Log.w("ChatSellerScreen", "Image selection failed with result code: ${result.resultCode}")
         }
+    }
+
+    // Custom WebSocketListener class to handle incoming messages
+    class ChatWebSocketListener(
+        private val coroutineScope: CoroutineScope,
+        private val messages: MutableList<Message>,
+        private val messageIds: MutableSet<Int>,
+        private val listState: LazyListState,
+        private val userId: Int?,
+        private val conversationId: Int,
+        private val gson: Gson
+    ) : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+            super.onOpen(webSocket, response)
+            Log.d("ChatSellerScreen", "WebSocket opened for user $userId, conversation $conversationId")
+            val fetchMessageRequest = mapOf(
+                "type" to "fetch_messages",
+                "conversation_id" to conversationId,
+                "limit" to 50,
+                "offset" to 0
+            )
+            webSocket.send(gson.toJson(fetchMessageRequest))
+        }
+
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            val data = gson.fromJson(text, Map::class.java)
+            Log.d("ChatSellerScreen", "Received message: $text")
+            when (data["type"]) {
+                "conversation_history" -> {
+                    val msgList = gson.fromJson(
+                        gson.toJson(data["messages"]),
+                        Array<Message>::class.java
+                    ).toList()
+                    coroutineScope.launch {
+                        messages.clear()
+                        messageIds.clear()
+                        msgList.forEach { msg ->
+                            val adjustedMsg = msg.copy(
+                                created_at = adjustTimestamp(msg.created_at),
+                                images = msg.images
+                            )
+                            adjustedMsg.id?.let {
+                                if (messageIds.add(it)) {
+                                    messages.add(adjustedMsg)
+                                }
+                            }
+                        }
+                        messages.sortBy { it.created_at }
+                        coroutineScope.launch {
+                            if (messages.isNotEmpty()) {
+                                listState.scrollToItem(messages.size - 1)
+                            }
+                        }
+                    }
+                }
+                "message_sent" -> {
+                    val msg = gson.fromJson(text, MessageData::class.java)
+                    coroutineScope.launch {
+                        val adjustedTimestamp = adjustTimestamp(msg.timestamp)
+                        val newMessage = Message(
+                            id = msg.message_id,
+                            conversation_id = msg.conversation_id ?: 0,
+                            sender_id = msg.sender_id ?: 0,
+                            receiver_id = msg.receiver_id ?: 0,
+                            message_type = msg.message_type ?: "text",
+                            message = msg.message ?: "",
+                            media_url = msg.media_url,
+                            images = msg.images ?: if (msg.media_url != null) listOf(msg.media_url) else null,
+                            status = msg.status,
+                            created_at = adjustedTimestamp,
+                            delivered_at = null,
+                            read_at = null,
+                            is_deleted = false
+                        )
+                        newMessage.id?.let {
+                            if (messageIds.add(it)) {
+                                messages.add(newMessage)
+                                coroutineScope.launch {
+                                    listState.scrollToItem(messages.size - 1)
+                                }
+                            } else {
+                                Log.d("ChatSellerScreen", "Duplicate message ID filtered: $it")
+                            }
+                        }
+                    }
+                }
+                "new_message" -> {
+                    val msg = gson.fromJson(text, MessageData::class.java)
+                    coroutineScope.launch {
+                        val adjustedTimestamp = adjustTimestamp(msg.timestamp)
+                        val newMessage = Message(
+                            id = msg.message_id,
+                            conversation_id = msg.conversation_id ?: 0,
+                            sender_id = msg.sender_id ?: 0,
+                            receiver_id = msg.receiver_id ?: 0,
+                            message_type = msg.message_type ?: "text",
+                            message = msg.message ?: "",
+                            media_url = msg.media_url,
+                            images = msg.images ?: if (msg.media_url != null) listOf(msg.media_url) else null,
+                            status = msg.status,
+                            created_at = adjustedTimestamp,
+                            delivered_at = null,
+                            read_at = null,
+                            is_deleted = false
+                        )
+                        newMessage.id?.let {
+                            if (messageIds.add(it)) {
+                                messages.add(newMessage)
+                                coroutineScope.launch {
+                                    listState.scrollToItem(messages.size - 1)
+                                }
+                            } else {
+                                Log.d("ChatSellerScreen", "Duplicate message ID filtered: $it")
+                            }
+                        }
+                    }
+                }
+                "error" -> {
+                    Log.e("ChatSellerScreen", "Server error: ${data["message"]}")
+                }
+            }
+        }
+
+        override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+            // Handle binary messages if needed
+        }
+
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            webSocket.close(NORMAL_CLOSURE_STATUS, null)
+            Log.d("ChatSellerScreen", "WebSocket closing: $code $reason")
+        }
+
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: okhttp3.Response?) {
+            Log.e("ChatSellerScreen", "WebSocket error: ${t.message}", t)
+        }
+    }
+
+    LaunchedEffect(userId, conversationId) {
+        if (userId == null) {
+            onClose()
+            return@LaunchedEffect
+        }
+
+        webSocket?.close(NORMAL_CLOSURE_STATUS, null)
+
+        val request = Request.Builder()
+            .url("ws://192.168.5.157:8080?user_id=${userId!!}")
+            .build()
+
+        webSocket = client.newWebSocket(
+            request,
+            ChatWebSocketListener(
+                coroutineScope = coroutineScope,
+                messages = messages,
+                messageIds = messageIds,
+                listState = listState,
+                userId = userId,
+                conversationId = conversationId,
+                gson = gson
+            )
+        )
+    }
+
+    DisposableEffect(Unit) {
         onDispose {
-            WebSocketManager.disconnect()
+            coroutineScope.launch {
+                webSocket?.close(NORMAL_CLOSURE_STATUS, null)
+                client.dispatcher.executorService.shutdown()
+            }
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat Seller") },
+                title = { Text("Chat with Seller", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Red,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Red)
             )
-        },
-        modifier = Modifier.fillMaxSize()
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            // Chat Header (Placeholder for seller info)
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                AsyncImage(
-                    model = "https://via.placeholder.com/60", // Replace with actual seller image URL
-                    contentDescription = "Seller Profile",
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(CircleShape)
-                        .align(Alignment.CenterHorizontally)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Item #$itemId", // Replace with actual item title
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
-
-            // Chat Messages
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 0.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(8.dp)
             ) {
-                items(chatMessages) { message ->
-                    ChatBubble(
-                        message = message,
-                        isSender = message.senderId == currentUserId,
-                        sellerImageUrl = "https://via.placeholder.com/24" // Replace with seller image URL
-                    )
-                }
-            }
-
-            // Message Input Field
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White, shape = RoundedCornerShape(8.dp))
-                    .padding(vertical = 8.dp, horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { photoPickerLauncher.launch("image/*") }) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Attach Photo",
-                        tint = Color(0xFFD32F2F)
-                    )
-                }
-                OutlinedTextField(
-                    value = messageInput,
-                    onValueChange = { messageInput = it },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 8.dp),
-                    placeholder = { Text("Message", color = Color.Gray) },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        cursorColor = Color.Black
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                IconButton(
-                    onClick = {
-                        if (messageInput.isNotBlank() || selectedPhotoUri != null) {
-                            val messageContent = messageInput.ifBlank { "Photo" }
-                            WebSocketManager.sendMessage(
-                                conversationId = conversationId.toString(),
-                                senderId = currentUserId.toString(),
-                                receiverId = sellerId.toString(),
-                                message = messageContent,
-                                messageType = if (selectedPhotoUri != null) "image" else "text",
-                                mediaUrl = selectedPhotoUri?.toString()
+                items(messages) { message ->
+                    val isSentByUser = message.sender_id == userId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = if (isSentByUser) Arrangement.End else Arrangement.Start
+                    ) {
+                        Card(
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSentByUser) Red else Color.LightGray
                             )
-                            messageInput = ""
-                            selectedPhotoUri = null
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp, 6.dp)) {
+                                if (message.message.isNotBlank()) {
+                                    Text(
+                                        text = message.message,
+                                        color = if (isSentByUser) Color.White else Color.Black,
+                                        style = TextStyle(fontSize = 16.sp)
+                                    )
+                                }
+                                message.images?.forEach { imageUrl ->
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(imageUrl)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Sent image",
+                                        modifier = Modifier
+                                            .size(100.dp)
+                                            .padding(4.dp)
+                                            .clickable {
+                                                // Currently logs the click; no full-screen behavior
+                                                Log.d("ChatSellerScreen", "Image clicked: $imageUrl")
+                                                // Uncomment and extend below for full-screen if needed:
+                                                // val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                //     data = Uri.parse(imageUrl)
+                                                // }
+                                                // context.startActivity(intent)
+                                            }
+                                    )
+                                }
+                                Text(
+                                    text = formatTime(message.created_at),
+                                    color = Color.Gray,
+                                    style = TextStyle(fontSize = 12.sp),
+                                    modifier = Modifier.align(if (isSentByUser) Alignment.End else Alignment.Start)
+                                )
+                            }
                         }
                     }
+                }
+            }
+
+            // Message composition card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                shape = RoundedCornerShape(8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxWidth()
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Send,
-                        contentDescription = "Send Message",
-                        tint = Color(0xFFD32F2F)
-                    )
+                    // Attached image preview on top of the text field
+                    attachedImageUri?.let { uri ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Box(modifier = Modifier.size(50.dp)) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(uri)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Attached image preview",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(4.dp))
+                                )
+                                IconButton(
+                                    onClick = { attachedImageUri = null }, // Remove image on "X" click
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(16.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove image",
+                                        tint = Color.White,
+                                        modifier = Modifier.background(Color.Red, RoundedCornerShape(50))
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Text input and send button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Image attachment button
+                        IconButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_PICK)
+                                intent.type = "image/*"
+                                launcher.launch(intent)
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = "Attach Image",
+                                tint = Red
+                            )
+                        }
+
+                        // Text input
+                        OutlinedTextField(
+                            value = inputText,
+                            onValueChange = { inputText = it },
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 8.dp, end = 8.dp),
+                            label = { Text("Type a message...") },
+                            textStyle = TextStyle(fontSize = 16.sp),
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                focusedBorderColor = Red,
+                                unfocusedBorderColor = Color.Gray
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+
+                        // Send button
+                        IconButton(
+                            onClick = {
+                                if ((inputText.isNotBlank() || attachedImageUri != null) && userId != null) {
+                                    if (attachedImageUri != null) {
+                                        sendImageToServer(
+                                            attachedImageUri!!,
+                                            context,
+                                            userId,
+                                            conversationId,
+                                            sellerId,
+                                            webSocket,
+                                            gson,
+                                            coroutineScope,
+                                            inputText
+                                        )
+                                        attachedImageUri = null // Clear the attached image after sending
+                                    } else {
+                                        val messageData = mapOf(
+                                            "type" to "send_message",
+                                            "conversation_id" to conversationId,
+                                            "sender_id" to userId!!,
+                                            "receiver_id" to sellerId,
+                                            "message" to inputText
+                                        )
+                                        if (webSocket?.send(gson.toJson(messageData)) == true) {
+                                            Log.d("ChatSellerScreen", "Text message sent: $inputText")
+                                        } else {
+                                            Log.e("ChatSellerScreen", "Failed to send text message")
+                                        }
+                                    }
+                                    inputText = "" // Clear the input text after sending
+                                } else {
+                                    Log.w("ChatSellerScreen", "Cannot send: userId=$userId, inputText=$inputText, attachedImageUri=$attachedImageUri")
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Send, contentDescription = "Send", tint = Red)
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-// Convert MessageData to ChatMessage
-fun MessageData.toChatMessage(): ChatMessage {
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-    val date = try {
-        timestamp?.let { dateFormat.parse(it) } ?: Date()
-    } catch (e: Exception) {
-        Date()
-    }
-    return ChatMessage(
-        id = this.message_id ?: 0,
-        senderId = this.sender_id ?: 0,
-        content = this.message ?: "",
-        timestamp = date,
-        photoUri = this.media_url?.let { Uri.parse(it) }
-    )
-}
-
-// ChatMessage and ChatBubble remain the same as provided
-data class ChatMessage(
-    val id: Int,
-    val senderId: Int,
-    val content: String,
-    val timestamp: Date,
-    val photoUri: Uri? = null
-)
-
-@Composable
-fun ChatBubble(message: ChatMessage, isSender: Boolean, sellerImageUrl: String) {
-    val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
-    val timeString = timeFormat.format(message.timestamp)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = if (isSender) Arrangement.End else Arrangement.Start
-    ) {
-        if (!isSender) {
-            AsyncImage(
-                model = sellerImageUrl,
-                contentDescription = "Seller Profile",
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .padding(end = 8.dp)
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .widthIn(max = 250.dp)
-                .background(
-                    if (isSender) Color(0xFFE57373) else Color.LightGray,
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .padding(8.dp)
-        ) {
-            Text(
-                text = message.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isSender) Color.White else Color.Black,
-                maxLines = 10,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = timeString,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isSender) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f),
-                textAlign = TextAlign.End
-            )
-            message.photoUri?.let { uri ->
-                AsyncImage(
-                    model = uri,
-                    contentDescription = "Chat Photo",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .padding(top = 8.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
+// Function to adjust timestamp
+private fun adjustTimestamp(timestamp: String?): String? {
+    return timestamp?.let {
+        try {
+            val dateFormat = if (timestamp.contains("T")) {
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+            } else {
+                SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             }
+            dateFormat.timeZone = TimeZone.getTimeZone("UTC")
+
+            val utcDate = dateFormat.parse(timestamp) ?: return timestamp
+
+            val outputFormat = if (timestamp.contains("T")) {
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+            } else {
+                SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            }
+            outputFormat.timeZone = TimeZone.getTimeZone("UTC")
+
+            outputFormat.format(utcDate)
+        } catch (e: Exception) {
+            Log.e("ChatSellerScreen", "Error adjusting timestamp: ${e.message}, raw: $timestamp", e)
+            timestamp
         }
     }
 }
+
+// Function to format the timestamp to show local date and time
+private fun formatTime(timestamp: String?): String {
+    return if (timestamp != null) {
+        try {
+            val utcFormat = if (timestamp.contains("T")) {
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+            } else {
+                SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            }
+            utcFormat.timeZone = TimeZone.getTimeZone("UTC")
+
+            val date = utcFormat.parse(timestamp)
+            val localFormat = SimpleDateFormat("MMM dd, yyyy, h:mm a", Locale.getDefault())
+            localFormat.timeZone = TimeZone.getDefault()
+
+            localFormat.format(date ?: Date())
+        } catch (e: Exception) {
+            Log.e("ChatSellerScreen", "Error parsing timestamp for display: ${e.message}, raw: $timestamp")
+            timestamp
+        }
+    } else {
+        "N/A"
+    }
+}
+
+// Function to send image to server via WebSocket
+private fun sendImageToServer(
+    uri: Uri,
+    context: Context,
+    userId: Int?,
+    conversationId: Int,
+    receiverId: Int,
+    webSocket: WebSocket?,
+    gson: Gson,
+    coroutineScope: CoroutineScope,
+    message: String
+) {
+    try {
+        // Load the bitmap from the URI
+        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri))
+        } else {
+            MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+        }
+
+        // Compress the bitmap to JPEG
+        val outputStream = ByteArrayOutputStream()
+        val success = bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+        if (!success) {
+            Log.e("ChatSellerScreen", "Failed to compress bitmap")
+            return
+        }
+        val byteArray = outputStream.toByteArray()
+        val base64Image = Base64.encodeToString(byteArray, Base64.DEFAULT)
+        Log.d("ChatSellerScreen", "Base64 image size: ${base64Image.length} characters")
+
+        if (userId != null) {
+            val messageData = mapOf(
+                "type" to "send_message",
+                "conversation_id" to conversationId,
+                "sender_id" to userId,
+                "receiver_id" to receiverId,
+                "message_type" to "image",
+                "image_data" to base64Image,
+                "message" to message
+            )
+            if (webSocket?.send(gson.toJson(messageData)) == true) {
+                Log.d("ChatSellerScreen", "Image message sent: $message")
+            } else {
+                Log.e("ChatSellerScreen", "Failed to send image message via WebSocket")
+            }
+        } else {
+            Log.e("ChatSellerScreen", "User ID is null, cannot send image")
+        }
+    } catch (e: Exception) {
+        Log.e("ChatSellerScreen", "Error in sendImageToServer: ${e.message}", e)
+    }
+}
+
+const val NORMAL_CLOSURE_STATUS = 1000

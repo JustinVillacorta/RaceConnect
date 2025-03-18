@@ -285,4 +285,11 @@ interface ApiService {
 
     @GET("chat/{userId}")
     suspend fun getUserConversations(@Path("userId") userId: Int): ConversationsResponse
+
+    @GET("chat/exists")
+    suspend fun checkConversationExists(
+        @Query("buyer_id") buyerId: Int,
+        @Query("seller_id") sellerId: Int,
+        @Query("product_id") productId: Int
+    ): Response<Map<String, Any>>
 }

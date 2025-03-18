@@ -4,14 +4,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Conversation
 import com.example.raceconnect.network.RetrofitInstance
@@ -132,6 +135,14 @@ fun ConversationItem(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            AsyncImage(
+                model = conversation.productImageUrl ?: "https://via.placeholder.com/60",
+                contentDescription = "Item Image",
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -153,7 +164,7 @@ fun ConversationItem(
                 )
             }
             Text(
-                text = conversation.lastMessageTime?.split(" ")?.get(1) ?: "", // Simple time formatting
+                text = conversation.lastMessageTime?.split(" ")?.get(1) ?: "",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

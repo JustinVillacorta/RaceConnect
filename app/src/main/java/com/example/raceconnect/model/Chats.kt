@@ -1,6 +1,6 @@
 package com.example.raceconnect.model
 
-import com.google.gson.annotations.SerializedName;
+import com.google.gson.annotations.SerializedName
 
 data class NotificationData(
     val title: String?,
@@ -15,6 +15,7 @@ data class Message(
     val message_type: String?,
     val message: String,
     val media_url: String?,
+    val images: List<String>? = null,
     val status: String?,
     val created_at: String?,
     val delivered_at: String?,
@@ -30,6 +31,7 @@ data class MessageData(
     val message_type: String?,
     val message: String?,
     val media_url: String?,
+    val images: List<String>? = null,
     val status: String?,
     val timestamp: String?
 )
@@ -67,7 +69,8 @@ data class Conversation(
     @SerializedName("last_activity_at") val lastActivityAt: String?,
     @SerializedName("buyer_username") val buyerUsername: String?,
     @SerializedName("seller_username") val sellerUsername: String?,
-    @SerializedName("product_title") val productTitle: String?
+    @SerializedName("product_title") val productTitle: String?,
+    @SerializedName("product_image_url") val productImageUrl: String?
 )
 
 data class ConversationsResponse(

@@ -1,6 +1,5 @@
 package com.example.raceconnect.navigation
 
-import ChatSellerScreen
 import android.net.Uri
 import android.util.Log
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -70,6 +69,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

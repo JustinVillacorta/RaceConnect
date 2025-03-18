@@ -38,7 +38,7 @@ fun MarketplaceItemDetailScreen(
     viewModel: MarketplaceViewModel,
     onClose: () -> Unit,
     onLikeError: (String) -> Unit,
-    onNavigateToChat: () -> Unit // New callback to notify navigation
+    onNavigateToChat: () -> Unit
 ) {
     val marketplaceItems by viewModel.marketplaceItems.collectAsState()
     val imagesMap by viewModel.marketplaceImages.collectAsState()
@@ -52,9 +52,36 @@ fun MarketplaceItemDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val currentUserId by viewModel.currentUserId.collectAsState()
 
-    LaunchedEffect(itemId) {
+    // State to track conversation existence and ID
+    var conversationExists by remember { mutableStateOf(false) }
+    var conversationId by remember { mutableStateOf<Int?>(null) }
+
+    // Fetch item images, like status, and check for existing conversation
+    LaunchedEffect(itemId, currentUserId) {
+        if (item == null || currentUserId == null) return@LaunchedEffect
+
+        // Fetch item images and like status
         viewModel.getMarketplaceItemImages(itemId)
         viewModel.fetchLikeStatus(itemId)
+
+        // Check if a conversation already exists
+        viewModel.checkConversationExists(
+            buyerId = currentUserId!!,
+            sellerId = item.seller_id,
+            productId = itemId
+        ) { exists, convId ->
+            conversationExists = exists
+            conversationId = convId
+        }
+    }
+
+    // Update conversation status after sending a message
+    LaunchedEffect(messageSentStatus) {
+        if (messageSentStatus != null) {
+            conversationExists = true
+            conversationId = viewModel.lastConversationId.value
+            viewModel.clearMessageSentStatus()
+        }
     }
 
     if (item == null) {
@@ -221,32 +248,43 @@ fun MarketplaceItemDetailScreen(
 
                 Button(
                     onClick = {
-                        if (currentUserId != null) {
-                            coroutineScope.launch {
-                                viewModel.sendMessage(
-                                    buyerId = currentUserId!!,
-                                    sellerId = item.seller_id,
-                                    productId = itemId,
-                                    message = "Hi, I'm interested in your item: ${item.title}"
+                        if (conversationExists && conversationId != null) {
+                            navController.navigate(
+                                NavRoutes.ChatSeller.createRoute(
+                                    itemId = itemId,
+                                    conversationId = conversationId!!,
+                                    sellerId = item.seller_id
                                 )
-                            }
+                            )
                         } else {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = "Please log in to send a message",
-                                    actionLabel = "Dismiss",
-                                    duration = SnackbarDuration.Short
-                                )
+                            if (currentUserId != null) {
+                                coroutineScope.launch {
+                                    viewModel.sendMessage(
+                                        buyerId = currentUserId!!,
+                                        sellerId = item.seller_id,
+                                        productId = itemId,
+                                        message = "Hi, I'm interested in your item: ${item.title}"
+                                    )
+                                }
+                            } else {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = "Please log in to send a message",
+                                        actionLabel = "Dismiss",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
                             }
                         }
                     },
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier
                         .weight(1f)
-                        .height(56.dp)
-                        .padding(start = 8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Red,
+                        contentColor = Color.White
+                    )
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -254,48 +292,34 @@ fun MarketplaceItemDetailScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Chat,
-                            contentDescription = "Chat Seller",
+                            contentDescription = "Chat",
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Chat Seller", fontSize = 14.sp)
+                        Text(
+                            text = if (conversationExists) "See Messages" else "Chat Seller",
+                            fontSize = 14.sp
+                        )
                     }
                 }
             }
-        }
-    }
 
-    LaunchedEffect(errorMessage) {
-        if (errorMessage != null) {
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar(
-                    message = errorMessage ?: "Unknown error",
-                    actionLabel = "Dismiss",
-                    duration = SnackbarDuration.Short
+            errorMessage?.let {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
-                viewModel.clearErrorMessage()
             }
-        }
-    }
 
-    LaunchedEffect(messageSentStatus) {
-        if (messageSentStatus != null && messageSentStatus == "Message sent successfully") {
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar(
-                    message = messageSentStatus!!,
-                    actionLabel = "Dismiss",
-                    duration = SnackbarDuration.Short
+            messageSentStatus?.let {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
-                val conversationId = viewModel.lastConversationId.value ?: 0
-                onNavigateToChat()
-                navController.navigate(
-                    NavRoutes.ChatSeller.createRoute(
-                        itemId = itemId,
-                        conversationId = conversationId,
-                        sellerId = item.seller_id
-                    )
-                )
-                viewModel.clearMessageSentStatus()
             }
         }
     }

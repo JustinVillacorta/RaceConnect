@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 
 object WebSocketManager {
     // Replace with your server IP and port from .env (e.g., ws://your-server-ip:8080)
-    private const val BASE_URL = "ws://192.168.5.53:8080" // Replace with your server's IP
+    private const val BASE_URL = "ws://192.168.5.157:8080" // Replace with your server's IP
     private const val TAG = "WebSocketManager"
 
     private val client = OkHttpClient.Builder()
@@ -53,7 +53,7 @@ object WebSocketManager {
                     when (type) {
                         "new_message" -> {
                             val messageData = gson.fromJson(text, MessageData::class.java)
-                            _incomingMessages.update { currentMessages -> listOf(messageData) + currentMessages }
+                            _incomingMessages.update { currentMessages -> currentMessages + messageData }
                         }
                         "conversation_history" -> {
                             val messages = jsonObject["messages"] as? List<Map<String, Any>> ?: emptyList()
@@ -70,7 +70,9 @@ object WebSocketManager {
                                     timestamp = map["created_at"] as? String
                                 )
                             }
-                            _incomingMessages.update { messageList }
+                            _incomingMessages.update { currentMessages ->
+                                (messageList + currentMessages).distinctBy { it.message_id }.sortedBy { it.timestamp }
+                            }
                         }
                         "message_status" -> {
                             Log.d(TAG, "Message status update: $text")
@@ -141,9 +143,15 @@ object WebSocketManager {
     }
 
     fun fetchMessages(conversationId: String) {
+        fetchMessagesWithPagination(conversationId, limit = 20, offset = 0)
+    }
+
+    fun fetchMessagesWithPagination(conversationId: String, limit: Int, offset: Int) {
         val json = gson.toJson(mapOf(
             "type" to "fetch_messages",
-            "conversation_id" to conversationId
+            "conversation_id" to conversationId,
+            "limit" to limit,
+            "offset" to offset
         ))
         if (webSocket != null) {
             val success = webSocket?.send(json) == true
