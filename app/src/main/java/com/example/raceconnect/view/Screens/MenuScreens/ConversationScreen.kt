@@ -105,7 +105,9 @@ fun ConversationsScreen(
                                     NavRoutes.ChatSeller.createRoute(
                                         itemId = conversation.productId,
                                         conversationId = conversation.conversationId,
-                                        sellerId = if (currentUserId == conversation.buyerId) conversation.sellerId else conversation.buyerId
+                                        sellerId = if (currentUserId == conversation.buyerId) conversation.sellerId else conversation.buyerId,
+                                        itemTitle = conversation.productTitle.toString(),
+                                        itemImage = conversation.productImageUrl
                                     )
                                 )
                             }

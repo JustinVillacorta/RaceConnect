@@ -37,8 +37,8 @@ sealed class NavRoutes(val route: String) {
     object EditMarketplaceItem : NavRoutes("editMarketplaceItem/{itemId}") {
         fun createRoute(itemId: Int) = "editMarketplaceItem/$itemId"
     }
-    object ChatSeller : NavRoutes("chatSeller/{itemId}/{conversationId}/{sellerId}") {
-        fun createRoute(itemId: Int, conversationId: Int, sellerId: Int) = "chatSeller/$itemId/$conversationId/$sellerId"
+    object ChatSeller : NavRoutes("chatSeller/{itemId}/{conversationId}/{sellerId}/{itemTitle}/{itemImage}") {
+        fun createRoute(itemId: Int, conversationId: Int, sellerId: Int, itemTitle: String, itemImage: String?) = "chatSeller/$itemId/$conversationId/$sellerId/${Uri.encode(itemTitle)}/${Uri.encode(itemImage ?: "")}"
     }
     object ProfileDetails : NavRoutes("profileDetails")
     object FavoriteItems : NavRoutes("favoriteItems") // Already exists

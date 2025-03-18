@@ -251,7 +251,9 @@ fun MarketplaceItemDetailScreen(
                         if (conversationExists && conversationId != null) {
                             navController.navigate(
                                 NavRoutes.ChatSeller.createRoute(
+                                    itemTitle = item.title,
                                     itemId = itemId,
+                                    itemImage = itemImages.firstOrNull() ?: item.image_url,
                                     conversationId = conversationId!!,
                                     sellerId = item.seller_id
                                 )

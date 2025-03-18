@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -58,6 +59,8 @@ fun ChatSellerScreen(
     itemId: Int,
     conversationId: Int,
     sellerId: Int,
+    itemTitle: String,
+    itemImage: String?,
     navController: NavController,
     userPreferences: UserPreferences,
     onClose: () -> Unit
@@ -225,7 +228,21 @@ fun ChatSellerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat with Seller", color = Color.White) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        itemImage?.let {
+                            AsyncImage(
+                                model = it,
+                                contentDescription = "Item Image",
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .padding(end = 8.dp)
+                            )
+                        }
+                        Text(itemTitle, color = Color.White)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)

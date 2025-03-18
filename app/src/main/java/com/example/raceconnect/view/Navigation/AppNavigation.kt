@@ -458,7 +458,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             arguments = listOf(
                                 navArgument("itemId") { type = NavType.IntType },
                                 navArgument("conversationId") { type = NavType.IntType },
-                                navArgument("sellerId") { type = NavType.IntType }
+                                navArgument("sellerId") { type = NavType.IntType },
+                                navArgument("itemTitle") { type = NavType.StringType },
+                                navArgument("itemImage") { type = NavType.StringType; nullable = true } // Add this
                             ),
                             enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
                             exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
@@ -468,10 +470,15 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             val itemId = backStackEntry.arguments?.getInt("itemId") ?: 0
                             val conversationId = backStackEntry.arguments?.getInt("conversationId") ?: 0
                             val sellerId = backStackEntry.arguments?.getInt("sellerId") ?: 0
+                            val itemTitle = backStackEntry.arguments?.getString("itemTitle") ?: "Chat"
+                            val itemImage = backStackEntry.arguments?.getString("itemImage") // Add this
+
                             ChatSellerScreen(
                                 itemId = itemId,
                                 conversationId = conversationId,
                                 sellerId = sellerId,
+                                itemTitle = itemTitle,
+                                itemImage = itemImage, // Pass the itemImage
                                 navController = navController,
                                 userPreferences = userPreferences,
                                 onClose = { navController.popBackStack() }
