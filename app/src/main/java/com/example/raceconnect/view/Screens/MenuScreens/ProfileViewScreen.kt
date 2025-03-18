@@ -158,7 +158,7 @@ fun UserProfileScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 var selectedTabIndex by remember { mutableStateOf(0) }
-                val tabTitles = listOf("Posts", "Photos", "Reposts")
+                val tabTitles = listOf("Posts", "Reposts", "Photos")
 
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
@@ -286,7 +286,7 @@ fun UserProfileScreen(
                             }
                         } ?: CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                     }
-                    1 -> {
+                    2 -> {
                         // Photos tab: Display all images from posts
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -317,7 +317,7 @@ fun UserProfileScreen(
                             }
                         }
                     }
-                    2 -> {
+                    1 -> {
                         // Reposts tab: Show reposts with original post details
                         if (userReposts.isEmpty()) {
                             Text(
