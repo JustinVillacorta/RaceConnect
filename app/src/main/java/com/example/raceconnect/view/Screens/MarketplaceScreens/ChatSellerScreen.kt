@@ -41,6 +41,7 @@ import coil.request.ImageRequest
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Message
 import com.example.raceconnect.model.MessageData
+import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.google.gson.Gson
 import okhttp3.*
@@ -70,17 +71,16 @@ fun ChatSellerScreen(
     val messages = remember { mutableStateListOf<Message>() }
     val messageIds = remember { mutableSetOf<Int>() }
     var inputText by remember { mutableStateOf("") }
-    var attachedImageUri by remember { mutableStateOf<Uri?>(null) } // State to hold the attached image
+    var attachedImageUri by remember { mutableStateOf<Uri?>(null) }
     var webSocket by remember { mutableStateOf<WebSocket?>(null) }
     val gson = Gson()
     val client = remember { OkHttpClient() }
     val listState = rememberLazyListState()
 
-    // Launcher for picking an image from the gallery
     val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
-                attachedImageUri = uri // Attach the image URI for preview
+                attachedImageUri = uri
                 Log.d("ChatSellerScreen", "Image selected: $uri")
             }
         } else {
@@ -88,7 +88,6 @@ fun ChatSellerScreen(
         }
     }
 
-    // Custom WebSocketListener class to handle incoming messages
     class ChatWebSocketListener(
         private val coroutineScope: CoroutineScope,
         private val messages: MutableList<Message>,
@@ -141,38 +140,7 @@ fun ChatSellerScreen(
                         }
                     }
                 }
-                "message_sent" -> {
-                    val msg = gson.fromJson(text, MessageData::class.java)
-                    coroutineScope.launch {
-                        val adjustedTimestamp = adjustTimestamp(msg.timestamp)
-                        val newMessage = Message(
-                            id = msg.message_id,
-                            conversation_id = msg.conversation_id ?: 0,
-                            sender_id = msg.sender_id ?: 0,
-                            receiver_id = msg.receiver_id ?: 0,
-                            message_type = msg.message_type ?: "text",
-                            message = msg.message ?: "",
-                            media_url = msg.media_url,
-                            images = msg.images ?: if (msg.media_url != null) listOf(msg.media_url) else null,
-                            status = msg.status,
-                            created_at = adjustedTimestamp,
-                            delivered_at = null,
-                            read_at = null,
-                            is_deleted = false
-                        )
-                        newMessage.id?.let {
-                            if (messageIds.add(it)) {
-                                messages.add(newMessage)
-                                coroutineScope.launch {
-                                    listState.scrollToItem(messages.size - 1)
-                                }
-                            } else {
-                                Log.d("ChatSellerScreen", "Duplicate message ID filtered: $it")
-                            }
-                        }
-                    }
-                }
-                "new_message" -> {
+                "message_sent", "new_message" -> {
                     val msg = gson.fromJson(text, MessageData::class.java)
                     coroutineScope.launch {
                         val adjustedTimestamp = adjustTimestamp(msg.timestamp)
@@ -207,10 +175,6 @@ fun ChatSellerScreen(
                     Log.e("ChatSellerScreen", "Server error: ${data["message"]}")
                 }
             }
-        }
-
-        override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-            // Handle binary messages if needed
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -315,13 +279,13 @@ fun ChatSellerScreen(
                                             .size(100.dp)
                                             .padding(4.dp)
                                             .clickable {
-                                                // Currently logs the click; no full-screen behavior
-                                                Log.d("ChatSellerScreen", "Image clicked: $imageUrl")
-                                                // Uncomment and extend below for full-screen if needed:
-                                                // val intent = Intent(Intent.ACTION_VIEW).apply {
-                                                //     data = Uri.parse(imageUrl)
-                                                // }
-                                                // context.startActivity(intent)
+                                                // Navigate to FullScreenImage route with a dummy postId (e.g., 0) since it's not tied to a post
+                                                navController.navigate(
+                                                    NavRoutes.FullScreenImage.createRoute(
+                                                        postId = 0, // Using 0 as a placeholder since chat images aren't tied to posts
+                                                        imageUrl = imageUrl
+                                                    )
+                                                )
                                             }
                                     )
                                 }
@@ -337,7 +301,6 @@ fun ChatSellerScreen(
                 }
             }
 
-            // Message composition card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -350,7 +313,6 @@ fun ChatSellerScreen(
                         .padding(8.dp)
                         .fillMaxWidth()
                 ) {
-                    // Attached image preview on top of the text field
                     attachedImageUri?.let { uri ->
                         Row(
                             modifier = Modifier
@@ -370,7 +332,7 @@ fun ChatSellerScreen(
                                         .clip(RoundedCornerShape(4.dp))
                                 )
                                 IconButton(
-                                    onClick = { attachedImageUri = null }, // Remove image on "X" click
+                                    onClick = { attachedImageUri = null },
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .size(16.dp)
@@ -386,12 +348,10 @@ fun ChatSellerScreen(
                         }
                     }
 
-                    // Text input and send button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Image attachment button
                         IconButton(
                             onClick = {
                                 val intent = Intent(Intent.ACTION_PICK)
@@ -406,7 +366,6 @@ fun ChatSellerScreen(
                             )
                         }
 
-                        // Text input
                         OutlinedTextField(
                             value = inputText,
                             onValueChange = { inputText = it },
@@ -422,7 +381,6 @@ fun ChatSellerScreen(
                             shape = RoundedCornerShape(8.dp)
                         )
 
-                        // Send button
                         IconButton(
                             onClick = {
                                 if ((inputText.isNotBlank() || attachedImageUri != null) && userId != null) {
@@ -438,7 +396,7 @@ fun ChatSellerScreen(
                                             coroutineScope,
                                             inputText
                                         )
-                                        attachedImageUri = null // Clear the attached image after sending
+                                        attachedImageUri = null
                                     } else {
                                         val messageData = mapOf(
                                             "type" to "send_message",
@@ -453,7 +411,7 @@ fun ChatSellerScreen(
                                             Log.e("ChatSellerScreen", "Failed to send text message")
                                         }
                                     }
-                                    inputText = "" // Clear the input text after sending
+                                    inputText = ""
                                 } else {
                                     Log.w("ChatSellerScreen", "Cannot send: userId=$userId, inputText=$inputText, attachedImageUri=$attachedImageUri")
                                 }
@@ -467,7 +425,6 @@ fun ChatSellerScreen(
         }
     }
 }
-
 // Function to adjust timestamp
 private fun adjustTimestamp(timestamp: String?): String? {
     return timestamp?.let {

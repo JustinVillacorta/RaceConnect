@@ -574,8 +574,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         ) { backStackEntry ->
                             val postId = backStackEntry.arguments?.getInt("postId") ?: 0
                             val imageUrl = backStackEntry.arguments?.getString("imageUrl")?.replace("%2F", "/") ?: ""
+                            val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, LocalContext.current))
+
                             FullScreenImageViewer(
                                 imageUrl = imageUrl,
+                                postId = postId, // Pass postId here
                                 onDismiss = { navController.popBackStack() },
                                 onLikeClick = { isLiked ->
                                     if (isLiked) newsFeedViewModel.toggleLike(postId, 0)

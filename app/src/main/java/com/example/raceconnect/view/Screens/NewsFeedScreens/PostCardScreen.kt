@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
@@ -421,6 +422,7 @@ fun PostCard(
 @Composable
 fun FullScreenImageViewer(
     imageUrl: String,
+    postId: Int, // Added parameter to determine if chat image (postId = 0)
     onDismiss: () -> Unit,
     onLikeClick: (Boolean) -> Unit,
     onCommentClick: () -> Unit
@@ -466,7 +468,10 @@ fun FullScreenImageViewer(
                 }
         ) {
             AsyncImage(
-                model = imageUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(imageUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = "Full-screen image",
                 modifier = Modifier
                     .fillMaxSize()
@@ -493,57 +498,60 @@ fun FullScreenImageViewer(
                 tint = Color.White
             )
 
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp)
-                    .background(Color.Black.copy(alpha = 0.8f), shape = RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    modifier = Modifier.fillMaxWidth()
+            // Show Like/Comments only if postId != 0 (i.e., not a chat image)
+            if (postId != 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp)
+                        .background(Color.Black.copy(alpha = 0.8f), shape = RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .clickable {
-                                isLiked = !isLiked
-                                onLikeClick(isLiked)
-                            }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Favorite,
-                            contentDescription = "Like",
-                            tint = if (isLiked) Color.Red else Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Like",
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .clickable { onCommentClick() }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ChatBubble,
-                            contentDescription = "Comments",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Comments",
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable {
+                                    isLiked = !isLiked
+                                    onLikeClick(isLiked)
+                                }
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Like",
+                                tint = if (isLiked) Color.Red else Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Like",
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable { onCommentClick() }
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ChatBubble,
+                                contentDescription = "Comments",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Comments",
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                     }
                 }
             }
