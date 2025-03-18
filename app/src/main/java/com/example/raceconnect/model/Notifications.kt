@@ -17,6 +17,7 @@ data class Notification(
     @SerializedName("repost_id") val repostId: Int?,
     @SerializedName("like_id") val likeId: Int?,
     @SerializedName("comment_id") val commentId: Int?,
+    @SerializedName("convo_id") val convoId: Int?,
     @SerializedName("trigger_user_id") val triggerUserId: Int?,
     @SerializedName("trigger_username") val triggerUsername: String?,
     @SerializedName("trigger_profile_picture") val triggerProfilePicture: String?

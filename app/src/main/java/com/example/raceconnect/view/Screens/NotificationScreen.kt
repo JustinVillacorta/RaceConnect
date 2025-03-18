@@ -36,6 +36,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Date
 
+fun parseItemTitleFromContent(content: String): String? {
+    val regex = Regex("about '(.+?)'")
+    val match = regex.find(content)
+    return match?.groupValues?.get(1)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(context: Context, navController: NavController) {
@@ -118,11 +124,26 @@ fun NotificationsScreen(context: Context, navController: NavController) {
                                 if (!notification.isRead) {
                                     viewModel.markAsRead(notification.id)
                                 }
-                                notification.postId?.let { postId ->
-                                    if (notification.repostId != null) {
-                                        navController.navigate(NavRoutes.Repost.createRoute(postId, notification.repostId!!))
-                                    } else {
-                                        navController.navigate(NavRoutes.Post.createRoute(postId))
+                                // Check for convoId first
+                                if (notification.convoId != null && notification.marketplaceItemId != null && notification.triggerUserId != null) {
+                                    val itemTitle = parseItemTitleFromContent(notification.content) ?: "Chat"
+                                    navController.navigate(
+                                        NavRoutes.ChatSeller.createRoute(
+                                            itemId = notification.marketplaceItemId!!,
+                                            conversationId = notification.convoId!!,
+                                            sellerId = notification.triggerUserId!!, // Receiver ID (buyer in this case)
+                                            itemTitle = itemTitle,
+                                            itemImage = null
+                                        )
+                                    )
+                                } else {
+                                    // Existing logic for posts and reposts
+                                    notification.postId?.let { postId ->
+                                        if (notification.repostId != null) {
+                                            navController.navigate(NavRoutes.Repost.createRoute(postId, notification.repostId!!))
+                                        } else {
+                                            navController.navigate(NavRoutes.Post.createRoute(postId))
+                                        }
                                     }
                                 }
                             }
@@ -215,4 +236,10 @@ internal fun formatTimestamp(date: Date): String {
         diff < 86_400_000 -> "${diff / 3_600_000}h"
         else -> "${diff / 86_400_000}d"
     }
+}
+
+// Helper function to extract item title from content (e.g., "New conversation from Angelo about 'hahahaha'")
+private fun extractItemTitle(content: String): String? {
+    val match = Regex("about '(.*?)'").find(content)
+    return match?.groupValues?.get(1)
 }
