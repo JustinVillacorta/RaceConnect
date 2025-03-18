@@ -197,9 +197,9 @@ fun ChatSellerScreen(
         }
 
         webSocket?.close(NORMAL_CLOSURE_STATUS, null)
-
+// ws server for chats
         val request = Request.Builder()
-            .url("ws://192.168.5.157:8080?user_id=${userId!!}")
+            .url("ws://192.168.5.53:8080?user_id=${userId!!}")
             .build()
 
         webSocket = client.newWebSocket(

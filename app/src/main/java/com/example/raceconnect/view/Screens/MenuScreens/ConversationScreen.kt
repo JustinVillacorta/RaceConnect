@@ -58,7 +58,7 @@ fun ConversationsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Conversations") },
+                title = { Text("Marketplace Conversations") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Red,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary

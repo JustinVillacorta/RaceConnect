@@ -3,12 +3,13 @@ package com.example.raceconnect.view.Screens.MarketplaceScreens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -52,19 +53,14 @@ fun MarketplaceItemDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val currentUserId by viewModel.currentUserId.collectAsState()
 
-    // State to track conversation existence and ID
     var conversationExists by remember { mutableStateOf(false) }
     var conversationId by remember { mutableStateOf<Int?>(null) }
 
-    // Fetch item images, like status, and check for existing conversation
+    // Update conversation state when checking exists or after sending a message
     LaunchedEffect(itemId, currentUserId) {
         if (item == null || currentUserId == null) return@LaunchedEffect
-
-        // Fetch item images and like status
         viewModel.getMarketplaceItemImages(itemId)
         viewModel.fetchLikeStatus(itemId)
-
-        // Check if a conversation already exists
         viewModel.checkConversationExists(
             buyerId = currentUserId!!,
             sellerId = item.seller_id,
@@ -75,7 +71,7 @@ fun MarketplaceItemDetailScreen(
         }
     }
 
-    // Update conversation status after sending a message
+    // Update conversation state when a message is sent
     LaunchedEffect(messageSentStatus) {
         if (messageSentStatus != null) {
             conversationExists = true
@@ -200,72 +196,49 @@ fun MarketplaceItemDetailScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
+            // Chat Section with light theme
+            if (conversationExists) {
                 Button(
                     onClick = {
-                        coroutineScope.launch {
-                            try {
-                                viewModel.toggleLike(itemId)
-                            } catch (e: Exception) {
-                                onLikeError("Failed to toggle favorite: ${e.message}")
-                            }
-                        }
+                        navController.navigate(
+                            NavRoutes.ChatSeller.createRoute(
+                                itemTitle = item.title,
+                                itemId = itemId,
+                                itemImage = itemImages.firstOrNull() ?: item.image_url,
+                                conversationId = conversationId!!,
+                                sellerId = item.seller_id
+                            )
+                        )
                     },
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
-                        .weight(1.5f)
-                        .height(56.dp)
-                        .padding(end = 8.dp),
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (liked) MaterialTheme.colorScheme.secondary else Color(0xFFB71C1C),
-                        contentColor = if (liked) MaterialTheme.colorScheme.onSecondary else Color.White
-                    ),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        containerColor = Red,
+                        contentColor = Color.White
+                    )
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (liked) "Remove from\nFavorites" else "Add to\nFavorites",
-                            fontSize = 14.sp,
-                            maxLines = 2,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                    Text("See Chats")
                 }
-
-                Button(
-                    onClick = {
-                        if (conversationExists && conversationId != null) {
-                            navController.navigate(
-                                NavRoutes.ChatSeller.createRoute(
-                                    itemTitle = item.title,
-                                    itemId = itemId,
-                                    itemImage = itemImages.firstOrNull() ?: item.image_url,
-                                    conversationId = conversationId!!,
-                                    sellerId = item.seller_id
-                                )
-                            )
-                        } else {
+            } else {
+                Surface(
+                    color = Color(0xFFF0F0F0), // Light grey background
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp)
+                ) {
+                    MessageInputArea(
+                        defaultMessage = "Hi, is this still available?",
+                        onSendMessage = { message ->
                             if (currentUserId != null) {
                                 coroutineScope.launch {
                                     viewModel.sendMessage(
                                         buyerId = currentUserId!!,
                                         sellerId = item.seller_id,
                                         productId = itemId,
-                                        message = "Hi, I'm interested in your item: ${item.title}"
+                                        message = message
                                     )
                                 }
                             } else {
@@ -278,31 +251,49 @@ fun MarketplaceItemDetailScreen(
                                 }
                             }
                         }
-                    },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Red,
-                        contentColor = Color.White
                     )
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Chat,
-                            contentDescription = "Chat",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (conversationExists) "See Messages" else "Chat Seller",
-                            fontSize = 14.sp
-                        )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Favorite Button with racing flag icon
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        try {
+                            viewModel.toggleLike(itemId)
+                        } catch (e: Exception) {
+                            onLikeError("Failed to toggle favorite: ${e.message}")
+                        }
                     }
+                },
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (liked) MaterialTheme.colorScheme.secondary else Color(0xFFB71C1C),
+                    contentColor = Color.White
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Favorite",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (liked) "Remove from\nFavorites" else "Add to\nFavorites",
+                        fontSize = 14.sp,
+                        maxLines = 2,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
 
@@ -321,6 +312,72 @@ fun MarketplaceItemDetailScreen(
                     text = it,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MessageInputArea(defaultMessage: String, onSendMessage: (String) -> Unit) {
+    var message by remember { mutableStateOf(defaultMessage) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Chat,
+                contentDescription = "Chat",
+                tint = Color.Black
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Send seller a message",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Black
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextField(
+                value = message,
+                onValueChange = { message = it },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp),
+                placeholder = { Text("Hi, is this still available?", color = Color.Gray) },
+                singleLine = true,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black,
+                    cursorColor = Color.Black
+                )
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            FloatingActionButton(
+                onClick = {
+                    if (message.isNotBlank()) {
+                        onSendMessage(message)
+                        message = ""
+                    }
+                },
+                shape = CircleShape,
+                containerColor = if (message.isNotBlank()) Color(0xFFB71C1C) else Color.Gray,
+                contentColor = Color.White,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = "Send"
                 )
             }
         }

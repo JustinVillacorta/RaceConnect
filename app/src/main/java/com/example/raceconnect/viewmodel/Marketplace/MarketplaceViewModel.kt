@@ -613,7 +613,7 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                 if (response.isSuccessful) {
                     val body = response.body()
                     val exists = body?.get("exists") as? Boolean ?: false
-                    val conversationId = if (exists) (body["conversation_id"] as? Number)?.toInt() else null
+                    val conversationId = if (exists) (body?.get("conversation_id") as? Number)?.toInt() else null
                     onResult(exists, conversationId)
                 } else {
                     Log.e("MarketplaceViewModel", "Failed to check conversation: ${response.errorBody()?.string()}")
