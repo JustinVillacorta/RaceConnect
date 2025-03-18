@@ -48,8 +48,18 @@ sealed class NavRoutes(val route: String) {
     object FriendListScreen : NavRoutes("FriendsListScreen")
     object Conversations : NavRoutes("conversations")
     object CreateMarketplaceItem : NavRoutes("createMarketplaceItem")
-    object FullScreenImage : NavRoutes("fullScreenImage/{postId}/{imageUrl}") {
-        fun createRoute(postId: Int, imageUrl: String) = "fullScreenImage/$postId/${imageUrl.replace("/", "%2F")}"
+
+
+    object FullScreenImage {
+        fun createRoute(postId: Int, imageUrls: List<String>, initialIndex: Int): String {
+            require(postId >= 0) { "postId must be non-negative" }
+            require(imageUrls.isNotEmpty()) { "imageUrls must not be empty" }
+            require(initialIndex in 0 until imageUrls.size) { "initialIndex must be within the range of imageUrls" }
+
+            // URL-encode each image URL to handle special characters
+            val encodedImageUrls = imageUrls.joinToString(",") { Uri.encode(it) }
+            return "fullScreenImage/$postId/$encodedImageUrls/$initialIndex"
+        }
     }
 
     // New EditPost route

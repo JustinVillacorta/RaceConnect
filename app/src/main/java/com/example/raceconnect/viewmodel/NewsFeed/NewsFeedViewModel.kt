@@ -150,11 +150,10 @@ class NewsFeedViewModel(
         _newPostTrigger.value = true
     }
 
-    fun addPost(context: Context, content: String, title: String, imageUri: Uri?, category: String, privacy: String) {
+    fun addPost(context: Context, content: String, title: String, imageUris: List<Uri>, category: String, privacy: String) {
         viewModelScope.launch {
-            val userId = currentUserId.value
-            if (userId == null || userId <= 0) {
-                Log.e("NewsFeedViewModel", "❌ Invalid userId: $userId. User not logged in or ID is invalid.")
+            val userId = currentUserId.value ?: run {
+                Log.e("NewsFeedViewModel", "Invalid userId")
                 return@launch
             }
             try {
@@ -163,25 +162,28 @@ class NewsFeedViewModel(
                 val titlePart = RequestBody.create("text/plain".toMediaTypeOrNull(), title)
                 val categoryPart = RequestBody.create("text/plain".toMediaTypeOrNull(), category)
                 val privacyPart = RequestBody.create("text/plain".toMediaTypeOrNull(), privacy)
-                val typePart = RequestBody.create("text/plain".toMediaTypeOrNull(), if (imageUri != null) "image" else "text")
+                val typePart = RequestBody.create("text/plain".toMediaTypeOrNull(), if (imageUris.isNotEmpty()) "image" else "text")
                 val postTypePart = RequestBody.create("text/plain".toMediaTypeOrNull(), "normal")
 
-                val imagePart = imageUri?.let { uri ->
+                // Create image parts, using "image[]" as the field name to match MarketplaceViewModel
+                val imageParts: List<MultipartBody.Part> = imageUris.mapNotNull { uri ->
                     val tempFile = getFileFromUri(context, uri)
                     tempFile?.let {
                         val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), it)
-                        MultipartBody.Part.createFormData("image", it.name, requestFile)
+                        MultipartBody.Part.createFormData("image[]", it.name, requestFile)
                     }
                 }
+                Log.d("NewsFeedViewModel", "Prepared ${imageParts.size} image parts for upload: $imageParts")
 
                 val response = apiService.createPostWithImage(
-                    userIdPart, contentPart, titlePart, categoryPart, privacyPart, typePart, postTypePart, imagePart
+                    userIdPart, contentPart, titlePart, categoryPart, privacyPart, typePart, postTypePart,
+                    images  = if (imageParts.isNotEmpty()) imageParts else null
                 )
 
                 if (response.isSuccessful) {
                     _newPostTrigger.value = true
                     refreshPosts()
-                    Log.d("NewsFeedViewModel", "✅ Post created successfully")
+                    Log.d("NewsFeedViewModel", "✅ Post created with images")
                 } else {
                     Log.e("NewsFeedViewModel", "❌ Failed to create post: ${response.errorBody()?.string()}")
                 }

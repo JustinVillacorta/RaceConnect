@@ -94,7 +94,7 @@ interface ApiService {
         @Part("privacy") privacy: RequestBody,
         @Part("type") type: RequestBody,
         @Part("post_type") postType: RequestBody,
-        @Part image: MultipartBody.Part?
+        @Part images: List<MultipartBody.Part>? // Make nullable to match MarketplacePostImage
     ): Response<PostResponse>
 
 

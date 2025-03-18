@@ -300,7 +300,8 @@
                                                     navController.navigate(
                                                         NavRoutes.FullScreenImage.createRoute(
                                                             postId = 0, // Using 0 as a placeholder since chat images aren't tied to posts
-                                                            imageUrl = imageUrl
+                                                            imageUrls = listOf(imageUrl), // Wrap single imageUrl in a list
+                                                            initialIndex = 0 // Start at the first (and only) image
                                                         )
                                                     )
                                                 }

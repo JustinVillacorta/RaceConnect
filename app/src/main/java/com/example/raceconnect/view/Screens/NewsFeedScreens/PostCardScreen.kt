@@ -10,6 +10,10 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,6 +46,10 @@ import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import java.text.SimpleDateFormat
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import java.util.*
 
 // Utility function to format time relative to now
@@ -78,22 +86,19 @@ fun PostCard(
     post: NewsFeedDataClassItem,
     navController: NavController,
     onCommentClick: () -> Unit,
-    onLikeClick: (Boolean) -> Unit, // Can remove if unused
+    onLikeClick: (Boolean) -> Unit,
     viewModel: NewsFeedViewModel,
-    onShowFullScreenImage: (String) -> Unit,
+    onShowFullScreenImage: (List<String>, Int) -> Unit,
     userPreferences: UserPreferences,
     onReportClick: (Int, String, String?) -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
     onUserActionClick: (Int, String, String?) -> Unit,
     context: Context = LocalContext.current
 ) {
-    // Observe like status and count from the ViewModel
     val postLikes by viewModel.postLikes.collectAsState()
     val isLiked = postLikes[post.id] ?: post.isLiked
-
     val likeCounts by viewModel.likeCounts.collectAsState()
     val likeCount = likeCounts[post.id] ?: post.like_count
-
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: post.images ?: emptyList()
     var showReportDialog by remember { mutableStateOf(false) }
@@ -103,21 +108,19 @@ fun PostCard(
     var otherText by remember { mutableStateOf("") }
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id
+
     LaunchedEffect(post.id) {
         viewModel.getPostImages(post.id)
-        Log.d("PostCard", "Post ID: ${post.id}, Image URLs: $imageUrls")
     }
 
     Card(
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(2.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp)
-            .background(Color.White)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)
     ) {
         Box(modifier = Modifier.padding(16.dp)) {
             Column {
+                // Profile and Header (unchanged)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -128,12 +131,11 @@ fun PostCard(
                             .clip(CircleShape)
                             .background(Color.Gray)
                             .clickable {
-                                val destination = if (loggedInUserId != null && loggedInUserId == post.user_id) {
-                                    NavRoutes.ProfileView.createRoute(loggedInUserId)
+                                val destination = if (loggedInUserId == post.user_id) {
+                                    NavRoutes.ProfileView.createRoute(loggedInUserId!!)
                                 } else {
                                     NavRoutes.ProfileView.createRoute(post.user_id)
                                 }
-                                Log.d("PostCard", "Navigating to $destination")
                                 navController.navigate(destination)
                             }
                     ) {
@@ -142,16 +144,14 @@ fun PostCard(
                                 model = post.profile_picture,
                                 contentDescription = "User Profile",
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                                error = painterResource(id = android.R.drawable.ic_menu_gallery),
-                                placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
+                                modifier = Modifier.fillMaxSize()
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.AccountCircle,
                                 contentDescription = "User Profile",
                                 modifier = Modifier.fillMaxSize(),
-                                tint = Color.White // Adjust color for visibility on gray background
+                                tint = Color.White
                             )
                         }
                     }
@@ -180,43 +180,69 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Image Carousel with LazyRow
                 if (imageUrls.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable {
-                                Log.d("PostCard", "Image clicked, URL: ${imageUrls.first()}")
-                                onShowFullScreenImage(imageUrls.first())
-                            }
-                    ) {
-                        AsyncImage(
-                            model = imageUrls.first(),
-                            contentDescription = "Post image",
+                    if (imageUrls.size == 1) {
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .aspectRatio(1.91f),
-                            contentScale = ContentScale.Crop
-                        )
+                                .padding(top = 8.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    onShowFullScreenImage(imageUrls, 0)
+                                }
+                        ) {
+                            AsyncImage(
+                                model = imageUrls.first(),
+                                contentDescription = "Post image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1.91f),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    } else {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(300.dp)
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            itemsIndexed(imageUrls) { index, url ->
+                                Box(
+                                    modifier = Modifier
+                                        .width(300.dp) // Fixed width for each image
+                                        .fillMaxHeight()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            onShowFullScreenImage(imageUrls, index)
+                                        }
+                                ) {
+                                    AsyncImage(
+                                        model = url,
+                                        contentDescription = "Post image $index",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Reactions (unchanged)
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ReactionIcon(
                         icon = Icons.Default.Favorite,
                         isLiked = isLiked,
-                        onClick = {
-                            viewModel.toggleLike(post.id, post.user_id)
-                        }
+                        onClick = { viewModel.toggleLike(post.id, post.user_id) }
                     )
                     Text(
                         text = "$likeCount",
@@ -226,48 +252,36 @@ fun PostCard(
                     )
                     ReactionIcon(icon = Icons.Default.ChatBubble, onClick = onCommentClick)
                     Spacer(modifier = Modifier.width(8.dp))
-                    ReactionIcon(
-                        icon = Icons.Default.Repeat,
-                        onClick = { onShowRepostScreen(post) }
-                    )
+                    ReactionIcon(icon = Icons.Default.Repeat, onClick = { onShowRepostScreen(post) })
                 }
             }
 
+            // More Options (unchanged)
             Box(modifier = Modifier.align(Alignment.TopEnd)) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "More options",
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clickable { menuExpanded = true }
-                        .padding(8.dp),
+                    modifier = Modifier.size(34.dp).clickable { menuExpanded = true }.padding(8.dp),
                     tint = Color.Gray
                 )
                 DropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Report Post") },
-                        onClick = {
-                            menuExpanded = false
-                            showReportDialog = true
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("User Actions") },
-                        onClick = {
-                            menuExpanded = false
-                            showUserDialog = true
-                        }
-                    )
+                    DropdownMenuItem(text = { Text("Report Post") }, onClick = {
+                        menuExpanded = false
+                        showReportDialog = true
+                    })
+                    DropdownMenuItem(text = { Text("User Actions") }, onClick = {
+                        menuExpanded = false
+                        showUserDialog = true
+                    })
                 }
             }
         }
-
     }
 
-    // Report Dialog
+    // Report Dialog and User Action Dialog (unchanged)
     if (showReportDialog) {
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
@@ -343,7 +357,6 @@ fun PostCard(
         )
     }
 
-    // User Action Dialog
     if (showUserDialog) {
         AlertDialog(
             onDismissRequest = { showUserDialog = false },
@@ -421,8 +434,9 @@ fun PostCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullScreenImageViewer(
-    imageUrl: String,
-    postId: Int, // Added parameter to determine if chat image (postId = 0)
+    imageUrls: List<String>,
+    initialIndex: Int,
+    postId: Int,
     onDismiss: () -> Unit,
     onLikeClick: (Boolean) -> Unit,
     onCommentClick: () -> Unit
@@ -430,6 +444,7 @@ fun FullScreenImageViewer(
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isLiked by remember { mutableStateOf(false) }
+    var currentIndex by remember { mutableStateOf(initialIndex) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -461,18 +476,26 @@ fun FullScreenImageViewer(
                             if (scale == 1f) offset += dragAmount
                         },
                         onDragEnd = {
-                            if (offset.y > 200f && scale == 1f) onDismiss()
-                            else if (scale == 1f) offset = Offset.Zero
+                            if (scale == 1f) {
+                                if (offset.y > 200f) {
+                                    onDismiss()
+                                } else if (offset.x > 200f && currentIndex > 0) {
+                                    currentIndex-- // Swipe right to previous image
+                                } else if (offset.x < -200f && currentIndex < imageUrls.size - 1) {
+                                    currentIndex++ // Swipe left to next image
+                                }
+                                offset = Offset.Zero
+                            }
                         }
                     )
                 }
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(imageUrl)
+                    .data(imageUrls[currentIndex])
                     .crossfade(true)
                     .build(),
-                contentDescription = "Full-screen image",
+                contentDescription = "Full-screen image $currentIndex",
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(
@@ -484,6 +507,7 @@ fun FullScreenImageViewer(
                 contentScale = ContentScale.Fit
             )
 
+            // Close Button
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
@@ -498,7 +522,47 @@ fun FullScreenImageViewer(
                 tint = Color.White
             )
 
-            // Show Like/Comments only if postId != 0 (i.e., not a chat image)
+            // Navigation Arrows (optional, for clarity)
+            if (imageUrls.size > 1) {
+                if (currentIndex > 0) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Previous",
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(16.dp)
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .padding(8.dp)
+                            .clickable {
+                                currentIndex--
+                                offset = Offset.Zero
+                            },
+                        tint = Color.White
+                    )
+                }
+                if (currentIndex < imageUrls.size - 1) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = "Next",
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(16.dp)
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .padding(8.dp)
+                            .clickable {
+                                currentIndex++
+                                offset = Offset.Zero
+                            },
+                        tint = Color.White
+                    )
+                }
+            }
+
+            // Like/Comment Actions
             if (postId != 0) {
                 Box(
                     modifier = Modifier

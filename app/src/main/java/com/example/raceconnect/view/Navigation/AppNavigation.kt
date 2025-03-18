@@ -138,9 +138,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 navController = navController,
                                 userPreferences = userPreferences,
                                 onShowCreatePost = { navController.navigate(NavRoutes.CreatePost.route) },
-                                onShowFullScreenImage = { imageUrl, postId ->
-                                    navController.navigate(NavRoutes.FullScreenImage.createRoute(postId, imageUrl))
-                                },
+                                onShowFullScreenImage = { imageUrls, initialIndex, postId ->
+                                    navController.navigate(NavRoutes.FullScreenImage.createRoute(postId, imageUrls, initialIndex))
+                                }, // Fixed with correct parameters
                                 onShowProfileView = {
                                     navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId))
                                 },
@@ -572,10 +572,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             )
                         }
                         composable(
-                            route = NavRoutes.FullScreenImage.route,
+                            route = "fullScreenImage/{postId}/{imageUrls}/{initialIndex}",
                             arguments = listOf(
                                 navArgument("postId") { type = NavType.IntType },
-                                navArgument("imageUrl") { type = NavType.StringType }
+                                navArgument("imageUrls") { type = NavType.StringType },
+                                navArgument("initialIndex") { type = NavType.IntType }
                             ),
                             enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
                             exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
@@ -583,11 +584,29 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
                         ) { backStackEntry ->
                             val postId = backStackEntry.arguments?.getInt("postId") ?: 0
-                            val imageUrl = backStackEntry.arguments?.getString("imageUrl")?.replace("%2F", "/") ?: ""
+                            val imageUrlsString = backStackEntry.arguments?.getString("imageUrls") ?: ""
+                            val initialIndex = backStackEntry.arguments?.getInt("initialIndex") ?: 0
+                            val imageUrls = imageUrlsString.split(",").map { Uri.decode(it) }.filter { it.isNotEmpty() }
+
+                            Log.d("FullScreenImage", "Nav Args - postId: $postId, imageUrlsString: '$imageUrlsString', initialIndex: $initialIndex")
+                            Log.d("FullScreenImage", "Parsed imageUrls: $imageUrls")
+
+                            if (imageUrls.isEmpty()) {
+                                Log.e("FullScreenImage", "No valid image URLs found, navigating back")
+                                navController.popBackStack()
+                                return@composable
+                            }
+
+                            val safeInitialIndex = initialIndex.coerceIn(0, imageUrls.size - 1)
+                            if (safeInitialIndex != initialIndex) {
+                                Log.w("FullScreenImage", "Adjusted initialIndex from $initialIndex to $safeInitialIndex due to bounds")
+                            }
+
                             val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, LocalContext.current))
 
                             FullScreenImageViewer(
-                                imageUrl = imageUrl,
+                                imageUrls = imageUrls,
+                                initialIndex = safeInitialIndex,
                                 postId = postId,
                                 onDismiss = { navController.popBackStack() },
                                 onLikeClick = { isLiked ->

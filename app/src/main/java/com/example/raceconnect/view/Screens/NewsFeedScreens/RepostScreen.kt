@@ -125,7 +125,7 @@ fun RepostScreen(
                         onCommentClick = { /* Disabled */ },
                         onLikeClick = { _ -> /* Disabled */ },
                         viewModel = viewModel,
-                        onShowFullScreenImage = { /* Disabled */ },
+                        onShowFullScreenImage = { _, _ -> /* Disabled: No-op with correct signature */ },
                         userPreferences = userPreferences,
                         onReportClick = { postId, reason, otherText ->
                             viewModel.reportPost(postId, reason, otherText, onSuccess = {
@@ -172,7 +172,7 @@ fun RepostCard(
     onCommentClick: () -> Unit,
     onLikeClick: (Boolean) -> Unit,
     viewModel: NewsFeedViewModel,
-    onShowFullScreenImage: (String) -> Unit,
+    onShowFullScreenImage: (List<String>, Int) -> Unit, // Updated signature
     userPreferences: UserPreferences,
     onReportClick: (Int, String, String?) -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,

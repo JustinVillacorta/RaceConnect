@@ -114,6 +114,8 @@ dependencies {
 
     implementation ("com.jakewharton:process-phoenix:2.0.0")
 
+    implementation ("com.google.accompanist:accompanist-pager:0.27.1")
+
 }
 
 

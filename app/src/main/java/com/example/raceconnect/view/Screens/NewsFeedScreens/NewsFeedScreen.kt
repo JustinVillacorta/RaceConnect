@@ -53,7 +53,7 @@ fun NewsFeedScreen(
     navController: NavController,
     userPreferences: UserPreferences,
     onShowCreatePost: () -> Unit,
-    onShowFullScreenImage: (String, Int) -> Unit,
+    onShowFullScreenImage: (List<String>, Int, Int) -> Unit, // Updated to List<String>
     onShowProfileView: () -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
@@ -203,7 +203,9 @@ fun NewsFeedScreen(
                                 onLikeClick = { liked ->
                                     if (liked) viewModel.toggleLike(postItem.id, postItem.user_id) else viewModel.unlikePost(postItem.id)
                                 },
-                                onShowFullScreenImage = { onShowFullScreenImage(it, postItem.id) },
+                                onShowFullScreenImage = { imageUrls, initialIndex ->
+                                    onShowFullScreenImage(imageUrls, initialIndex, postItem.id)
+                                }, // Updated to match (List<String>, Int) -> Unit
                                 userPreferences = userPreferences,
                                 onReportClick = { postId, reason, otherText ->
                                     viewModel.reportPost(postId, reason, otherText, onSuccess = {
@@ -227,7 +229,9 @@ fun NewsFeedScreen(
                                 onLikeClick = { liked ->
                                     if (liked) viewModel.toggleLike(postItem.id, postItem.user_id) else viewModel.unlikePost(postItem.id)
                                 },
-                                onShowFullScreenImage = { onShowFullScreenImage(it, postItem.id) },
+                                onShowFullScreenImage = { imageUrls, initialIndex ->
+                                    onShowFullScreenImage(imageUrls, initialIndex, postItem.id)
+                                }, // Updated to match (List<String>, Int) -> Unit
                                 userPreferences = userPreferences,
                                 onReportClick = { postId, reason, otherText ->
                                     viewModel.reportPost(postId, reason, otherText, onSuccess = {
