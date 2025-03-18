@@ -486,7 +486,7 @@ private fun formatTime(timestamp: String?): String {
             outputFormat.timeZone = TimeZone.getTimeZone("Asia/Manila") // GMT+8 Philippines
 
             // Optional: Add 4-minute offset if server time is behind
-            val adjustedDate = Date(date.time + (4 * 60 * 1000)) // Add 4 minutes
+            val adjustedDate = Date(date.time + (3 * 60 * 1000)) // Add 4 minutes
             val formattedTime = outputFormat.format(adjustedDate)
 
             // Log for diagnostics

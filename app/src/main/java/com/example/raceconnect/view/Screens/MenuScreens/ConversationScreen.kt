@@ -190,7 +190,7 @@ private fun formatTime(timestamp: String?): String {
             val outputFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
             outputFormat.timeZone = TimeZone.getTimeZone("Asia/Manila") // Output in GMT+8
 
-            val adjustedDate = Date(date.time + (4 * 60 * 1000)) // Add 4 minutes
+            val adjustedDate = Date(date.time + (3 * 60 * 1000)) // Add 4 minutes
             val formattedTime = outputFormat.format(adjustedDate)
 
             // Log for diagnostics
