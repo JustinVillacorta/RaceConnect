@@ -48,6 +48,7 @@ import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModelFactory
 import com.google.gson.Gson
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserProfileScreen(
@@ -63,15 +64,18 @@ fun UserProfileScreen(
     val postsFlow = userId?.let { newsFeedViewModel.getPostsByUserId(it) }
     val posts = postsFlow?.collectAsLazyPagingItems()
     val postImages by newsFeedViewModel.postImages.collectAsState()
+    val userReposts by newsFeedViewModel.userReposts.collectAsState()
+    val originalPosts by newsFeedViewModel.originalPosts.collectAsState()
 
     // State for delete and dropdown
     var postToDelete by remember { mutableStateOf<NewsFeedDataClassItem?>(null) }
     var showDropdown by remember { mutableStateOf(false) }
     var currentPostId by remember { mutableStateOf<Int?>(null) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(userId) {
         Log.d("UserProfileScreen", "Loading profile data")
         profileDetailsViewModel.loadProfileData()
+        userId?.let { newsFeedViewModel.fetchUserReposts(it) }
     }
 
     LaunchedEffect(newsFeedViewModel.newPostTrigger) {
@@ -118,7 +122,6 @@ fun UserProfileScreen(
                             .background(Color.Gray)
                     ) {
                         val profilePictureUrl = profileData?.profilePicture
-                        Log.d("UserProfileScreen", "Profile picture URL: $profilePictureUrl")
                         val painter = if (profilePictureUrl != null && profilePictureUrl.isNotEmpty()) {
                             rememberAsyncImagePainter(
                                 model = profilePictureUrl,
@@ -155,7 +158,7 @@ fun UserProfileScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 var selectedTabIndex by remember { mutableStateOf(0) }
-                val tabTitles = listOf("Posts", "Photos")
+                val tabTitles = listOf("Posts", "Photos", "Reposts")
 
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
@@ -175,6 +178,7 @@ fun UserProfileScreen(
 
                 when (selectedTabIndex) {
                     0 -> {
+                        // Posts tab: Show only original posts (isRepost != true)
                         posts?.let { pagingItems ->
                             LazyColumn(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -182,11 +186,10 @@ fun UserProfileScreen(
                             ) {
                                 items(pagingItems.itemCount) { index ->
                                     pagingItems[index]?.let { post ->
-                                        if (post.user_id == profileData?.id) {
+                                        if (post.isRepost != true) {
                                             LaunchedEffect(post.id) {
                                                 newsFeedViewModel.getPostImages(post.id)
                                             }
-                                            Log.d("UserProfileScreen", "Processing post with id: ${post.id}, user_id: ${post.user_id}, image URLs: ${postImages[post.id]}")
                                             Card(
                                                 shape = RoundedCornerShape(8.dp),
                                                 modifier = Modifier
@@ -237,7 +240,8 @@ fun UserProfileScreen(
                                                                     onClick = {
                                                                         val postJson = Gson().toJson(post)
                                                                         navController.navigate(
-                                                                            NavRoutes.EditPost.createRoute(postJson))
+                                                                            NavRoutes.EditPost.createRoute(postJson)
+                                                                        )
                                                                         showDropdown = false
                                                                     }
                                                                 )
@@ -255,7 +259,6 @@ fun UserProfileScreen(
                                                     Text(text = post.content ?: "")
                                                     val imageUrl = postImages[post.id]?.firstOrNull()
                                                     imageUrl?.let { url ->
-                                                        Log.d("UserProfileScreen", "Attempting to load image from URL: $url")
                                                         val painter = rememberAsyncImagePainter(
                                                             model = url,
                                                             onLoading = { Log.d("UserProfileScreen", "Loading post image...") },
@@ -274,7 +277,7 @@ fun UserProfileScreen(
                                                                 .clip(RoundedCornerShape(8.dp)),
                                                             contentScale = ContentScale.Crop
                                                         )
-                                                    } ?: Log.w("UserProfileScreen", "No image URL available for post id: ${post.id}")
+                                                    }
                                                 }
                                             }
                                         }
@@ -284,13 +287,13 @@ fun UserProfileScreen(
                         } ?: CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                     }
                     1 -> {
+                        // Photos tab: Display all images from posts
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             postImages.forEach { (postId, images) ->
                                 images.forEach { imageUrl ->
-                                    Log.d("UserProfileScreen", "Loading photo for postId: $postId, URL: $imageUrl")
                                     item {
                                         val painter = rememberAsyncImagePainter(
                                             model = imageUrl,
@@ -309,6 +312,118 @@ fun UserProfileScreen(
                                                 .clip(RoundedCornerShape(8.dp)),
                                             contentScale = ContentScale.Crop
                                         )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    2 -> {
+                        // Reposts tab: Show reposts with original post details
+                        if (userReposts.isEmpty()) {
+                            Text(
+                                text = "No reposts yet",
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            )
+                        } else {
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(userReposts.size) { index ->
+                                    val repost = userReposts[index]
+                                    val originalPost = originalPosts[repost.postId]
+
+                                    // Fetch original post and images
+                                    LaunchedEffect(repost.postId) {
+                                        if (originalPost == null) {
+                                            newsFeedViewModel.fetchOriginalPost(repost.postId)
+                                        }
+                                        newsFeedViewModel.getPostImages(repost.postId)
+                                    }
+
+                                    Card(
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(8.dp),
+                                        elevation = CardDefaults.cardElevation(4.dp)
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            // Repost Header
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(40.dp)
+                                                        .clip(CircleShape)
+                                                        .background(Color.Gray)
+                                                ) {
+                                                    Image(
+                                                        painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                                                        contentDescription = "User Profile",
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier.fillMaxSize()
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = "${profileData?.username ?: "Anonymous"} reposted",
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                    Text(
+                                                        text = repost.createdAt ?: "Just now",
+                                                        color = Color.Gray
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            // Repost Quote (if any)
+                                            if (!repost.quote.isNullOrEmpty()) {
+                                                Text(text = repost.quote)
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                            }
+
+                                            // Original Post Details
+                                            if (originalPost != null) {
+                                                Column {
+                                                    Text(
+                                                        text = "Original post by ${originalPost.username ?: "Unknown"}",
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                    Text(text = originalPost.content ?: "")
+                                                    val imageUrl = postImages[repost.postId]?.firstOrNull()
+                                                    imageUrl?.let { url ->
+                                                        val painter = rememberAsyncImagePainter(
+                                                            model = url,
+                                                            onLoading = { Log.d("UserProfileScreen", "Loading original post image...") },
+                                                            onSuccess = { Log.d("UserProfileScreen", "Original post image loaded successfully") },
+                                                            onError = { error ->
+                                                                Log.e("UserProfileScreen", "Error loading original post image: ${error.result.throwable.message}")
+                                                            }
+                                                        )
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        Image(
+                                                            painter = painter,
+                                                            contentDescription = "Original Post Image",
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .height(200.dp)
+                                                                .clip(RoundedCornerShape(8.dp)),
+                                                            contentScale = ContentScale.Crop
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                // Show loading indicator while fetching
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

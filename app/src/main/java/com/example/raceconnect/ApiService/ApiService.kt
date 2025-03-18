@@ -288,6 +288,13 @@ interface ApiService {
         @Query("offset") offset: Int = 0
     ): Response<List<Repost>>
 
+
+    @GET("post-reposts")
+    suspend fun getRepostsByUserId(
+        @Query("user_id") userId: Int
+    ): Response<List<Repost>>
+
+
     @DELETE("post-reposts/{id}")
     suspend fun deleteRepost(
         @Path("id") repostId: Int

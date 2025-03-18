@@ -16,6 +16,7 @@ import com.example.raceconnect.model.CreateRepostRequest
 import com.example.raceconnect.model.LikeRequest
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.ReportRequest
+import com.example.raceconnect.model.Repost
 import com.example.raceconnect.model.UpdatePostRequest
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.network.RetrofitInstance
@@ -442,4 +443,45 @@ class NewsFeedViewModel(
             }
         }
     }
+
+    private val _userReposts = MutableStateFlow<List<Repost>>(emptyList())
+    val userReposts: StateFlow<List<Repost>> = _userReposts.asStateFlow()
+
+    fun fetchUserReposts(userId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.getRepostsByUserId(userId)
+                if (response.isSuccessful) {
+                    _userReposts.value = response.body() ?: emptyList()
+                } else {
+                    Log.e("NewsFeedViewModel", "Failed to fetch reposts: ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "Error fetching reposts", e)
+            }
+        }
+    }
+
+    // Map to store original posts by their IDs
+    private val _originalPosts = MutableStateFlow<Map<Int, NewsFeedDataClassItem>>(emptyMap())
+    val originalPosts: StateFlow<Map<Int, NewsFeedDataClassItem>> = _originalPosts.asStateFlow()
+
+    // Function to fetch the original post
+    fun fetchOriginalPost(postId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.getPostById(postId) // API call to get post by ID
+                if (response.isSuccessful) {
+                    response.body()?.let { post ->
+                        _originalPosts.value = _originalPosts.value + (postId to post)
+                    }
+                } else {
+                    Log.e("NewsFeedViewModel", "Failed to fetch post: ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "Error fetching post", e)
+            }
+        }
+    }
+
 }
