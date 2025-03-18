@@ -41,6 +41,18 @@ fun AddPostSection(
     onAddPostClick: () -> Unit,
     onShowProfileView: () -> Unit
 ) {
+    val context = LocalContext.current
+    val userPreferences = remember { UserPreferences(context) }
+    val user by userPreferences.user.collectAsState(initial = null)
+
+    val profilePictureUri = user?.profilePicture?.let {
+        try {
+            Uri.parse(it)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -48,14 +60,32 @@ fun AddPostSection(
             .clickable(onClick = onAddPostClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = Icons.Default.AccountCircle,
-            contentDescription = "Profile Picture",
-            modifier = Modifier
-                .size(48.dp)
-                .padding(4.dp)
-                .clickable { onShowProfileView() }
-        )
+        if (profilePictureUri != null) {
+            Image(
+                painter = rememberAsyncImagePainter(
+                    model = profilePictureUri,
+                    error = painterResource(id = android.R.drawable.ic_menu_gallery),
+                    placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
+                ),
+                contentDescription = "Profile Picture",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    .clickable { onShowProfileView() },
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.AccountCircle,
+                contentDescription = "Profile Picture",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    .clickable { onShowProfileView() }
+            )
+        }
         Spacer(modifier = Modifier.width(8.dp))
         Box(
             modifier = Modifier

@@ -3,7 +3,6 @@ package com.example.raceconnect.view
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -52,14 +51,11 @@ fun PostDetailScreen(
     val comments by viewModel.comments.collectAsState()
     val isLiked by viewModel.isLiked.collectAsState()
     val likeCount by viewModel.likeCount.collectAsState()
-    val isRepostLiked by viewModel.isRepostLiked.collectAsState()
-    val repostLikeCount by viewModel.repostLikeCount.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
     val tokenState by userPreferences.token.collectAsState(initial = null)
 
-    // Use a stable key to prevent duplicate fetches
     LaunchedEffect(key1 = postId, key2 = repostId, key3 = tokenState) {
         Log.d("PostDetailScreen", "LaunchedEffect triggered with postId: $postId, repostId: $repostId, tokenState: $tokenState")
         if (tokenState != null) {
@@ -68,9 +64,6 @@ fun PostDetailScreen(
             viewModel.fetchPost(postId, repostId)
             viewModel.fetchComments(postId)
             viewModel.fetchPostLikes(postId)
-            if (repostId != null) {
-                viewModel.fetchRepostLikes(repostId)
-            }
         } else {
             viewModel._error.value = "Authentication token is missing"
             Log.w("PostDetailScreen", "Token missing")
@@ -134,38 +127,19 @@ fun PostDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
-                        // Render as a repost if repostId is provided or if repost.isRepost is true
                         if (repostId != null || (repost?.isRepost == true && repost?.original_post_id != null && originalPost != null)) {
                             RepostLayout(
                                 repost = repost!!,
-                                originalPost = if (repostId != null) repost!! else originalPost!!,
+                                originalPost = if (repostId != null) originalPost!! else repost!!,
                                 isLiked = isLiked,
-                                likeCount = likeCount,
-                                commentsCount = comments.size,
-                                isRepostLiked = isRepostLiked,
-                                repostLikeCount = repostLikeCount,
-                                onLikeClick = {
-                                    if (repostId != null) {
-                                        viewModel.toggleLike(postId)
-                                    } else {
-                                        viewModel.toggleLike(repost!!.original_post_id!!)
-                                    }
-                                },
-                                onRepostLikeClick = {
-                                    if (repostId != null) {
-                                        viewModel.toggleRepostLike(repostId)
-                                    } else {
-                                        viewModel.toggleRepostLike(repost!!.id)
-                                    }
-                                }
+                                likeCount = likeCount
                             )
                         } else {
                             PostLayout(
                                 post = repost!!,
                                 isLiked = isLiked,
                                 likeCount = likeCount,
-                                commentsCount = comments.size,
-                                onLikeClick = { viewModel.toggleLike(repost!!.id) }
+                                commentsCount = comments.size
                             )
                         }
 
@@ -230,13 +204,8 @@ fun PostDetailScreen(
 fun RepostLayout(
     repost: NewsFeedDataClassItem,
     originalPost: NewsFeedDataClassItem,
-    isLiked: Boolean,
-    likeCount: Int,
-    commentsCount: Int,
-    isRepostLiked: Boolean,
-    repostLikeCount: Int,
-    onLikeClick: () -> Unit,
-    onRepostLikeClick: () -> Unit
+    isLiked: Boolean = false,
+    likeCount: Int = 0
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -246,7 +215,6 @@ fun RepostLayout(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Repost Header with Quote
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -300,58 +268,6 @@ fun RepostLayout(
                 )
             }
 
-            // Reaction Bar for Repost
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onRepostLikeClick
-                ) {
-                    Icon(
-                        imageVector = if (isRepostLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Repost Like",
-                        tint = if (isRepostLiked) Color.Red else Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "$repostLikeCount",
-                    color = Color.Black,
-                    fontSize = 14.sp
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Icon(
-                    imageVector = Icons.Default.Comment,
-                    contentDescription = "Comment",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "0", // Repost comments not implemented
-                    color = Color.Black,
-                    fontSize = 14.sp
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Icon(
-                    imageVector = Icons.Default.Repeat,
-                    contentDescription = "Repost",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "0", // Nested reposts not implemented
-                    color = Color.Black,
-                    fontSize = 14.sp
-                )
-            }
-
-            // Encased Original Post
             Card(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -443,23 +359,18 @@ fun RepostLayout(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Reaction Bar for Original Post
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(
-                            onClick = onLikeClick
-                        ) {
-                            Icon(
-                                imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Like",
-                                tint = if (isLiked) Color.Red else Color.Gray,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Like",
+                            tint = if (isLiked) Color.Red else Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "$likeCount",
@@ -475,7 +386,7 @@ fun RepostLayout(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "$commentsCount",
+                            text = "${originalPost.comment_count ?: 0}",
                             color = Color.Black,
                             fontSize = 14.sp
                         )
@@ -504,8 +415,7 @@ fun PostLayout(
     post: NewsFeedDataClassItem,
     isLiked: Boolean,
     likeCount: Int,
-    commentsCount: Int,
-    onLikeClick: () -> Unit
+    commentsCount: Int
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -604,16 +514,12 @@ fun PostLayout(
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = onLikeClick
-                ) {
-                    Icon(
-                        imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Like",
-                        tint = if (isLiked) Color.Red else Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                Icon(
+                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "Like",
+                    tint = if (isLiked) Color.Red else Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "$likeCount",

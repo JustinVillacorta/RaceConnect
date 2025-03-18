@@ -1,6 +1,7 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -74,7 +77,7 @@ fun PostCard(
     post: NewsFeedDataClassItem,
     navController: NavController,
     onCommentClick: () -> Unit,
-    onLikeClick: (Boolean) -> Unit,
+    onLikeClick: (Boolean) -> Unit, // Can remove if unused
     viewModel: NewsFeedViewModel,
     onShowFullScreenImage: (String) -> Unit,
     userPreferences: UserPreferences,
@@ -83,8 +86,13 @@ fun PostCard(
     onUserActionClick: (Int, String, String?) -> Unit,
     context: Context = LocalContext.current
 ) {
-    var isLiked by remember { mutableStateOf(post.isLiked) }
-    var likeCount by remember { mutableStateOf(post.like_count) }
+    // Observe like status and count from the ViewModel
+    val postLikes by viewModel.postLikes.collectAsState()
+    val isLiked = postLikes[post.id] ?: post.isLiked
+
+    val likeCounts by viewModel.likeCounts.collectAsState()
+    val likeCount = likeCounts[post.id] ?: post.like_count
+
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: post.images ?: emptyList()
     var showReportDialog by remember { mutableStateOf(false) }
@@ -94,7 +102,6 @@ fun PostCard(
     var otherText by remember { mutableStateOf("") }
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id
-
     LaunchedEffect(post.id) {
         viewModel.getPostImages(post.id)
         Log.d("PostCard", "Post ID: ${post.id}, Image URLs: $imageUrls")
@@ -129,12 +136,23 @@ fun PostCard(
                                 navController.navigate(destination)
                             }
                     ) {
-                        AsyncImage(
-                            model = "https://via.placeholder.com/40",
-                            contentDescription = "User Profile",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        if (post.profile_picture != null) {
+                            AsyncImage(
+                                model = post.profile_picture,
+                                contentDescription = "User Profile",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                                error = painterResource(id = android.R.drawable.ic_menu_gallery),
+                                placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "User Profile",
+                                modifier = Modifier.fillMaxSize(),
+                                tint = Color.White // Adjust color for visibility on gray background
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -144,7 +162,7 @@ fun PostCard(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = formatTime(post.created_at), // Updated to use relative time
+                            text = formatTime(post.created_at),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
@@ -196,9 +214,7 @@ fun PostCard(
                         icon = Icons.Default.Favorite,
                         isLiked = isLiked,
                         onClick = {
-                            isLiked = !isLiked
-                            likeCount = if (isLiked) likeCount + 1 else likeCount - 1
-                            onLikeClick(isLiked)
+                            viewModel.toggleLike(post.id, post.user_id)
                         }
                     )
                     Text(
@@ -247,6 +263,7 @@ fun PostCard(
                 }
             }
         }
+
     }
 
     // Report Dialog

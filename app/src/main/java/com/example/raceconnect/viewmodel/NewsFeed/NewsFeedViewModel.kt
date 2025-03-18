@@ -13,12 +13,14 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.CreateRepostRequest
+import com.example.raceconnect.model.LikeRequest
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.ReportRequest
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.network.UserPostsPagingSource
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +46,9 @@ class NewsFeedViewModel(
 
     private val _likeCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
     val likeCounts: StateFlow<Map<Int, Int>> = _likeCounts.asStateFlow()
+
+    private val _userLikeIds = MutableStateFlow<Map<Int, Int>>(emptyMap())
+    val userLikeIds: StateFlow<Map<Int, Int>> = _userLikeIds
 
     private val _newPostTrigger = MutableStateFlow(false)
     val newPostTrigger: StateFlow<Boolean> = _newPostTrigger.asStateFlow()
@@ -75,6 +80,7 @@ class NewsFeedViewModel(
         }.ifEmpty { listOf("F1") }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val postsFlow: Flow<PagingData<NewsFeedDataClassItem>> = combine(
         currentUserId,
         userPreferences.selectedCategories
@@ -139,7 +145,7 @@ class NewsFeedViewModel(
     }
 
     fun resetNewPostTrigger() {
-        _newPostTrigger.value = false
+        _newPostTrigger.value = true
     }
 
     fun addPost(context: Context, content: String, title: String, imageUri: Uri?, category: String, privacy: String) {
@@ -222,37 +228,62 @@ class NewsFeedViewModel(
         viewModelScope.launch {
             try {
                 val userId = currentUserId.value ?: return@launch
+                Log.d("NewsFeedViewModel", "Fetching likes for post ID: $postId")
                 val response = apiService.getPostLikes(postId)
                 if (response.isSuccessful) {
                     val likes = response.body() ?: emptyList()
-                    val isLiked = likes.any { it.userId == userId }
+                    Log.d("NewsFeedViewModel", "Likes fetched: ${likes.size} for post ID: $postId")
+                    val userLike = likes.find { it.userId == userId }
+                    val isLiked = userLike != null
                     val likeCount = likes.size
                     _postLikes.value = _postLikes.value + (postId to isLiked)
                     _likeCounts.value = _likeCounts.value + (postId to likeCount)
+                    if (userLike != null) {
+                        _userLikeIds.value = _userLikeIds.value + (postId to userLike.id)
+                        Log.d("NewsFeedViewModel", "User has liked post ID: $postId, like ID: ${userLike.id}")
+                    } else {
+                        _userLikeIds.value = _userLikeIds.value - postId
+                        Log.d("NewsFeedViewModel", "User has not liked post ID: $postId")
+                    }
+                } else {
+                    Log.w("NewsFeedViewModel", "Failed to fetch likes for post ID: $postId, HTTP ${response.code()}")
                 }
             } catch (e: Exception) {
-                Log.e("NewsFeedViewModel", "❌ Error fetching likes", e)
+                Log.e("NewsFeedViewModel", "❌ Error fetching likes for post ID: $postId", e)
             }
         }
     }
 
     fun toggleLike(postId: Int, ownerId: Int) {
+        val isLiked = _postLikes.value[postId] ?: false
+        Log.d("NewsFeedViewModel", "Toggling like for post ID: $postId, currently liked: $isLiked")
+        if (isLiked) {
+            unlikePost(postId)
+        } else {
+            likePost(postId, ownerId)
+        }
+    }
+
+
+    fun likePost(postId: Int, ownerId: Int) {
         viewModelScope.launch {
             val userId = currentUserId.value ?: return@launch
+            Log.d("NewsFeedViewModel", "Liking post ID: $postId for user ID: $userId")
             _postLikes.value = _postLikes.value + (postId to true)
             _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) + 1)
             try {
-                val requestBody = mapOf(
-                    "user_id" to userId,
-                    "post_id" to postId,
-                    "owner_id" to ownerId
-                )
-                val response = apiService.likePost(requestBody)
-                if (!response.isSuccessful) {
+                val request = LikeRequest(userId, postId, ownerId)
+                val response = apiService.likePost(request)
+                if (response.isSuccessful) {
+                    Log.d("NewsFeedViewModel", "Successfully liked post ID: $postId")
+                    fetchPostLikes(postId) // Refetch to get the new like ID
+                } else {
+                    Log.w("NewsFeedViewModel", "Failed to like post ID: $postId, HTTP ${response.code()}")
                     _postLikes.value = _postLikes.value + (postId to false)
                     _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) - 1)
                 }
             } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "❌ Error liking post ID: $postId", e)
                 _postLikes.value = _postLikes.value + (postId to false)
                 _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) - 1)
             }
@@ -260,18 +291,27 @@ class NewsFeedViewModel(
     }
 
     fun unlikePost(postId: Int) {
+        val likeId = _userLikeIds.value[postId] ?: return
+        Log.d("NewsFeedViewModel", "Unliking post ID: $postId with like ID: $likeId")
         viewModelScope.launch {
             _postLikes.value = _postLikes.value + (postId to false)
             _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) - 1)
+            _userLikeIds.value = _userLikeIds.value - postId
             try {
-                val response = apiService.unlikePost(postId)
-                if (!response.isSuccessful) {
+                val response = apiService.unlikePost(likeId)
+                if (response.isSuccessful) {
+                    Log.d("NewsFeedViewModel", "Successfully unliked post ID: $postId")
+                } else {
+                    Log.w("NewsFeedViewModel", "Failed to unlike post ID: $postId, HTTP ${response.code()}")
                     _postLikes.value = _postLikes.value + (postId to true)
                     _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) + 1)
+                    _userLikeIds.value = _userLikeIds.value + (postId to likeId)
                 }
             } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "❌ Error unliking post ID: $postId", e)
                 _postLikes.value = _postLikes.value + (postId to true)
                 _likeCounts.value = _likeCounts.value + (postId to (_likeCounts.value[postId] ?: 0) + 1)
+                _userLikeIds.value = _userLikeIds.value + (postId to likeId)
             }
         }
     }
