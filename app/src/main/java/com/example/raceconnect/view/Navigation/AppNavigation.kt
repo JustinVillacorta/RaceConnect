@@ -70,6 +70,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
+import com.example.raceconnect.view.Screens.MenuScreens.EditPostScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -595,6 +596,27 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 },
                                 onCommentClick = { navController.navigate(NavRoutes.Comments.createRoute(postId)) }
                             )
+                        }
+
+                        composable(
+                            route = NavRoutes.EditPost.route,
+                            arguments = listOf(navArgument("postJson") { type = NavType.StringType }),
+                            enterTransition = { slideInVertically(initialOffsetY = { it }) },
+                            exitTransition = { slideOutVertically(targetOffsetY = { it }) },
+                            popEnterTransition = { slideInVertically(initialOffsetY = { it }) },
+                            popExitTransition = { slideOutVertically(targetOffsetY = { it }) }
+                        ) { backStackEntry ->
+                            val postJson = backStackEntry.arguments?.getString("postJson")?.let { Uri.decode(it) }
+                            val post = postJson?.let { Gson().fromJson(it, NewsFeedDataClassItem::class.java) }
+                            if (post != null) {
+                                EditPostScreen(
+                                    post = post,
+                                    viewModel = newsFeedViewModel,
+                                    onClose = { navController.popBackStack() }
+                                )
+                            } else {
+                                LaunchedEffect(Unit) { navController.popBackStack() }
+                            }
                         }
                         composable(
                             route = NavRoutes.RepostScreen.route,

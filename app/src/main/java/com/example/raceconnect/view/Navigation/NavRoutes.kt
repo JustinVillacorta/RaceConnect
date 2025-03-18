@@ -3,7 +3,7 @@ package com.example.raceconnect.view.Navigation
 import android.net.Uri
 
 sealed class NavRoutes(val route: String) {
-    // Existing routes (unchanged unless noted)
+    // Existing routes remain unchanged
     object Login : NavRoutes("login")
     object Signup : NavRoutes("signup")
     object ForgotPassword : NavRoutes("forgot_password")
@@ -18,7 +18,7 @@ sealed class NavRoutes(val route: String) {
         fun createRoute(postId: Int) = "comments/$postId"
     }
     object Profile : NavRoutes("profile")
-    object CreatePost : NavRoutes("createPost") // Already exists
+    object CreatePost : NavRoutes("createPost")
     object Marketplace : NavRoutes("marketplace")
     object Notifications : NavRoutes("notifications")
     object Post : NavRoutes("postDetail/{postId}") {
@@ -38,22 +38,24 @@ sealed class NavRoutes(val route: String) {
         fun createRoute(itemId: Int) = "editMarketplaceItem/$itemId"
     }
     object ChatSeller : NavRoutes("chatSeller/{itemId}/{conversationId}/{sellerId}/{itemTitle}/{itemImage}") {
-        fun createRoute(itemId: Int, conversationId: Int, sellerId: Int, itemTitle: String, itemImage: String?) = "chatSeller/$itemId/$conversationId/$sellerId/${Uri.encode(itemTitle)}/${Uri.encode(itemImage ?: "")}"
+        fun createRoute(itemId: Int, conversationId: Int, sellerId: Int, itemTitle: String, itemImage: String?) =
+            "chatSeller/$itemId/$conversationId/$sellerId/${Uri.encode(itemTitle)}/${Uri.encode(itemImage ?: "")}"
     }
     object ProfileDetails : NavRoutes("profileDetails")
-    object FavoriteItems : NavRoutes("favoriteItems") // Already exists
-    object NewsFeedPreferences : NavRoutes("newsFeedPreferences") // Already exists
+    object FavoriteItems : NavRoutes("favoriteItems")
+    object NewsFeedPreferences : NavRoutes("newsFeedPreferences")
     object ListedItems : NavRoutes("listedItems")
     object FriendListScreen : NavRoutes("FriendsListScreen")
     object Conversations : NavRoutes("conversations")
-
-    // New routes for remaining overlay screens
     object CreateMarketplaceItem : NavRoutes("createMarketplaceItem")
     object FullScreenImage : NavRoutes("fullScreenImage/{postId}/{imageUrl}") {
         fun createRoute(postId: Int, imageUrl: String) = "fullScreenImage/$postId/${imageUrl.replace("/", "%2F")}"
     }
 
-
+    // New EditPost route
+    object EditPost : NavRoutes("editPost/{postJson}") {
+        fun createRoute(postJson: String) = "editPost/${Uri.encode(postJson)}"
+    }
 
     object RepostScreen {
         const val route = "repost_screen/{postJson}"

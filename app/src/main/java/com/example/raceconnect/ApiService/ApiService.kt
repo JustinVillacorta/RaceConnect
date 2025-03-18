@@ -97,6 +97,15 @@ interface ApiService {
         @Part image: MultipartBody.Part?
     ): Response<PostResponse>
 
+
+        @PUT("posts/{id}")
+        suspend fun editPost(
+            @Path("id") postId: Int,
+            @Body updateRequest: UpdatePostRequest
+        ): Response<Unit> // Use Unit if no response body is expected, or define a response class if needed
+
+
+
     @GET("posts/{id}/images")
     suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostResponse>>
 

@@ -70,3 +70,22 @@ data class LikeRequest(
     val post_id: Int,
     val owner_id: Int
 )
+
+
+
+data class UpdatePostResponse(
+    val message: String
+)
+
+data class UpdatePostRequest(
+    @SerializedName("content")
+    val content: String,
+
+    @SerializedName("title")
+    val title: String? = null,
+
+    @SerializedName("category")
+    val category: String? = null,
+
+    @SerializedName("privacy")
+    val privacy: String? = null)

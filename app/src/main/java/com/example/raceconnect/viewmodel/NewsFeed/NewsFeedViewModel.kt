@@ -16,6 +16,7 @@ import com.example.raceconnect.model.CreateRepostRequest
 import com.example.raceconnect.model.LikeRequest
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.ReportRequest
+import com.example.raceconnect.model.UpdatePostRequest
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.network.UserPostsPagingSource
@@ -331,6 +332,42 @@ class NewsFeedViewModel(
             }
         }
     }
+
+    fun updatePost(
+        postId: Int,
+        updatedContent: String,
+        updatedTitle: String?,
+        updatedCategory: String?,
+        updatedPrivacy: String?,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val request = UpdatePostRequest(
+                    content = updatedContent,
+                    title = updatedTitle,
+                    category = updatedCategory,
+                    privacy = updatedPrivacy
+                )
+                val response = apiService.editPost(postId, request)
+                if (response.isSuccessful) {
+                    Log.d("NewsFeedViewModel", "Post updated successfully: $postId")
+                    _newPostTrigger.value = true // Trigger UI refresh
+                    onSuccess()
+                } else {
+                    Log.e("NewsFeedViewModel", "Failed to update post $postId: ${response.errorBody()?.string()}")
+                    onFailure("Failed to update post: ${response.errorBody()?.string() ?: "Unknown error"}")
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "Error updating post $postId", e)
+                onFailure("Error updating post: ${e.message}")
+            }
+        }
+    }
+
+
+
 
 
     fun reportPost(
