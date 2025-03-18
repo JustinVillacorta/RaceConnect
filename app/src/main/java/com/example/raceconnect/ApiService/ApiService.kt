@@ -295,5 +295,5 @@ interface ApiService {
         @Query("buyer_id") buyerId: Int,
         @Query("seller_id") sellerId: Int,
         @Query("product_id") productId: Int
-    ): Response<Map<String, Any>>
+    ): Response<Map<String, Any?>>
 }

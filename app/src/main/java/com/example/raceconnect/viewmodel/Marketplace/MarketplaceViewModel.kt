@@ -63,6 +63,9 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
     private val _lastConversationId = MutableStateFlow<Int?>(null)
     val lastConversationId: StateFlow<Int?> = _lastConversationId.asStateFlow()
 
+    private val _conversationExists = MutableStateFlow<Pair<Boolean, Int?>?>(null)
+    val conversationExists: StateFlow<Pair<Boolean, Int?>?> = _conversationExists.asStateFlow()
+
     init {
         viewModelScope.launch {
             userPreferences.user.collect { user ->
@@ -606,21 +609,31 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         }
     }
 
-    fun checkConversationExists(buyerId: Int, sellerId: Int, productId: Int, onResult: (Boolean, Int?) -> Unit) {
+    fun checkConversationExists(buyerId: Int, sellerId: Int, productId: Int, onResult: (Boolean, Int?) -> Unit = { _, _ -> }) {
         viewModelScope.launch {
             try {
                 val response = RetrofitInstance.api.checkConversationExists(buyerId, sellerId, productId)
                 if (response.isSuccessful) {
                     val body = response.body()
-                    val exists = body?.get("exists") as? Boolean ?: false
-                    val conversationId = if (exists) (body?.get("conversation_id") as? Number)?.toInt() else null
-                    onResult(exists, conversationId)
+                    if (body != null) {
+                        val exists = body["exists"] as? Boolean ?: false
+                        val conversationId = if (exists) (body["conversation_id"] as? Number)?.toInt() else null
+                        _conversationExists.value = Pair(exists, conversationId)
+                        onResult(exists, conversationId)
+                        Log.d("MarketplaceViewModel", "Conversation check result: exists=$exists, id=$conversationId")
+                    } else {
+                        _conversationExists.value = Pair(false, null)
+                        onResult(false, null)
+                        Log.w("MarketplaceViewModel", "Response body is null")
+                    }
                 } else {
                     Log.e("MarketplaceViewModel", "Failed to check conversation: ${response.errorBody()?.string()}")
+                    _conversationExists.value = Pair(false, null)
                     onResult(false, null)
                 }
             } catch (e: Exception) {
                 Log.e("MarketplaceViewModel", "Error checking conversation: ${e.message}")
+                _conversationExists.value = Pair(false, null)
                 onResult(false, null)
             }
         }

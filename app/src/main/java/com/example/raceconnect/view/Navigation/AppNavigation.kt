@@ -236,7 +236,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 userPreferences = userPreferences
                             )
                         }
-
                         composable(
                             route = "notifications",
                             enterTransition = mainScreenEnterTransition(),
@@ -404,8 +403,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     MarketplaceItemDetailScreen(
                                         itemId = itemId,
                                         navController = navController,
-                                        viewModel = marketplaceViewModel,
-                                        onClose = { navController.popBackStack() },
+                                        userPreferences = userPreferences,
                                         onLikeError = { errorMessage ->
                                             coroutineScope.launch {
                                                 snackbarHostState.showSnackbar(
@@ -415,7 +413,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                                 )
                                             }
                                         },
-                                        onNavigateToChat = { /* No longer needed */ }
+                                        onMessageSent = { sentMessage ->
+                                            coroutineScope.launch {
+                                                snackbarHostState.showSnackbar("Message sent: $sentMessage")
+                                            }
+                                        }
                                     )
                                 }
                             }
@@ -460,7 +462,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 navArgument("conversationId") { type = NavType.IntType },
                                 navArgument("sellerId") { type = NavType.IntType },
                                 navArgument("itemTitle") { type = NavType.StringType },
-                                navArgument("itemImage") { type = NavType.StringType; nullable = true } // Add this
+                                navArgument("itemImage") { type = NavType.StringType; nullable = true }
                             ),
                             enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
                             exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
@@ -471,14 +473,14 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             val conversationId = backStackEntry.arguments?.getInt("conversationId") ?: 0
                             val sellerId = backStackEntry.arguments?.getInt("sellerId") ?: 0
                             val itemTitle = backStackEntry.arguments?.getString("itemTitle") ?: "Chat"
-                            val itemImage = backStackEntry.arguments?.getString("itemImage") // Add this
+                            val itemImage = backStackEntry.arguments?.getString("itemImage")
 
                             ChatSellerScreen(
                                 itemId = itemId,
                                 conversationId = conversationId,
                                 sellerId = sellerId,
                                 itemTitle = itemTitle,
-                                itemImage = itemImage, // Pass the itemImage
+                                itemImage = itemImage,
                                 navController = navController,
                                 userPreferences = userPreferences,
                                 onClose = { navController.popBackStack() }
@@ -585,7 +587,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
 
                             FullScreenImageViewer(
                                 imageUrl = imageUrl,
-                                postId = postId, // Pass postId here
+                                postId = postId,
                                 onDismiss = { navController.popBackStack() },
                                 onLikeClick = { isLiked ->
                                     if (isLiked) newsFeedViewModel.toggleLike(postId, 0)
@@ -643,7 +645,6 @@ val tabOrder = mapOf(
     "notifications" to 3,             // "notifications"
     NavRoutes.Profile.route to 4      // "profile"
 )
-
 
 // Reusable animation functions for main screens
 fun mainScreenEnterTransition(): @JvmSuppressWildcards() (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = {
