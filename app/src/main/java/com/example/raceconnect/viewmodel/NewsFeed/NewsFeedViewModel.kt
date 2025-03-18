@@ -316,6 +316,23 @@ class NewsFeedViewModel(
         }
     }
 
+    fun deletePost(postId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.deletePost(postId)
+                if (response.isSuccessful) {
+                    Log.d("NewsFeedViewModel", "Post deleted successfully: $postId")
+                    resetNewPostTrigger() // Trigger UI refresh by setting _newPostTrigger to true
+                } else {
+                    Log.e("NewsFeedViewModel", "Failed to delete post $postId: ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "Error deleting post $postId", e)
+            }
+        }
+    }
+
+
     fun reportPost(
         postId: Int,
         reason: String,

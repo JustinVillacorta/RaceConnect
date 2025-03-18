@@ -67,6 +67,10 @@ interface ApiService {
         @Query("offset") offset: Int = 0
     ): Response<List<NewsFeedDataClassItem>>
 
+    @DELETE("posts/{id}")
+    suspend fun deletePost(@Path("id") postId: Int): Response<Unit>
+
+
     @GET("posts")
     suspend fun getPostsByCategoryAndPrivacy(
         @Query("user_id") userId: Int,

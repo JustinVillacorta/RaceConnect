@@ -4,40 +4,15 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,8 +28,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
-import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModelFactory
 
@@ -74,9 +49,21 @@ fun UserProfileScreen(
     val posts = postsFlow?.collectAsLazyPagingItems()
     val postImages by newsFeedViewModel.postImages.collectAsState()
 
+    // State to track the post to delete
+    var postToDelete by remember { mutableStateOf<NewsFeedDataClassItem?>(null) }
+
+    // Load profile data on composition
     LaunchedEffect(Unit) {
         Log.d("UserProfileScreen", "Loading profile data")
         profileDetailsViewModel.loadProfileData()
+    }
+
+    // Refresh posts when newPostTrigger changes
+    LaunchedEffect(newsFeedViewModel.newPostTrigger) {
+        if (newsFeedViewModel.newPostTrigger.value) {
+            posts?.refresh()
+            newsFeedViewModel.resetNewPostTrigger() // Reset the trigger to false
+        }
     }
 
     Scaffold(
@@ -117,9 +104,7 @@ fun UserProfileScreen(
                     ) {
                         val profilePictureUrl = profileData?.profilePicture
                         Log.d("UserProfileScreen", "Profile picture URL: $profilePictureUrl")
-
                         val painter = if (profilePictureUrl != null && profilePictureUrl.isNotEmpty()) {
-                            Log.d("UserProfileScreen", "Loading profile picture from URL: $profilePictureUrl")
                             rememberAsyncImagePainter(
                                 model = profilePictureUrl,
                                 onLoading = { Log.d("UserProfileScreen", "Loading profile picture...") },
@@ -129,10 +114,8 @@ fun UserProfileScreen(
                                 }
                             )
                         } else {
-                            Log.d("UserProfileScreen", "Using default profile picture because URL is null or empty")
                             painterResource(id = R.drawable.baseline_account_circle_24)
                         }
-
                         Image(
                             painter = painter,
                             contentDescription = "Profile Picture",
@@ -197,7 +180,10 @@ fun UserProfileScreen(
                                                 elevation = CardDefaults.cardElevation(4.dp)
                                             ) {
                                                 Column(modifier = Modifier.padding(16.dp)) {
-                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
                                                         Box(
                                                             modifier = Modifier
                                                                 .size(40.dp)
@@ -212,9 +198,16 @@ fun UserProfileScreen(
                                                             )
                                                         }
                                                         Spacer(modifier = Modifier.width(8.dp))
-                                                        Column {
+                                                        Column(modifier = Modifier.weight(1f)) {
                                                             Text(text = post.username ?: "Anonymous", fontWeight = FontWeight.Bold)
                                                             Text(text = post.created_at ?: "Just now", color = Color.Gray)
+                                                        }
+                                                        IconButton(onClick = { postToDelete = post }) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Delete,
+                                                                contentDescription = "Delete Post",
+                                                                tint = MaterialTheme.colorScheme.error
+                                                            )
                                                         }
                                                     }
                                                     Spacer(modifier = Modifier.height(8.dp))
@@ -282,6 +275,28 @@ fun UserProfileScreen(
                     }
                 }
             }
+        }
+
+        // Confirmation dialog for deletion
+        if (postToDelete != null) {
+            AlertDialog(
+                onDismissRequest = { postToDelete = null },
+                title = { Text("Confirm Deletion") },
+                text = { Text("Are you sure you want to delete this post?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        newsFeedViewModel.deletePost(postToDelete!!.id)
+                        postToDelete = null
+                    }) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { postToDelete = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
