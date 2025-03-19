@@ -1,7 +1,9 @@
 package com.example.raceconnect.viewmodel.NewsFeed
 
+import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import android.provider.MediaStore
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -35,6 +37,8 @@ import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
 class NewsFeedViewModel(
@@ -336,40 +340,69 @@ class NewsFeedViewModel(
         }
     }
 
+
+
     fun updatePost(
         postId: Int,
         updatedContent: String,
         updatedTitle: String?,
         updatedCategory: String?,
         updatedPrivacy: String?,
+        imageUri: Uri?,
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
         viewModelScope.launch {
             try {
-                val request = UpdatePostRequest(
-                    content = updatedContent,
-                    title = updatedTitle,
-                    category = updatedCategory,
-                    privacy = updatedPrivacy
+                val contentPart = updatedContent.toRequestBody("text/plain".toMediaTypeOrNull())
+                val titlePart = updatedTitle?.toRequestBody("text/plain".toMediaTypeOrNull())
+                val categoryPart = updatedCategory?.toRequestBody("text/plain".toMediaTypeOrNull())
+                val privacyPart = updatedPrivacy?.toRequestBody("text/plain".toMediaTypeOrNull())
+                val typePart = "text".toRequestBody("text/plain".toMediaTypeOrNull())
+                val postTypePart = "normal".toRequestBody("text/plain".toMediaTypeOrNull())
+
+                val imageParts = if (imageUri != null) {
+                    val file = File(context.contentResolver.getFileFromUri(imageUri)?.path ?: "")
+                    val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                    listOf(MultipartBody.Part.createFormData("image", file.name, requestFile))
+                } else {
+                    null
+                }
+
+                val response = apiService.updatePostWithImage(
+                    postId = postId,
+                    content = contentPart,
+                    title = titlePart,
+                    category = categoryPart,
+                    privacy = privacyPart,
+                    type = typePart,
+                    postType = postTypePart,
+                    images = imageParts
                 )
-                val response = apiService.editPost(postId, request)
+
                 if (response.isSuccessful) {
-                    Log.d("NewsFeedViewModel", "Post updated successfully: $postId")
-                    _newPostTrigger.value = true // Trigger UI refresh
+                    _newPostTrigger.value = true
+                    refreshPosts()
                     onSuccess()
                 } else {
-                    Log.e("NewsFeedViewModel", "Failed to update post $postId: ${response.errorBody()?.string()}")
-                    onFailure("Failed to update post: ${response.errorBody()?.string() ?: "Unknown error"}")
+                    onFailure("Failed to update post: ${response.errorBody()?.string()}")
                 }
             } catch (e: Exception) {
-                Log.e("NewsFeedViewModel", "Error updating post $postId", e)
-                onFailure("Error updating post: ${e.message}")
+                onFailure(e.message ?: "Unknown error")
             }
         }
     }
 
-
+    // Add this extension function to get File from Uri
+    fun ContentResolver.getFileFromUri(uri: Uri): File? {
+        val filePathColumn = arrayOf(MediaStore.Images.Media.DATA)
+        val cursor = query(uri, filePathColumn, null, null, null)
+        cursor?.moveToFirst()
+        val columnIndex = cursor?.getColumnIndex(filePathColumn[0])
+        val filePath = columnIndex?.let { cursor.getString(it) }
+        cursor?.close()
+        return filePath?.let { File(it) }
+    }
 
 
 

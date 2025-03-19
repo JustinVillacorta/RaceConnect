@@ -468,14 +468,14 @@ fun EditPostScreen(
     val userPreferences = remember { UserPreferences(context) }
     val user by userPreferences.user.collectAsState(initial = null)
 
-    // Initialize states with existing post data
-    var postText by remember { mutableStateOf(post.content ?: "") }
-    var postTitle by remember { mutableStateOf(post.title ?: "") }
+    // State variables
+    var postContent by remember { mutableStateOf(post.content ?: "") }
     var selectedCategory by remember { mutableStateOf(post.category ?: "Formula 1") }
     var selectedPrivacy by remember { mutableStateOf(post.privacy ?: "Public") }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) } // For new image selection
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var existingImageUrl by remember { mutableStateOf(post.images?.firstOrNull()) }
 
-    // Launcher for picking an image
+    // Image picker launcher
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         selectedImageUri = uri
     }
@@ -492,7 +492,7 @@ fun EditPostScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // TopBar
+            // Header with back button and save button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -511,23 +511,22 @@ fun EditPostScreen(
                 )
                 Button(
                     onClick = {
-                        if (postText.isNotEmpty() && postTitle.isNotEmpty()) {
+                        if (postContent.isNotEmpty()) {
                             viewModel.updatePost(
                                 postId = post.id,
-                                updatedContent = postText,
-                                updatedTitle = postTitle,
+                                updatedContent = postContent,
+                                updatedTitle = null, // No title field
                                 updatedCategory = selectedCategory,
                                 updatedPrivacy = selectedPrivacy,
+                                imageUri = selectedImageUri,
                                 onSuccess = { onClose() },
                                 onFailure = { error ->
                                     Log.e("EditPostScreen", "Failed to update post: $error")
-                                    // Optionally, show a toast or snackbar here
                                 }
                             )
-                            // Note: selectedImageUri is not yet sent to updatePost; implement this later
                         }
                     },
-                    enabled = postText.isNotEmpty() && postTitle.isNotEmpty(),
+                    enabled = postContent.isNotEmpty(),
                     modifier = Modifier.padding(end = 8.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Red,
@@ -540,52 +539,35 @@ fun EditPostScreen(
             Divider(
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                 thickness = 1.dp,
-                modifier = Modifier.fillMaxWidth()
-                    .padding(vertical = 2.dp)
+                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
             )
 
-            // Content below with padding
+            // Main content
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                // Profile Section
+                // User info
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 12.dp)
                 ) {
-                    val profilePictureUri = user?.profilePicture?.let {
-                        try {
-                            Uri.parse(it)
-                        } catch (e: Exception) {
-                            null
-                        }
-                    }
-
+                    val profilePictureUri = user?.profilePicture?.let { Uri.parse(it) }
                     if (profilePictureUri != null) {
-                        val painter = rememberAsyncImagePainter(
-                            model = profilePictureUri,
-                            error = painterResource(id = android.R.drawable.ic_menu_gallery),
-                            placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
-                        )
                         Image(
-                            painter = painter,
+                            painter = rememberAsyncImagePainter(profilePictureUri),
                             contentDescription = "Profile Picture",
                             modifier = Modifier
                                 .size(40.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                                .clip(CircleShape),
                             contentScale = ContentScale.Crop
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
                             contentDescription = "Profile Picture",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                            modifier = Modifier.size(40.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -595,23 +577,25 @@ fun EditPostScreen(
                     )
                 }
 
-                // Title TextField
-                TextField(
-                    value = postTitle,
-                    onValueChange = { postTitle = it },
-                    label = { Text("Title") },
+                // Content input field (replacing title)
+                OutlinedTextField(
+                    value = postContent,
+                    onValueChange = { postContent = it },
+                    placeholder = { Text("What's on your mind?") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        .padding(vertical = 8.dp)
+                        .background(Color.Transparent, shape = RoundedCornerShape(8.dp)),
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        disabledBorderColor = Color.Transparent
                     ),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
                 )
 
-                // Dropdowns
+                // Category and privacy dropdowns
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -628,34 +612,22 @@ fun EditPostScreen(
                             value = selectedCategory,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Category", style = MaterialTheme.typography.labelMedium) },
+                            label = { Text("Category") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .height(48.dp)
-                                .fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            textStyle = MaterialTheme.typography.bodySmall,
-                            colors = ExposedDropdownMenuDefaults.textFieldColors(
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            )
+                            modifier = Modifier.menuAnchor(),
+                            shape = RoundedCornerShape(16.dp)
                         )
                         ExposedDropdownMenu(
                             expanded = categoryExpanded,
-                            onDismissRequest = { categoryExpanded = false },
-                            modifier = Modifier
-                                .width(IntrinsicSize.Min)
-                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                            onDismissRequest = { categoryExpanded = false }
                         ) {
                             categories.forEach { category ->
                                 DropdownMenuItem(
-                                    text = { Text(category, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    text = { Text(category) },
                                     onClick = {
                                         selectedCategory = category
                                         categoryExpanded = false
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                    }
                                 )
                             }
                         }
@@ -671,60 +643,29 @@ fun EditPostScreen(
                             value = selectedPrivacy,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Privacy", style = MaterialTheme.typography.labelMedium) },
+                            label = { Text("Privacy") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = privacyExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .height(48.dp)
-                                .fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            textStyle = MaterialTheme.typography.bodySmall,
-                            colors = ExposedDropdownMenuDefaults.textFieldColors(
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            )
+                            modifier = Modifier.menuAnchor(),
+                            shape = RoundedCornerShape(16.dp)
                         )
                         ExposedDropdownMenu(
                             expanded = privacyExpanded,
-                            onDismissRequest = { privacyExpanded = false },
-                            modifier = Modifier
-                                .width(IntrinsicSize.Min)
-                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                            onDismissRequest = { privacyExpanded = false }
                         ) {
                             privacyOptions.forEach { privacy ->
                                 DropdownMenuItem(
-                                    text = { Text(privacy, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    text = { Text(privacy) },
                                     onClick = {
                                         selectedPrivacy = privacy
                                         privacyExpanded = false
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                    }
                                 )
                             }
                         }
                     }
                 }
 
-                // Content TextField
-                OutlinedTextField(
-                    value = postText,
-                    onValueChange = { postText = it },
-                    placeholder = { Text("What's on your mind?") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .background(Color.Transparent, shape = RoundedCornerShape(8.dp)),
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        disabledBorderColor = Color.Transparent
-                    ),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
-                )
-
-
-                // Image Preview (for newly selected image)
+                // Display existing or selected image
                 if (selectedImageUri != null) {
                     Image(
                         painter = rememberAsyncImagePainter(selectedImageUri),
@@ -736,15 +677,25 @@ fun EditPostScreen(
                             .clip(RoundedCornerShape(8.dp)),
                         contentScale = ContentScale.Crop
                     )
+                } else if (existingImageUrl != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(existingImageUrl),
+                        contentDescription = "Existing Image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .padding(vertical = 8.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
                 }
 
-                // Add Photo Button
+                // Button to add or replace photo
                 OutlinedButton(
                     onClick = { launcher.launch("image/*") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                    contentPadding = PaddingValues(12.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(Icons.Default.Image, contentDescription = "Update image")

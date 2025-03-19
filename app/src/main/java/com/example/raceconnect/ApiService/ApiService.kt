@@ -70,7 +70,6 @@ interface ApiService {
     @DELETE("posts/{id}")
     suspend fun deletePost(@Path("id") postId: Int): Response<Unit>
 
-
     @GET("posts")
     suspend fun getPostsByCategoryAndPrivacy(
         @Query("user_id") userId: Int,
@@ -94,17 +93,21 @@ interface ApiService {
         @Part("privacy") privacy: RequestBody,
         @Part("type") type: RequestBody,
         @Part("post_type") postType: RequestBody,
-        @Part images: List<MultipartBody.Part>? // Make nullable to match MarketplacePostImage
+        @Part images: List<MultipartBody.Part>?
     ): Response<PostResponse>
 
-
-        @PUT("posts/{id}")
-        suspend fun editPost(
-            @Path("id") postId: Int,
-            @Body updateRequest: UpdatePostRequest
-        ): Response<Unit> // Use Unit if no response body is expected, or define a response class if needed
-
-
+    @Multipart
+    @POST("posts/{id}/update")
+    suspend fun updatePostWithImage(
+        @Path("id") postId: Int,
+        @Part("content") content: RequestBody,
+        @Part("title") title: RequestBody?,
+        @Part("category") category: RequestBody?,
+        @Part("privacy") privacy: RequestBody?,
+        @Part("type") type: RequestBody?,
+        @Part("post_type") postType: RequestBody?,
+        @Part images: List<MultipartBody.Part>?
+    ): Response<PostResponse>
 
     @GET("posts/{id}/images")
     suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostResponse>>
@@ -137,7 +140,7 @@ interface ApiService {
 
     @GET("marketplace-item-likes/liked-posts")
     suspend fun getLikedItemsByUserIds(
-        @Query("user_ids") userIds: String // Comma-separated user IDs, e.g., "4"
+        @Query("user_ids") userIds: String
     ): Response<Map<String, Any>>
 
     @GET("marketplace-items")
@@ -288,12 +291,10 @@ interface ApiService {
         @Query("offset") offset: Int = 0
     ): Response<List<Repost>>
 
-
     @GET("post-reposts")
     suspend fun getRepostsByUserId(
         @Query("user_id") userId: Int
     ): Response<List<Repost>>
-
 
     @DELETE("post-reposts/{id}")
     suspend fun deleteRepost(
