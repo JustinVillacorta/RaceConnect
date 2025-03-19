@@ -10,6 +10,7 @@ import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -20,30 +21,35 @@ import java.io.File
 class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : ViewModel() {
 
     internal val _profileData = MutableStateFlow<users?>(null)
-    val profileData: StateFlow<users?> = _profileData
+    val profileData: StateFlow<users?> = _profileData.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     internal val _isEditMode = MutableStateFlow(false)
-    val isEditMode: StateFlow<Boolean> = _isEditMode
+    val isEditMode: StateFlow<Boolean> = _isEditMode.asStateFlow()
 
     private val apiService: ApiService = RetrofitInstance.api
 
     init {
         // Automatically sync with UserPreferences.user Flow
         viewModelScope.launch {
-            userPreferences.user.collect { user ->
-                _profileData.value = user
-                if (user == null) {
-                    _isEditMode.value = false
-                    Log.d("ProfileDetailsViewModel", "User logged out, profile data cleared")
-                } else {
-                    Log.d("ProfileDetailsViewModel", "Profile data synced from preferences: $user")
+            try {
+                userPreferences.user.collect { user ->
+                    _profileData.value = user
+                    if (user == null) {
+                        _isEditMode.value = false
+                        Log.d("ProfileDetailsViewModel", "User logged out, profile data cleared")
+                    } else {
+                        Log.d("ProfileDetailsViewModel", "Profile data synced from preferences: $user")
+                    }
                 }
+            } catch (e: Exception) {
+                _errorMessage.value = "Failed to sync user preferences: ${e.message}"
+                Log.e("ProfileDetailsViewModel", "Error syncing user preferences", e)
             }
         }
     }
@@ -97,7 +103,12 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
                     _isLoading.value = false
                     return@launch
                 }
-                val token = userPreferences.getToken() ?: ""
+                val token = userPreferences.getToken() ?: run {
+                    _errorMessage.value = "No authentication token available"
+                    Log.w("ProfileDetailsViewModel", "No token available for API request")
+                    _isLoading.value = false
+                    return@launch
+                }
 
                 val updateRequest = UpdateUserRequest(
                     username = username,
@@ -147,7 +158,12 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
                     _isLoading.value = false
                     return@launch
                 }
-                val token = userPreferences.getToken() ?: ""
+                val token = userPreferences.getToken() ?: run {
+                    _errorMessage.value = "No authentication token available"
+                    Log.w("ProfileDetailsViewModel", "No token available for API request")
+                    _isLoading.value = false
+                    return@launch
+                }
 
                 val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
                 val imagePart = MultipartBody.Part.createFormData("image", file.name, requestFile)
@@ -176,6 +192,16 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
 
     fun toggleEditMode() {
         _isEditMode.value = !_isEditMode.value
+        if (!_isEditMode.value) {
+            _errorMessage.value = null // Clear error message when exiting edit mode
+        }
+        Log.d("ProfileDetailsViewModel", "Edit mode toggled to: ${_isEditMode.value}")
+    }
+
+    fun resetEditMode() {
+        _isEditMode.value = false
+        _errorMessage.value = null
+        Log.d("ProfileDetailsViewModel", "Edit mode reset to false")
     }
 
     fun setErrorMessage(message: String) {

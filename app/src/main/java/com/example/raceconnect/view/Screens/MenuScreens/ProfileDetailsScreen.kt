@@ -72,6 +72,17 @@ fun MyProfileScreen(
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
 
+    // Reset edit mode when the screen is first created
+    LaunchedEffect(Unit) {
+        profileDetailsViewModel.resetEditMode()
+    }
+
+    // Reset edit mode when navigating away
+    val onCloseWithReset = {
+        profileDetailsViewModel.resetEditMode()
+        onClose()
+    }
+
     LaunchedEffect(profileData) {
         profileData?.let {
             if (!isEditMode) {
@@ -138,7 +149,7 @@ fun MyProfileScreen(
             TopAppBar(
                 title = { Text("Personal Details", color = Color.White, fontSize = 20.sp) },
                 navigationIcon = {
-                    IconButton(onClick = onClose) {
+                    IconButton(onClick = onCloseWithReset) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -364,8 +375,7 @@ fun MyProfileScreen(
                                 bio.text,
                                 userPreferences
                             )
-                            profileDetailsViewModel.toggleEditMode() // Switch back to view mode
-                            onClose()
+                            onCloseWithReset()
                         } else {
                             profileDetailsViewModel.setErrorMessage("Please fill all required fields with valid data")
                         }
