@@ -9,6 +9,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -257,26 +259,35 @@ fun UserProfileScreen(
                                                     }
                                                     Spacer(modifier = Modifier.height(8.dp))
                                                     Text(text = post.content ?: "")
-                                                    val imageUrl = postImages[post.id]?.firstOrNull()
-                                                    imageUrl?.let { url ->
-                                                        val painter = rememberAsyncImagePainter(
-                                                            model = url,
-                                                            onLoading = { Log.d("UserProfileScreen", "Loading post image...") },
-                                                            onSuccess = { Log.d("UserProfileScreen", "Post image loaded successfully") },
-                                                            onError = { error ->
-                                                                Log.e("UserProfileScreen", "Error loading post image: ${error.result.throwable.message}")
-                                                            }
-                                                        )
+                                                    // Display multiple images in a LazyRow
+                                                    if (postImages[post.id]?.isNotEmpty() == true) {
                                                         Spacer(modifier = Modifier.height(8.dp))
-                                                        Image(
-                                                            painter = painter,
-                                                            contentDescription = "Post Image",
+                                                        LazyRow(
+                                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                                                             modifier = Modifier
                                                                 .fillMaxWidth()
                                                                 .height(200.dp)
-                                                                .clip(RoundedCornerShape(8.dp)),
-                                                            contentScale = ContentScale.Crop
-                                                        )
+                                                        ) {
+                                                            items(postImages[post.id]!!) { imageUrl ->
+                                                                val painter = rememberAsyncImagePainter(
+                                                                    model = imageUrl,
+                                                                    onLoading = { Log.d("UserProfileScreen", "Loading post image...") },
+                                                                    onSuccess = { Log.d("UserProfileScreen", "Post image loaded successfully") },
+                                                                    onError = { error ->
+                                                                        Log.e("UserProfileScreen", "Error loading post image: ${error.result.throwable.message}")
+                                                                    }
+                                                                )
+                                                                Image(
+                                                                    painter = painter,
+                                                                    contentDescription = "Post Image",
+                                                                    modifier = Modifier
+                                                                        .width(200.dp)
+                                                                        .fillMaxHeight()
+                                                                        .clip(RoundedCornerShape(8.dp)),
+                                                                    contentScale = ContentScale.Crop
+                                                                )
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -333,12 +344,13 @@ fun UserProfileScreen(
                                     val repost = userReposts[index]
                                     val originalPost = originalPosts[repost.postId]
 
-                                    // Fetch original post and images
-                                    LaunchedEffect(repost.postId) {
+                                    // Fetch images for both repost and original post
+                                    LaunchedEffect(repost.id, repost.postId) {
+                                        newsFeedViewModel.getPostImages(repost.id) // Repost images
+                                        newsFeedViewModel.getPostImages(repost.postId) // Original post images
                                         if (originalPost == null) {
                                             newsFeedViewModel.fetchOriginalPost(repost.postId)
                                         }
-                                        newsFeedViewModel.getPostImages(repost.postId)
                                     }
 
                                     Card(
@@ -387,6 +399,37 @@ fun UserProfileScreen(
                                                 Spacer(modifier = Modifier.height(8.dp))
                                             }
 
+                                            // Repost Images (if any)
+                                            if (postImages[repost.id]?.isNotEmpty() == true) {
+                                                LazyRow(
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(200.dp)
+                                                ) {
+                                                    items(postImages[repost.id]!!) { imageUrl ->
+                                                        val painter = rememberAsyncImagePainter(
+                                                            model = imageUrl,
+                                                            onLoading = { Log.d("UserProfileScreen", "Loading repost image...") },
+                                                            onSuccess = { Log.d("UserProfileScreen", "Repost image loaded successfully") },
+                                                            onError = { error ->
+                                                                Log.e("UserProfileScreen", "Error loading repost image: ${error.result.throwable.message}")
+                                                            }
+                                                        )
+                                                        Image(
+                                                            painter = painter,
+                                                            contentDescription = "Repost Image",
+                                                            modifier = Modifier
+                                                                .width(200.dp)
+                                                                .fillMaxHeight()
+                                                                .clip(RoundedCornerShape(8.dp)),
+                                                            contentScale = ContentScale.Crop
+                                                        )
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                            }
+
                                             // Original Post Details
                                             if (originalPost != null) {
                                                 Column {
@@ -395,30 +438,38 @@ fun UserProfileScreen(
                                                         fontWeight = FontWeight.Bold
                                                     )
                                                     Text(text = originalPost.content ?: "")
-                                                    val imageUrl = postImages[repost.postId]?.firstOrNull()
-                                                    imageUrl?.let { url ->
-                                                        val painter = rememberAsyncImagePainter(
-                                                            model = url,
-                                                            onLoading = { Log.d("UserProfileScreen", "Loading original post image...") },
-                                                            onSuccess = { Log.d("UserProfileScreen", "Original post image loaded successfully") },
-                                                            onError = { error ->
-                                                                Log.e("UserProfileScreen", "Error loading original post image: ${error.result.throwable.message}")
-                                                            }
-                                                        )
+                                                    // Original Post Images (if any)
+                                                    if (postImages[repost.postId]?.isNotEmpty() == true) {
                                                         Spacer(modifier = Modifier.height(8.dp))
-                                                        Image(
-                                                            painter = painter,
-                                                            contentDescription = "Original Post Image",
+                                                        LazyRow(
+                                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                                                             modifier = Modifier
                                                                 .fillMaxWidth()
                                                                 .height(200.dp)
-                                                                .clip(RoundedCornerShape(8.dp)),
-                                                            contentScale = ContentScale.Crop
-                                                        )
+                                                        ) {
+                                                            items(postImages[repost.postId]!!) { imageUrl ->
+                                                                val painter = rememberAsyncImagePainter(
+                                                                    model = imageUrl,
+                                                                    onLoading = { Log.d("UserProfileScreen", "Loading original post image...") },
+                                                                    onSuccess = { Log.d("UserProfileScreen", "Original post image loaded successfully") },
+                                                                    onError = { error ->
+                                                                        Log.e("UserProfileScreen", "Error loading original post image: ${error.result.throwable.message}")
+                                                                    }
+                                                                )
+                                                                Image(
+                                                                    painter = painter,
+                                                                    contentDescription = "Original Post Image",
+                                                                    modifier = Modifier
+                                                                        .width(200.dp)
+                                                                        .fillMaxHeight()
+                                                                        .clip(RoundedCornerShape(8.dp)),
+                                                                    contentScale = ContentScale.Crop
+                                                                )
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             } else {
-                                                // Show loading indicator while fetching
                                                 CircularProgressIndicator(
                                                     modifier = Modifier.align(Alignment.CenterHorizontally)
                                                 )
@@ -427,6 +478,7 @@ fun UserProfileScreen(
                                     }
                                 }
                             }
+
                         }
                     }
                 }
