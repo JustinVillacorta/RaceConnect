@@ -55,59 +55,76 @@ fun AddPostSection(
         }
     }
 
-    Row(
+    // Wrap the entire section in a Card to create the container effect
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
-            .clickable(onClick = onAddPostClick),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        if (profilePictureUri != null) {
-            Image(
-                painter = rememberAsyncImagePainter(
-                    model = profilePictureUri,
-                    error = painterResource(id = android.R.drawable.ic_menu_gallery),
-                    placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
-                ),
-                contentDescription = "Profile Picture",
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                    .clickable { onShowProfileView() },
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.AccountCircle,
-                contentDescription = "Profile Picture",
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                    .clickable { onShowProfileView() }
-            )
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Box(
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .height(48.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFFF8F8F8))
-                .border(
-                    width = 1.dp,
-                    color = Color.LightGray,
-                    shape = RoundedCornerShape(24.dp)
-                )
-                .clickable(onClick = onAddPostClick),
-            contentAlignment = Alignment.CenterStart
+                .fillMaxWidth()
+                .padding(vertical = 8.dp) // Padding inside the card
         ) {
-            Text(
-                text = "What's new today?",
-                style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray),
-                modifier = Modifier.padding(start = 16.dp)
-            )
+            // Original AddPostSection content
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .clickable(onClick = onAddPostClick),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (profilePictureUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(
+                            model = profilePictureUri,
+                            error = painterResource(id = android.R.drawable.ic_menu_gallery),
+                            placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
+                        ),
+                        contentDescription = "Profile Picture",
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                            .clickable { onShowProfileView() },
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "Profile Picture",
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                            .clickable { onShowProfileView() }
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color(0xFFF8F8F8))
+                        .border(
+                            width = 1.dp,
+                            color = Color.LightGray,
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                        .clickable(onClick = onAddPostClick),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Text(
+                        text = "What's new today?",
+                        style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray),
+                        modifier = Modifier.padding(start = 16.dp)
+                    )
+                }
+            }
         }
     }
 }

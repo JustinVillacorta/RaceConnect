@@ -129,7 +129,8 @@ fun NewsFeedScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Red)
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
     ) { paddingValues ->
         SwipeRefresh(
             state = rememberSwipeRefreshState(isRefreshing),

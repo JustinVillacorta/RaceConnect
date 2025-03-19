@@ -50,6 +50,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModel
 import java.util.*
 
 // Utility function to format time relative to now
@@ -93,7 +95,8 @@ fun PostCard(
     onReportClick: (Int, String, String?) -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
     onUserActionClick: (Int, String, String?) -> Unit,
-    context: Context = LocalContext.current
+    context: Context = LocalContext.current,
+    modifier: Modifier = Modifier // Add this parameter
 ) {
     val postLikes by viewModel.postLikes.collectAsState()
     val isLiked = postLikes[post.id] ?: post.isLiked
@@ -116,7 +119,10 @@ fun PostCard(
     Card(
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(2.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White // Set the background color to white
+        )
     ) {
         Box(modifier = Modifier.padding(16.dp)) {
             Column {
@@ -632,5 +638,53 @@ fun ReactionIcon(icon: ImageVector, isLiked: Boolean = false, onClick: (() -> Un
             .size(24.dp)
             .clickable { onClick?.invoke() },
         tint = if (isLiked) Color.Red else Color.Gray
+    )
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun PostCardSimplePreview() {
+    val context = LocalContext.current
+    val mockPost = NewsFeedDataClassItem(
+        id = 1,
+        user_id = 1,
+        username = "TestUser",
+        profile_picture = null,
+        content = "This is a test post",
+        images = listOf("https://example.com/image1.jpg", "https://example.com/image2.jpg"),
+        created_at = "2025-03-19T10:00:00Z",
+        like_count = 20,
+        comment_count = 5,
+        repost_count = 3,
+        isLiked = false,
+        title = "t"
+    )
+    val mockNavController = remember { object : NavController(context) {} }
+    val mockUserPreferences = UserPreferences(context)
+    val mockPreferenceViewModel = NewsFeedPreferenceViewModel(
+        userPreferences = mockUserPreferences
+    )
+    val mockViewModel = NewsFeedViewModel(
+        userPreferences = mockUserPreferences,
+        preferenceViewModel = mockPreferenceViewModel,
+        context = context
+    )
+
+    PostCard(
+        post = mockPost,
+        navController = mockNavController,
+        onCommentClick = { /* No-op for preview */ },
+        onLikeClick = { _ -> /* No-op for preview */ },
+        viewModel = mockViewModel,
+        onShowFullScreenImage = { _, _ -> /* No-op for preview */ },
+        userPreferences = mockUserPreferences,
+        onReportClick = { _, _, _ -> /* No-op for preview */ },
+        onShowRepostScreen = { _ -> /* No-op for preview */ },
+        onUserActionClick = { _, _, _ -> /* No-op for preview */ },
+        context = context,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
     )
 }

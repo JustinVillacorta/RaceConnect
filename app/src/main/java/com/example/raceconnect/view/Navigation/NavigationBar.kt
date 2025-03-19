@@ -1,12 +1,17 @@
 package com.example.raceconnect.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -35,24 +40,36 @@ fun BottomNavBar(navController: NavController) {
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 2.dp),
         containerColor = Color.White
     ) {
         items.forEach { item ->
             NavigationBarItem(
                 icon = {
-                    Icon(
-                        painter = painterResource(id = item.icon),
-                        contentDescription = item.title,
-                        modifier = Modifier.size(24.dp),
-                        tint = if (currentRoute == item.route) Color(0xFF8B0000) else MaterialTheme.colorScheme.onSurface
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            painter = painterResource(id = item.icon),
+                            contentDescription = item.title,
+                            modifier = Modifier.size(24.dp),
+                            tint = if (currentRoute == item.route) Color(0xFF8B0000) else MaterialTheme.colorScheme.onSurface
+                        )
+                        // Add the underline for the selected item
+                        if (currentRoute == item.route) {
+                            Spacer(
+                                modifier = Modifier
+                                    .width(24.dp)
+                                    .height(1.dp)
+                                    .background(Color(0xFF8B0000))
+                            )
+                        }
+                    }
                 },
                 selected = currentRoute == item.route,
                 onClick = {
                     navController.navigate(item.route) {
                         popUpTo(NavRoutes.NewsFeed.route) { inclusive = false }
-                        // Avoid multiple instances of the same destination
                         launchSingleTop = true
                     }
                 },
