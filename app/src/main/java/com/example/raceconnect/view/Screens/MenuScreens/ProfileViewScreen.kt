@@ -524,12 +524,12 @@ fun EditPostScreen(
     var postContent by remember { mutableStateOf(post.content ?: "") }
     var selectedCategory by remember { mutableStateOf(post.category ?: "Formula 1") }
     var selectedPrivacy by remember { mutableStateOf(post.privacy ?: "Public") }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) } // Changed to List<Uri>
     var existingImageUrl by remember { mutableStateOf(post.images?.firstOrNull()) }
 
-    // Image picker launcher
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        selectedImageUri = uri
+    // Image picker launcher for multiple images
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri>? ->
+        selectedImageUris = uris ?: emptyList()
     }
 
     val categories = listOf("Formula 1", "24 Hours of Lemans", "World Rally Championship", "NASCAR", "Formula Drift", "GT Championship")
@@ -567,10 +567,10 @@ fun EditPostScreen(
                             viewModel.updatePost(
                                 postId = post.id,
                                 updatedContent = postContent,
-                                updatedTitle = null, // No title field
+                                updatedTitle = null,
                                 updatedCategory = selectedCategory,
                                 updatedPrivacy = selectedPrivacy,
-                                imageUri = selectedImageUri,
+                                imageUri = selectedImageUris.firstOrNull(), // Pass only first URI for now
                                 onSuccess = { onClose() },
                                 onFailure = { error ->
                                     Log.e("EditPostScreen", "Failed to update post: $error")
@@ -629,7 +629,7 @@ fun EditPostScreen(
                     )
                 }
 
-                // Content input field (replacing title)
+                // Content input field
                 OutlinedTextField(
                     value = postContent,
                     onValueChange = { postContent = it },
@@ -717,32 +717,42 @@ fun EditPostScreen(
                     }
                 }
 
-                // Display existing or selected image
-                if (selectedImageUri != null) {
-                    Image(
-                        painter = rememberAsyncImagePainter(selectedImageUri),
-                        contentDescription = "Selected Image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(300.dp)
-                            .padding(vertical = 8.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else if (existingImageUrl != null) {
-                    Image(
-                        painter = rememberAsyncImagePainter(existingImageUrl),
-                        contentDescription = "Existing Image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(300.dp)
-                            .padding(vertical = 8.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+                // Display existing and selected images in a LazyRow
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    // Existing image (if any)
+                    existingImageUrl?.let { url ->
+                        item {
+                            Image(
+                                painter = rememberAsyncImagePainter(url),
+                                contentDescription = "Existing Image",
+                                modifier = Modifier
+                                    .width(150.dp)
+                                    .height(150.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                    // Selected images
+                    items(selectedImageUris) { uri ->
+                        Image(
+                            painter = rememberAsyncImagePainter(uri),
+                            contentDescription = "Selected Image",
+                            modifier = Modifier
+                                .width(150.dp)
+                                .height(150.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
 
-                // Button to add or replace photo
+                // Button to add photos
                 OutlinedButton(
                     onClick = { launcher.launch("image/*") },
                     modifier = Modifier
@@ -750,9 +760,9 @@ fun EditPostScreen(
                         .padding(vertical = 8.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(Icons.Default.Image, contentDescription = "Update image")
+                    Icon(Icons.Default.Image, contentDescription = "Add images")
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Photo")
+                    Text("Add Photos")
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
