@@ -122,11 +122,6 @@ fun NewsFeedScreen(
         topBar = {
             TopAppBar(
                 title = { Text("RaceConnect", style = MaterialTheme.typography.headlineMedium, color = Color.White) },
-                actions = {
-                    IconButton(onClick = { /* Handle search */ }) {
-                        Icon(painterResource(id = R.drawable.baseline_search_24), "Search", tint = Color.White)
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Red)
             )
         },
@@ -145,8 +140,8 @@ fun NewsFeedScreen(
             modifier = Modifier.padding(paddingValues)
         ) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 item {
                     AddPostSection(
@@ -159,11 +154,15 @@ fun NewsFeedScreen(
                 items(posts.itemCount) { index ->
                     val post = posts[index]
                     post?.let { postItem ->
-                        // Fetch likes only once per post lifecycle
+                        // Fetch likes, comments and reposts only once per post lifecycle
                         LaunchedEffect(postItem.id) {
                             if (postLikes[postItem.id] == null) { // Avoid redundant fetches
                                 viewModel.fetchPostLikes(postItem.id)
                                 Log.d("NewsFeedScreen", "Fetching likes for post ID: ${postItem.id}")
+                                viewModel.fetchPostComments(postItem.id)
+                                Log.d("NewsFeedScreen", "Fetching comments for post ID: ${postItem.id}")
+                                viewModel.fetchPostReposts(postItem.id)
+                                Log.d("NewsFeedScreen", "Fetching reposts for post ID: ${postItem.id}")
                             }
                         }
 

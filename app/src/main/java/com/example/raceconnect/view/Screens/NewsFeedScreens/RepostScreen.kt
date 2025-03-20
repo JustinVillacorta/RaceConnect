@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -187,7 +188,7 @@ fun RepostCard(
     var menuExpanded by remember { mutableStateOf(false) }
 
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RectangleShape,
         elevation = CardDefaults.cardElevation(2.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White // Set the background color to white
@@ -195,7 +196,7 @@ fun RepostCard(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(horizontal = 2.dp, vertical = 2.dp)
+            .padding( vertical = 2.dp)
 
     ) {
         Box(modifier = Modifier.padding(8.dp)) {
