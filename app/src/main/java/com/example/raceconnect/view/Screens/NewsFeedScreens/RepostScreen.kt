@@ -187,22 +187,38 @@ fun RepostCard(
     var showUserDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
 
+    // State to hold the dynamically fetched original post
+    var fetchedOriginalPost by remember { mutableStateOf<NewsFeedDataClassItem?>(originalPost) }
+    val originalPosts by viewModel.originalPosts.collectAsState()
+
+    // Fetch the original post if not provided and original_post_id is available
+    LaunchedEffect(repost.original_post_id) {
+        if (fetchedOriginalPost == null && repost.original_post_id != null) {
+            viewModel.fetchOriginalPost(repost.original_post_id)
+        }
+    }
+
+    // Update fetchedOriginalPost when the original post is fetched
+    LaunchedEffect(originalPosts, repost.original_post_id) {
+        if (repost.original_post_id != null) {
+            fetchedOriginalPost = originalPosts[repost.original_post_id] ?: originalPost
+        }
+    }
+
     Card(
         shape = RectangleShape,
         elevation = CardDefaults.cardElevation(2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White // Set the background color to white
-        ),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding( vertical = 2.dp)
-
+            .padding(vertical = 2.dp)
     ) {
         Box(modifier = Modifier.padding(8.dp)) {
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
+                // Repost Header (User who reposted)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -265,36 +281,44 @@ fun RepostCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
+                // Repost Comment (if any)
                 if (!repost.content.isNullOrEmpty()) {
                     Text(
                         text = repost.content,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Black,
-                        modifier = Modifier
-                            .padding(8.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                originalPost?.let { original ->
-                    PostCard(
-                        post = original,
-                        navController = navController,
-                        onCommentClick = onCommentClick,
-                        onLikeClick = onLikeClick,
-                        viewModel = viewModel,
-                        onShowFullScreenImage = onShowFullScreenImage,
-                        userPreferences = userPreferences,
-                        onReportClick = onReportClick,
-                        onShowRepostScreen = onShowRepostScreen,
-                        onUserActionClick = onUserActionClick,
+                // Original Post
+                fetchedOriginalPost?.let { original ->
+                    Card(
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)), // Light gray background to distinguish
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(30.dp) // Increase the height to make PostCard larger
-                            .padding(horizontal = 12 .dp) // Optional: Add padding for better spacing
-                    )
+                            .padding(horizontal = 8.dp)
+                    ) {
+                        PostCard(
+                            post = original,
+                            navController = navController,
+                            onCommentClick = onCommentClick,
+                            onLikeClick = onLikeClick,
+                            viewModel = viewModel,
+                            onShowFullScreenImage = onShowFullScreenImage,
+                            userPreferences = userPreferences,
+                            onReportClick = onReportClick,
+                            onShowRepostScreen = onShowRepostScreen,
+                            onUserActionClick = onUserActionClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentHeight() // Let PostCard take the height it needs
+                        )
+                    }
                 } ?: run {
                     Text(
                         text = "Original post unavailable",
@@ -306,8 +330,6 @@ fun RepostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
             }
-
-
         }
     }
 
