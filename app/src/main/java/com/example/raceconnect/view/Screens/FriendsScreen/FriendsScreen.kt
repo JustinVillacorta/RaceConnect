@@ -12,8 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.SearchBar
@@ -27,6 +25,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -34,15 +34,19 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Friend
-import com.example.raceconnect.view.ui.theme.Red // Assuming Red is defined as #D32F2F or similar
+import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.FriendsViewModel
 import com.example.raceconnect.viewmodel.FriendsViewModelFactory
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsScreen(
     userPreferences: UserPreferences,
     onClose: () -> Unit,
+    onNavigateToProfile: (String) -> Unit,
     viewModel: FriendsViewModel = viewModel(factory = FriendsViewModelFactory(userPreferences))
 ) {
 
@@ -136,7 +140,8 @@ fun FriendsScreen(
                                             viewModel.addFriend(user.id)
                                             searchQuery = ""
                                             isSearchActive = false
-                                        }
+                                        },
+                                        onProfileClick = { onNavigateToProfile(user.id.toString()) }
                                     )
                                 }
                             }
@@ -172,7 +177,8 @@ fun FriendsScreen(
                     FriendItem(
                         friend = friend,
                         onConfirm = { viewModel.confirmFriendRequest(friend.id) },
-                        onCancel = { viewModel.cancelFriendRequest(friend.id) }
+                        onCancel = { viewModel.cancelFriendRequest(friend.id) },
+                        onProfileClick = { onNavigateToProfile(friend.id.toString()) }
                     )
                 }
 
@@ -202,11 +208,15 @@ fun FriendsScreen(
                         shouldShow
                     }
                 ) { friend ->
-                    println("Rendering FriendItem in People You May Know - Friend: ${friend.name}, id=${friend.id}, status=${friend.status}")
                     FriendItem(
                         friend = friend,
-                        onAdd = { viewModel.addFriend(friend.id) },
-                        onRemove = { viewModel.removeFriend(friend.id) }
+                        onAdd = if (friend.status == "NonFriends") {
+                            { viewModel.addFriend(friend.id) }
+                        } else null,
+                        onRemove = if (friend.status == "PendingSent") {
+                            { viewModel.cancelFriendRequest(friend.id) }
+                        } else null,
+                        onProfileClick = { onNavigateToProfile(friend.id.toString()) }
                     )
                 }
             }
@@ -220,7 +230,8 @@ fun FriendItem(
     onConfirm: (() -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
     onAdd: (() -> Unit)? = null,
-    onRemove: (() -> Unit)? = null
+    onRemove: (() -> Unit)? = null,
+    onProfileClick: (String) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -232,7 +243,10 @@ fun FriendItem(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         // Left side: Profile picture and username
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.clickable { onProfileClick(friend.id.toString()) },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Image(
                 painter = rememberAsyncImagePainter(
                     model = friend.profileImageUrl ?: "",

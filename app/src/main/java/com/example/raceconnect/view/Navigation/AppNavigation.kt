@@ -20,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.MarketplaceDataClassItem
@@ -68,7 +69,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.navigation.NavBackStackEntry
-import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
 import com.example.raceconnect.view.Screens.MenuScreens.EditPostScreen
 
@@ -333,7 +333,13 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         ) {
                             FriendsScreen(
                                 userPreferences = userPreferences,
-                                onClose = { navController.popBackStack() }
+                                onClose = { navController.popBackStack() },
+                                onNavigateToProfile = { userId ->
+                                    val userIdInt = userId.toIntOrNull()
+                                    if (userIdInt != null) {
+                                        navController.navigate(NavRoutes.ProfileView.createRoute(userIdInt))
+                                    }
+                                }
                             )
                         }
                         composable(

@@ -131,7 +131,7 @@ fun PostCard(
     ) {
         Box(modifier = Modifier.padding(16.dp)) {
             Column {
-                // Profile and Header (unchanged)
+                // Profile and Header 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -171,7 +171,15 @@ fun PostCard(
                         Text(
                             text = post.username ?: "Anonymous",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                val destination = if (loggedInUserId == post.user_id) {
+                                    NavRoutes.ProfileView.createRoute(loggedInUserId!!)
+                                } else {
+                                    NavRoutes.ProfileView.createRoute(post.user_id)
+                                }
+                                navController.navigate(destination)
+                            }
                         )
                         Text(
                             text = formatTime(post.created_at),
@@ -287,7 +295,7 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Reactions (unchanged)
+                // Reactions 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -329,7 +337,7 @@ fun PostCard(
                 }
             }
 
-            // More Options (unchanged)
+            // More Options 
             Box(modifier = Modifier.align(Alignment.TopEnd)) {
                 Icon(
                     imageVector = Icons.Default.Report,
@@ -344,7 +352,7 @@ fun PostCard(
         }
     }
 
-    // Report Dialog and User Action Dialog (unchanged)
+    // Report Dialog and User Action Dialog 
     if (showReportDialog) {
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
