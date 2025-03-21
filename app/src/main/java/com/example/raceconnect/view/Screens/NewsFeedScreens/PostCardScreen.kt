@@ -54,6 +54,8 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModel
 import java.util.*
+import androidx.compose.foundation.border
+import androidx.compose.material.icons.filled.Report
 
 // Utility function to format time relative to now
 fun formatTime(createdAt: String?): String {
@@ -103,10 +105,10 @@ fun PostCard(
     val isLiked = postLikes[post.id] ?: post.isLiked
     val likeCounts by viewModel.likeCounts.collectAsState()
     val likeCount = likeCounts[post.id] ?: post.like_count
-    val commentCounts by viewModel.commentCounts.collectAsState() // Add this
-    val commentCount = commentCounts[post.id] ?: post.comment_count // Add this
-    val repostCounts by viewModel.repostCounts.collectAsState() // Add this
-    val repostCount = repostCounts[post.id] ?: post.repost_count // Add this
+    val commentCounts by viewModel.commentCounts.collectAsState()
+    val commentCount = commentCounts[post.id] ?: post.comment_count
+    val repostCounts by viewModel.repostCounts.collectAsState()
+    val repostCount = repostCounts[post.id] ?: post.repost_count
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: post.images ?: emptyList()
     var showReportDialog by remember { mutableStateOf(false) }
@@ -119,8 +121,6 @@ fun PostCard(
 
     LaunchedEffect(post.id) {
         viewModel.getPostImages(post.id)
-        // Optionally fetch counts here if not already fetched
-        // viewModel.fetchPostData(post.id)
     }
 
     Card(
@@ -191,7 +191,7 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Image Carousel with LazyRow (unchanged)
+                // Updated Image Carousel
                 if (imageUrls.isNotEmpty()) {
                     if (imageUrls.size == 1) {
                         Box(
@@ -213,28 +213,71 @@ fun PostCard(
                             )
                         }
                     } else {
-                        LazyRow(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(300.dp)
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                .height(340.dp)
+                                .padding(top = 8.dp)
                         ) {
-                            itemsIndexed(imageUrls) { index, url ->
+                            // Fix 1: Pass pageCount to rememberPagerState
+                            val pagerState = rememberPagerState(pageCount = { imageUrls.size })
+
+                            // Fix 2: Use state instead of count in HorizontalPager
+                            HorizontalPager(
+                                state = pagerState,
+                                pageSpacing = 0.dp,
+                                modifier = Modifier.fillMaxSize()
+                            ) { page ->
                                 Box(
                                     modifier = Modifier
-                                        .width(300.dp)
-                                        .fillMaxHeight()
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .fillMaxSize()
                                         .clickable {
-                                            onShowFullScreenImage(imageUrls, index)
+                                            onShowFullScreenImage(imageUrls, page)
                                         }
                                 ) {
                                     AsyncImage(
-                                        model = url,
-                                        contentDescription = "Post image $index",
-                                        modifier = Modifier.fillMaxSize(),
+                                        model = imageUrls[page],
+                                        contentDescription = "Post image $page",
+                                        modifier = Modifier.fillMaxSize().fillMaxWidth(),
                                         contentScale = ContentScale.Crop
+                                    )
+
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .background(Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "${pagerState.currentPage + 1}/${imageUrls.size}",
+                                    color = Color.White,
+                                    // Fix 3: Replace caption with bodySmall
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                imageUrls.forEachIndexed { index, _ ->
+                                    val isSelected = index == pagerState.currentPage
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isSelected) Color.White else Color.Transparent)
+                                            // Fix 4: border is already imported
+                                            .then(
+                                                if (!isSelected) Modifier.border(1.dp, Color.White, CircleShape)
+                                                else Modifier
+                                            )
                                     )
                                 }
                             }
@@ -244,7 +287,7 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Reactions with Comment and Repost Counters
+                // Reactions (unchanged)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -252,7 +295,6 @@ fun PostCard(
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Like
                     ReactionIcon(
                         icon = Icons.Default.Favorite,
                         isLiked = isLiked,
@@ -264,8 +306,6 @@ fun PostCard(
                         color = Color.Gray,
                         modifier = Modifier.padding(start = 4.dp, end = 12.dp)
                     )
-
-                    // Comment
                     ReactionIcon(
                         icon = Icons.Default.ChatBubble,
                         onClick = onCommentClick
@@ -276,8 +316,6 @@ fun PostCard(
                         color = Color.Gray,
                         modifier = Modifier.padding(start = 4.dp, end = 12.dp)
                     )
-
-                    // Repost
                     ReactionIcon(
                         icon = Icons.Default.Repeat,
                         onClick = { onShowRepostScreen(post) }
@@ -294,33 +332,14 @@ fun PostCard(
             // More Options (unchanged)
             Box(modifier = Modifier.align(Alignment.TopEnd)) {
                 Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "More options",
+                    imageVector = Icons.Default.Report,
+                    contentDescription = "Report post",
                     modifier = Modifier
                         .size(34.dp)
-                        .clickable { menuExpanded = true }
+                        .clickable { showReportDialog = true }
                         .padding(8.dp),
                     tint = Color.Gray
                 )
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Report Post") },
-                        onClick = {
-                            menuExpanded = false
-                            showReportDialog = true
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("User Actions") },
-                        onClick = {
-                            menuExpanded = false
-                            showUserDialog = true
-                        }
-                    )
-                }
             }
         }
     }
@@ -400,81 +419,7 @@ fun PostCard(
             }
         )
     }
-
-    if (showUserDialog) {
-        AlertDialog(
-            onDismissRequest = { showUserDialog = false },
-            title = { Text("User Actions") },
-            text = {
-                Column {
-                    Text("Please select an action for this user:")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    val userOptions = listOf("Report User", "Others")
-                    userOptions.forEach { option ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable { selectedReason = option },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = selectedReason == option,
-                                onClick = { selectedReason = option }
-                            )
-                            Text(
-                                text = option,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                    }
-                    if (selectedReason == "Others") {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        TextField(
-                            value = otherText,
-                            onValueChange = { otherText = it },
-                            label = { Text("Please specify the action") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Text(
-                    text = "Confirm",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (selectedReason.isNotEmpty() && (selectedReason != "Others" || otherText.isNotEmpty()))
-                        MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier
-                        .clickable {
-                            if (selectedReason.isNotEmpty()) {
-                                if (selectedReason == "Others" && otherText.isEmpty()) {
-                                    Toast.makeText(context, "Please specify the action", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    onUserActionClick(post.user_id, selectedReason, if (selectedReason == "Others") otherText else null)
-                                    showUserDialog = false
-                                }
-                            }
-                        }
-                        .padding(8.dp)
-                )
-            },
-            dismissButton = {
-                Text(
-                    text = "Cancel",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .clickable { showUserDialog = false }
-                        .padding(8.dp)
-                )
-            }
-        )
-    }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullScreenImageViewer(
