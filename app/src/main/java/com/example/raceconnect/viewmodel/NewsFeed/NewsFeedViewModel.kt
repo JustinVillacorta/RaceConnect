@@ -407,7 +407,8 @@ class NewsFeedViewModel(
         updatedTitle: String?,
         updatedCategory: String?,
         updatedPrivacy: String?,
-        imageUri: Uri?,
+        deleteImageIds: List<Int>, // Added to support image deletion
+        newImageUris: List<Uri>,   // Updated to support multiple images
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
@@ -417,15 +418,19 @@ class NewsFeedViewModel(
                 val titlePart = updatedTitle?.toRequestBody("text/plain".toMediaTypeOrNull())
                 val categoryPart = updatedCategory?.toRequestBody("text/plain".toMediaTypeOrNull())
                 val privacyPart = updatedPrivacy?.toRequestBody("text/plain".toMediaTypeOrNull())
-                val typePart = "text".toRequestBody("text/plain".toMediaTypeOrNull())
+                val hasImages = newImageUris.isNotEmpty() // Simplified type determination
+                val typePart = (if (hasImages) "image" else "text").toRequestBody("text/plain".toMediaTypeOrNull())
                 val postTypePart = "normal".toRequestBody("text/plain".toMediaTypeOrNull())
+                val deleteImageIdsPart = if (deleteImageIds.isNotEmpty()) {
+                    deleteImageIds.joinToString(",").toRequestBody("text/plain".toMediaTypeOrNull())
+                } else null
 
-                val imageParts = if (imageUri != null) {
-                    val file = File(context.contentResolver.getFileFromUri(imageUri)?.path ?: "")
-                    val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                    listOf(MultipartBody.Part.createFormData("image", file.name, requestFile))
-                } else {
-                    null
+                val imageParts = newImageUris.mapNotNull { uri ->
+                    val file = getFileFromUri(context, uri)
+                    file?.let {
+                        val requestFile = it.asRequestBody("image/*".toMediaTypeOrNull())
+                        MultipartBody.Part.createFormData("image[]", it.name, requestFile)
+                    }
                 }
 
                 val response = apiService.updatePostWithImage(
@@ -436,7 +441,8 @@ class NewsFeedViewModel(
                     privacy = privacyPart,
                     type = typePart,
                     postType = postTypePart,
-                    images = imageParts
+                    deleteImageIds = deleteImageIdsPart,
+                    images = if (imageParts.isNotEmpty()) imageParts else null
                 )
 
                 if (response.isSuccessful) {

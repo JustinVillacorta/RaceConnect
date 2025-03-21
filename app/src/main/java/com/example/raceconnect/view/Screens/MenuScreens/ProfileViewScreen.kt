@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -42,6 +43,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.model.PostImage
+import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
@@ -520,18 +523,50 @@ fun EditPostScreen(
     val userPreferences = remember { UserPreferences(context) }
     val user by userPreferences.user.collectAsState(initial = null)
 
-    // State variables
-    var postContent by remember { mutableStateOf(post.content ?: "") }
-    var selectedCategory by remember { mutableStateOf(post.category ?: "Formula 1") }
-    var selectedPrivacy by remember { mutableStateOf(post.privacy ?: "Public") }
-    var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) } // Changed to List<Uri>
-    var existingImageUrl by remember { mutableStateOf(post.images?.firstOrNull()) }
+    // Define mappings for category and privacy
+    val categoryMap = mapOf(
+        "F1" to "Formula 1",
+        "LEM" to "24 Hours of Lemans",
+        "FD" to "Formula Drift",
+        "WRC" to "World Rally Championship",
+        "NAS" to "NASCAR",
+        "GT" to "GT Championship"
+    )
+    val privacyMap = mapOf(
+        "public" to "Public",
+        "friends" to "Friends Only",
+        "private" to "Only me"
+    )
 
-    // Image picker launcher for multiple images
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri>? ->
-        selectedImageUris = uris ?: emptyList()
+    // State variables
+    var title by remember { mutableStateOf(post.title ?: "") }
+    var content by remember { mutableStateOf(post.content ?: "") }
+    var selectedCategory by remember { mutableStateOf(categoryMap[post.category] ?: "Formula 1") }
+    var selectedPrivacy by remember { mutableStateOf(privacyMap[post.privacy] ?: "Public") }
+    val existingImages = remember { mutableStateListOf<PostImage>() }
+    val deleteImageIds = remember { mutableStateListOf<Int>() }
+    val newImageUris = remember { mutableStateListOf<Uri>() }
+
+    // Fetch existing images when the screen loads
+    LaunchedEffect(Unit) {
+        try {
+            val response = RetrofitInstance.api.GetPostImg(post.id)
+            if (response.isSuccessful) {
+                existingImages.addAll(response.body() ?: emptyList())
+            } else {
+                Log.e("EditPostScreen", "Failed to fetch images: ${response.message()}")
+            }
+        } catch (e: Exception) {
+            Log.e("EditPostScreen", "Error fetching images: ${e.message}")
+        }
     }
 
+    // Image picker launcher for multiple images
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        newImageUris.addAll(uris)
+    }
+
+    // Dropdown options
     val categories = listOf("Formula 1", "24 Hours of Lemans", "World Rally Championship", "NASCAR", "Formula Drift", "GT Championship")
     val privacyOptions = listOf("Public", "Friends Only", "Only me")
 
@@ -563,22 +598,23 @@ fun EditPostScreen(
                 )
                 Button(
                     onClick = {
-                        if (postContent.isNotEmpty()) {
+                        if (content.isNotEmpty()) {
+                            val updatedCategoryCode = categoryMap.entries.find { it.value == selectedCategory }?.key ?: "F1"
+                            val updatedPrivacyCode = privacyMap.entries.find { it.value == selectedPrivacy }?.key ?: "public"
                             viewModel.updatePost(
                                 postId = post.id,
-                                updatedContent = postContent,
-                                updatedTitle = null,
-                                updatedCategory = selectedCategory,
-                                updatedPrivacy = selectedPrivacy,
-                                imageUri = selectedImageUris.firstOrNull(), // Pass only first URI for now
+                                updatedContent = content,
+                                updatedTitle = title,
+                                updatedCategory = updatedCategoryCode,
+                                updatedPrivacy = updatedPrivacyCode,
+                                deleteImageIds = deleteImageIds,
+                                newImageUris = newImageUris,
                                 onSuccess = { onClose() },
-                                onFailure = { error ->
-                                    Log.e("EditPostScreen", "Failed to update post: $error")
-                                }
+                                onFailure = { error -> Log.e("EditPostScreen", "Failed to update post: $error") }
                             )
                         }
                     },
-                    enabled = postContent.isNotEmpty(),
+                    enabled = content.isNotEmpty(),
                     modifier = Modifier.padding(end = 8.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Red,
@@ -600,159 +636,144 @@ fun EditPostScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                // User info
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(vertical = 12.dp)
-                ) {
-                    val profilePictureUri = user?.profilePicture?.let { Uri.parse(it) }
-                    if (profilePictureUri != null) {
-                        Image(
-                            painter = rememberAsyncImagePainter(profilePictureUri),
-                            contentDescription = "Profile Picture",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Profile Picture",
-                            modifier = Modifier.size(40.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = user?.username ?: "Anonymous",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
-
-                // Content input field
+                // Title field
                 OutlinedTextField(
-                    value = postContent,
-                    onValueChange = { postContent = it },
-                    placeholder = { Text("What's on your mind?") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .background(Color.Transparent, shape = RoundedCornerShape(8.dp)),
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        disabledBorderColor = Color.Transparent
-                    ),
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
                 )
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Category and privacy dropdowns
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                // Content field
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    label = { Text("Content") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Category dropdown
+                var categoryExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = categoryExpanded,
+                    onExpandedChange = { categoryExpanded = !categoryExpanded },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    var categoryExpanded by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(
+                    TextField(
+                        value = selectedCategory,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Category") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                        modifier = Modifier.menuAnchor(),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    ExposedDropdownMenu(
                         expanded = categoryExpanded,
-                        onExpandedChange = { categoryExpanded = !categoryExpanded },
-                        modifier = Modifier.weight(1f)
+                        onDismissRequest = { categoryExpanded = false }
                     ) {
-                        TextField(
-                            value = selectedCategory,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Category") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                            modifier = Modifier.menuAnchor(),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = categoryExpanded,
-                            onDismissRequest = { categoryExpanded = false }
-                        ) {
-                            categories.forEach { category ->
-                                DropdownMenuItem(
-                                    text = { Text(category) },
-                                    onClick = {
-                                        selectedCategory = category
-                                        categoryExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    var privacyExpanded by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(
-                        expanded = privacyExpanded,
-                        onExpandedChange = { privacyExpanded = !privacyExpanded },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        TextField(
-                            value = selectedPrivacy,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Privacy") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = privacyExpanded) },
-                            modifier = Modifier.menuAnchor(),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = privacyExpanded,
-                            onDismissRequest = { privacyExpanded = false }
-                        ) {
-                            privacyOptions.forEach { privacy ->
-                                DropdownMenuItem(
-                                    text = { Text(privacy) },
-                                    onClick = {
-                                        selectedPrivacy = privacy
-                                        privacyExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Display existing and selected images in a LazyRow
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                ) {
-                    // Existing image (if any)
-                    existingImageUrl?.let { url ->
-                        item {
-                            Image(
-                                painter = rememberAsyncImagePainter(url),
-                                contentDescription = "Existing Image",
-                                modifier = Modifier
-                                    .width(150.dp)
-                                    .height(150.dp)
-                                    .clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Crop
+                        categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(category) },
+                                onClick = {
+                                    selectedCategory = category
+                                    categoryExpanded = false
+                                }
                             )
                         }
                     }
-                    // Selected images
-                    items(selectedImageUris) { uri ->
-                        Image(
-                            painter = rememberAsyncImagePainter(uri),
-                            contentDescription = "Selected Image",
-                            modifier = Modifier
-                                .width(150.dp)
-                                .height(150.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Privacy dropdown
+                var privacyExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = privacyExpanded,
+                    onExpandedChange = { privacyExpanded = !privacyExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextField(
+                        value = selectedPrivacy,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Privacy") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = privacyExpanded) },
+                        modifier = Modifier.menuAnchor(),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = privacyExpanded,
+                        onDismissRequest = { privacyExpanded = false }
+                    ) {
+                        privacyOptions.forEach { privacy ->
+                            DropdownMenuItem(
+                                text = { Text(privacy) },
+                                onClick = {
+                                    selectedPrivacy = privacy
+                                    privacyExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Button to add photos
+                // Existing images section
+                Text("Existing Images:", modifier = Modifier.padding(top = 8.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(existingImages) { image ->
+                        Box(modifier = Modifier.padding(4.dp)) {
+                            Image(
+                                painter = rememberAsyncImagePainter(image.image_url),
+                                contentDescription = "Existing post image",
+                                modifier = Modifier.size(100.dp)
+                            )
+                            IconButton(
+                                onClick = {
+                                    deleteImageIds.add(image.id)
+                                    existingImages.remove(image)
+                                },
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Remove image")
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // New images section
+                Text("New Images:", modifier = Modifier.padding(top = 8.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(newImageUris) { uri ->
+                        Box(modifier = Modifier.padding(4.dp)) {
+                            Image(
+                                painter = rememberAsyncImagePainter(uri),
+                                contentDescription = "New post image",
+                                modifier = Modifier.size(100.dp)
+                            )
+                            IconButton(
+                                onClick = { newImageUris.remove(uri) },
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Remove image")
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Button to add new images
                 OutlinedButton(
                     onClick = { launcher.launch("image/*") },
                     modifier = Modifier
@@ -760,11 +781,8 @@ fun EditPostScreen(
                         .padding(vertical = 8.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(Icons.Default.Image, contentDescription = "Add images")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Photos")
+                    Text("Add Images")
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }

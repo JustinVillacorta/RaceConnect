@@ -71,7 +71,10 @@ data class LikeRequest(
     val owner_id: Int
 )
 
-
+data class PostImage(
+    val id: Int,
+    val image_url: String
+)
 
 data class UpdatePostResponse(
     val message: String

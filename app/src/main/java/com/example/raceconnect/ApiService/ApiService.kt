@@ -106,11 +106,12 @@ interface ApiService {
         @Part("privacy") privacy: RequestBody?,
         @Part("type") type: RequestBody?,
         @Part("post_type") postType: RequestBody?,
+        @Part("delete_image_ids") deleteImageIds: RequestBody?, // Added to support image deletion
         @Part images: List<MultipartBody.Part>?
     ): Response<PostResponse>
 
     @GET("posts/{id}/images")
-    suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostResponse>>
+    suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostImage>>
 
     @GET("post-likes/{post_id}")
     suspend fun getPostLikes(@Path("post_id") postId: Int): Response<List<PostLike>>
