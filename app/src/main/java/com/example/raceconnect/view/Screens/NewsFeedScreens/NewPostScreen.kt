@@ -345,24 +345,16 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                 OutlinedTextField(
                     value = postText,
                     onValueChange = { postText = it },
+                    label = { Text("Content") },
                     placeholder = { Text("What's on your mind?") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
                         .background(Color.Transparent, shape = RoundedCornerShape(8.dp)),
                     textStyle = MaterialTheme.typography.bodyLarge,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        disabledBorderColor = Color.Transparent
-                    )
+
                 )
-                Divider(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                    thickness = 1.dp,
-                    modifier = Modifier.fillMaxWidth()
-                        .padding(vertical = 2.dp)
-                )
+
 
                 // Image Preview for Multiple Images
                 if (selectedImageUris.isNotEmpty()) {
