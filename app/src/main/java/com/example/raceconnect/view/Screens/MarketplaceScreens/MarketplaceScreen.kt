@@ -53,15 +53,6 @@ fun MarketplaceScreen(
                         color = Color.White
                     )
                 },
-                actions = {
-                    IconButton(onClick = { /* Handle search click */ }) {
-                        Icon(
-                            painter = painterResource(id = com.example.raceconnect.R.drawable.baseline_search_24),
-                            contentDescription = "Search",
-                            tint = Color.White
-                        )
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Red,
                     titleContentColor = Color.White

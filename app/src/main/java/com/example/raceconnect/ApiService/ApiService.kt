@@ -200,6 +200,12 @@ interface ApiService {
     @DELETE("marketplace-item-likes/{id}")
     suspend fun deleteLike(@Path("id") likeId: Int): Response<Map<String, String>>
 
+    @GET("users")
+    suspend fun searchUsers(
+        @Query("user_id") userId: String,
+        @Query("query") query: String
+    ): Response<List<Friend>>
+
     @GET("friends/list")
     suspend fun getFriendsList(@Query("user_id") userId: String): Response<List<Map<String, Any?>>>
 

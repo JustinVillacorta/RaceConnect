@@ -2,11 +2,12 @@ package com.example.raceconnect.model
 import com.google.gson.annotations.SerializedName
 
 data class Friend(
-    val id: String,
-    val name: String,
-    val status: String,
-    val profileImageUrl: String?,
-    val receiverId: String? = null // Add receiverId
+    @SerializedName("id") val id: String = "",
+    @SerializedName("username") val name: String = "",
+    @SerializedName("profile_picture") val profileImageUrl: String? = null,
+    @SerializedName("bio") val bio: String? = null,
+    @SerializedName("status") val status: String = "NonFriends",
+    @SerializedName("receiver_id") val receiverId: String? = null
 )
 
 data class FriendRequest(

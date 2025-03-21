@@ -85,11 +85,6 @@ fun NotificationsScreen(context: Context, navController: NavController) {
         topBar = {
             TopAppBar(
                 title = { Text("Notifications", color = Color.White, style = MaterialTheme.typography.headlineMedium) },
-                actions = {
-                    IconButton(onClick = { /* Handle search */ }) {
-                        Icon(painterResource(id = R.drawable.baseline_search_24), contentDescription = "Search", tint = Color.White)
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Red, titleContentColor = Color.White)
             )
         }

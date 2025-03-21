@@ -26,10 +26,61 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
     private val _acceptedFriends = MutableStateFlow<List<Friend>>(emptyList())
     val acceptedFriends: StateFlow<List<Friend>> = _acceptedFriends.asStateFlow()
 
+    private val _searchResults = MutableStateFlow<List<Friend>>(emptyList())
+    val searchResults: StateFlow<List<Friend>> = _searchResults.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
     private val TAG = "FriendsViewModel"
 
     init {
         fetchFriends()
+    }
+
+    fun searchUsers(query: String) {
+        if (query.isBlank()) {
+            _searchResults.value = emptyList()
+            return
+        }
+
+        viewModelScope.launch {
+            _isSearching.value = true
+            try {
+                val userId = userPreferences.user.first()?.id?.toString() ?: run {
+                    Log.e(TAG, "searchUsers: userId is null")
+                    return@launch
+                }
+
+                val response = RetrofitInstance.api.searchUsers(userId, query)
+                if (response.isSuccessful) {
+                    response.body()?.let { users ->
+                        _searchResults.value = users.map { user ->
+                            Friend(
+                                id = user.id,
+                                name = user.name,
+                                profileImageUrl = user.profileImageUrl,
+                                bio = user.bio,
+                                status = "NonFriends",
+                                receiverId = null // Explicitly set to null for search results
+                            )
+                        }
+                        Log.d(TAG, "searchUsers: Found ${users.size} results")
+                    } ?: run {
+                        Log.e(TAG, "searchUsers: Response body is null")
+                        _searchResults.value = emptyList()
+                    }
+                } else {
+                    Log.e(TAG, "searchUsers: Failed with code ${response.code()}")
+                    _searchResults.value = emptyList()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "searchUsers: Error: ${e.message}", e)
+                _searchResults.value = emptyList()
+            } finally {
+                _isSearching.value = false
+            }
+        }
     }
 
     fun fetchFriends() {
@@ -63,28 +114,25 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                             }
                             val profileImageUrl = friend["profile_picture"]?.toString()
                             val receiverId = when (status) {
-                                "Pending" -> {
-                                    Log.d(TAG, "fetchFriends: Setting receiverId to $userId for status=$status, id=$id")
-                                    userId
-                                }
-                                "PendingSent" -> {
-                                    Log.d(TAG, "fetchFriends: Setting receiverId to $id for status=$status, id=$id")
-                                    id
-                                }
-                                else -> {
-                                    Log.d(TAG, "fetchFriends: Setting receiverId to null for status=$status, id=$id")
-                                    null
-                                }
+                                "Pending" -> userId // Set receiverId to current user's ID for pending requests
+                                "PendingSent" -> id // Set receiverId to friend's ID for sent requests
+                                else -> null // No receiverId needed for other statuses
                             }
-                            Friend(id, name, status, profileImageUrl, receiverId)
-                        }.distinctBy { it.id }.sortedBy {
+                            Friend(
+                                id = id,
+                                name = name,
+                                status = status,
+                                profileImageUrl = profileImageUrl,
+                                receiverId = receiverId
+                            )
+                        }
+                        _friends.value = friendsList.distinctBy { it.id }.sortedBy {
                             when (it.status) {
                                 "Pending" -> 1
                                 "PendingSent" -> 2
                                 else -> 3
                             }
                         }
-                        _friends.value = friendsList
                         Log.i(TAG, "fetchFriends: Updated friends list with ${friendsList.size} items: $friendsList")
                     } ?: run {
                         Log.e(TAG, "fetchFriends: Response body is null")
@@ -137,7 +185,7 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                             val profileImageUrl = friend["profile_picture"]?.toString()
 
                             // Since the endpoint only returns "Accepted" friends, we can directly map
-                            Friend(id, name, status, profileImageUrl, null)
+                            Friend(id, name, status, profileImageUrl, null.toString())
                         }.distinctBy { it.id }.sortedBy { it.name }
 
                         _acceptedFriends.value = acceptedFriendsList
