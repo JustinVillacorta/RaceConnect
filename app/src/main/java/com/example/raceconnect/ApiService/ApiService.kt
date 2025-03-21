@@ -292,6 +292,13 @@ interface ApiService {
     ): Response<List<Repost>>
 
     @GET("post-reposts")
+    suspend fun getRepostsCountByPostId(
+        @Query("postId") postId: Int,
+        @Query("limit") limit: Int = 10,
+        @Query("offset") offset: Int = 0
+    ): Response<List<Repost>>
+
+    @GET("post-reposts")
     suspend fun getRepostsByUserId(
         @Query("user_id") userId: Int
     ): Response<List<Repost>>

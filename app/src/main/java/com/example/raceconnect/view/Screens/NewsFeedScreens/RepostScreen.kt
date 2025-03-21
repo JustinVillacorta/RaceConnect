@@ -22,11 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -35,6 +37,7 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -172,7 +175,7 @@ fun RepostCard(
     onCommentClick: () -> Unit,
     onLikeClick: (Boolean) -> Unit,
     viewModel: NewsFeedViewModel,
-    onShowFullScreenImage: (List<String>, Int) -> Unit, // Updated signature
+    onShowFullScreenImage: (List<String>, Int) -> Unit,
     userPreferences: UserPreferences,
     onReportClick: (Int, String, String?) -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
@@ -184,18 +187,38 @@ fun RepostCard(
     var showUserDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
 
+    // State to hold the dynamically fetched original post
+    var fetchedOriginalPost by remember { mutableStateOf<NewsFeedDataClassItem?>(originalPost) }
+    val originalPosts by viewModel.originalPosts.collectAsState()
+
+    // Fetch the original post if not provided and original_post_id is available
+    LaunchedEffect(repost.original_post_id) {
+        if (fetchedOriginalPost == null && repost.original_post_id != null) {
+            viewModel.fetchOriginalPost(repost.original_post_id)
+        }
+    }
+
+    // Update fetchedOriginalPost when the original post is fetched
+    LaunchedEffect(originalPosts, repost.original_post_id) {
+        if (repost.original_post_id != null) {
+            fetchedOriginalPost = originalPosts[repost.original_post_id] ?: originalPost
+        }
+    }
+
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RectangleShape,
         elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(vertical = 2.dp)
     ) {
-        Box(modifier = Modifier.padding(16.dp)) {
+        Box(modifier = Modifier.padding(8.dp)) {
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
+                // Repost Header (User who reposted)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -250,7 +273,7 @@ fun RepostCard(
                             )
                         }
                         Text(
-                            text = formatTime(repost.created_at), // Updated to use formatTime
+                            text = formatTime(repost.created_at),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray,
                             maxLines = 1
@@ -258,28 +281,27 @@ fun RepostCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
+                // Repost Comment (if any)
                 if (!repost.content.isNullOrEmpty()) {
                     Text(
                         text = repost.content,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Black,
-                        modifier = Modifier
-                            .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
-                            .padding(8.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                originalPost?.let { original ->
+                // Original Post
+                fetchedOriginalPost?.let { original ->
                     Card(
                         shape = RoundedCornerShape(8.dp),
-                        elevation = CardDefaults.cardElevation(1.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)), // Light gray background to distinguish
                         modifier = Modifier
                             .fillMaxWidth()
-                            .wrapContentHeight()
-                            .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp)
                     ) {
                         PostCard(
                             post = original,
@@ -291,7 +313,10 @@ fun RepostCard(
                             userPreferences = userPreferences,
                             onReportClick = onReportClick,
                             onShowRepostScreen = onShowRepostScreen,
-                            onUserActionClick = onUserActionClick
+                            onUserActionClick = onUserActionClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentHeight() // Let PostCard take the height it needs
                         )
                     }
                 } ?: run {
@@ -305,41 +330,10 @@ fun RepostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
             }
-
-            Box(modifier = Modifier.align(Alignment.TopEnd)) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "More options",
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clickable { menuExpanded = true }
-                        .padding(8.dp),
-                    tint = Color.Gray
-                )
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Report Repost") },
-                        onClick = {
-                            menuExpanded = false
-                            showReportDialog = true
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("User Actions") },
-                        onClick = {
-                            menuExpanded = false
-                            showUserDialog = true
-                        }
-                    )
-                }
-            }
         }
     }
 
-    // Report Dialog
+    // Report Dialog (unchanged)
     if (showReportDialog) {
         var selectedOption by remember { mutableStateOf("") }
         var otherText by remember { mutableStateOf("") }
@@ -425,4 +419,101 @@ fun RepostCard(
             shape = RoundedCornerShape(12.dp)
         )
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RepostScreenSimplePreview() {
+    val context = LocalContext.current
+    val mockPost = NewsFeedDataClassItem(
+        id = 1,
+        user_id = 1,
+        username = "PreviewUser",
+        profile_picture = null,
+        content = "This is a preview post",
+        images = emptyList(),
+        created_at = "2025-03-19T10:00:00Z",
+        like_count = 10,
+        comment_count = 5,
+        repost_count = 2,
+        isLiked = false,
+        title = "title"
+    )
+    val mockNavController = remember { object : NavController(context) {} }
+    val mockUserPreferences = UserPreferences(context)
+    val mockPreferenceViewModel = NewsFeedPreferenceViewModel(
+        userPreferences = mockUserPreferences
+    )
+
+    val mockViewModel = NewsFeedViewModel(
+        userPreferences = mockUserPreferences,
+        preferenceViewModel = mockPreferenceViewModel,
+        context = context
+    )
+
+    RepostScreen(
+        post = mockPost,
+        navController = mockNavController,
+        viewModel = mockViewModel,
+        onClose = { /* No-op for preview */ },
+        userPreferences = mockUserPreferences
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RepostCardSimplePreview() {
+    val context = LocalContext.current
+    val mockRepost = NewsFeedDataClassItem(
+        id = 1,
+        user_id = 1,
+        username = "Reposter",
+        profile_picture = null,
+        content = "This is a repost comment",
+        images = emptyList(),
+        created_at = "2025-03-19T12:00:00Z",
+        like_count = 5,
+        comment_count = 2,
+        repost_count = 1,
+        isLiked = false,
+        title = "1"
+    )
+    val mockOriginalPost = NewsFeedDataClassItem(
+        id = 2,
+        user_id = 2,
+        username = "OriginalPoster",
+        profile_picture = null,
+        content = "Original post content",
+        images = listOf("https://example.com/image.jpg"),
+        created_at = "2025-03-19T10:00:00Z",
+        like_count = 15,
+        comment_count = 8,
+        repost_count = 3,
+        isLiked = true,
+        title = "t "
+    )
+    val mockNavController = remember { object : NavController(context) {} }
+    val mockUserPreferences = UserPreferences(context)
+    val mockPreferenceViewModel = NewsFeedPreferenceViewModel(
+        userPreferences = mockUserPreferences
+    )
+    val mockViewModel = NewsFeedViewModel(
+        userPreferences = mockUserPreferences,
+        preferenceViewModel = mockPreferenceViewModel,
+        context = context
+    )
+
+    RepostCard(
+        repost = mockRepost,
+        originalPost = mockOriginalPost,
+        navController = mockNavController,
+        onCommentClick = { /* No-op for preview */ },
+        onLikeClick = { _ -> /* No-op for preview */ },
+        viewModel = mockViewModel,
+        onShowFullScreenImage = { _, _ -> /* No-op for preview */ },
+        userPreferences = mockUserPreferences,
+        onReportClick = { _, _, _ -> /* No-op for preview */ },
+        onShowRepostScreen = { _ -> /* No-op for preview */ },
+        onUserActionClick = { _, _, _ -> /* No-op for preview */ }
+    )
 }

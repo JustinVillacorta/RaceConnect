@@ -51,18 +51,9 @@ fun FriendsScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = rememberAsyncImagePainter(model = ""),
-                            contentDescription = "Profile Picture",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color.Gray)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Friends",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 20.sp),
+                            style = MaterialTheme.typography.headlineMedium,
                             color = Color.White
                         )
                     }

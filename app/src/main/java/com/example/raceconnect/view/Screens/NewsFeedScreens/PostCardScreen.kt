@@ -50,6 +50,9 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModel
 import java.util.*
 
 // Utility function to format time relative to now
@@ -93,12 +96,17 @@ fun PostCard(
     onReportClick: (Int, String, String?) -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit,
     onUserActionClick: (Int, String, String?) -> Unit,
-    context: Context = LocalContext.current
+    context: Context = LocalContext.current,
+    modifier: Modifier = Modifier
 ) {
     val postLikes by viewModel.postLikes.collectAsState()
     val isLiked = postLikes[post.id] ?: post.isLiked
     val likeCounts by viewModel.likeCounts.collectAsState()
     val likeCount = likeCounts[post.id] ?: post.like_count
+    val commentCounts by viewModel.commentCounts.collectAsState() // Add this
+    val commentCount = commentCounts[post.id] ?: post.comment_count // Add this
+    val repostCounts by viewModel.repostCounts.collectAsState() // Add this
+    val repostCount = repostCounts[post.id] ?: post.repost_count // Add this
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: post.images ?: emptyList()
     var showReportDialog by remember { mutableStateOf(false) }
@@ -111,12 +119,15 @@ fun PostCard(
 
     LaunchedEffect(post.id) {
         viewModel.getPostImages(post.id)
+        // Optionally fetch counts here if not already fetched
+        // viewModel.fetchPostData(post.id)
     }
 
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RectangleShape,
         elevation = CardDefaults.cardElevation(2.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)
+        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Box(modifier = Modifier.padding(16.dp)) {
             Column {
@@ -180,7 +191,7 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Image Carousel with LazyRow
+                // Image Carousel with LazyRow (unchanged)
                 if (imageUrls.isNotEmpty()) {
                     if (imageUrls.size == 1) {
                         Box(
@@ -212,7 +223,7 @@ fun PostCard(
                             itemsIndexed(imageUrls) { index, url ->
                                 Box(
                                     modifier = Modifier
-                                        .width(300.dp) // Fixed width for each image
+                                        .width(300.dp)
                                         .fillMaxHeight()
                                         .clip(RoundedCornerShape(8.dp))
                                         .clickable {
@@ -233,12 +244,15 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Reactions (unchanged)
+                // Reactions with Comment and Repost Counters
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Like
                     ReactionIcon(
                         icon = Icons.Default.Favorite,
                         isLiked = isLiked,
@@ -250,9 +264,30 @@ fun PostCard(
                         color = Color.Gray,
                         modifier = Modifier.padding(start = 4.dp, end = 12.dp)
                     )
-                    ReactionIcon(icon = Icons.Default.ChatBubble, onClick = onCommentClick)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    ReactionIcon(icon = Icons.Default.Repeat, onClick = { onShowRepostScreen(post) })
+
+                    // Comment
+                    ReactionIcon(
+                        icon = Icons.Default.ChatBubble,
+                        onClick = onCommentClick
+                    )
+                    Text(
+                        text = "$commentCount",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(start = 4.dp, end = 12.dp)
+                    )
+
+                    // Repost
+                    ReactionIcon(
+                        icon = Icons.Default.Repeat,
+                        onClick = { onShowRepostScreen(post) }
+                    )
+                    Text(
+                        text = "$repostCount",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
                 }
             }
 
@@ -261,21 +296,30 @@ fun PostCard(
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "More options",
-                    modifier = Modifier.size(34.dp).clickable { menuExpanded = true }.padding(8.dp),
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clickable { menuExpanded = true }
+                        .padding(8.dp),
                     tint = Color.Gray
                 )
                 DropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false }
                 ) {
-                    DropdownMenuItem(text = { Text("Report Post") }, onClick = {
-                        menuExpanded = false
-                        showReportDialog = true
-                    })
-                    DropdownMenuItem(text = { Text("User Actions") }, onClick = {
-                        menuExpanded = false
-                        showUserDialog = true
-                    })
+                    DropdownMenuItem(
+                        text = { Text("Report Post") },
+                        onClick = {
+                            menuExpanded = false
+                            showReportDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("User Actions") },
+                        onClick = {
+                            menuExpanded = false
+                            showUserDialog = true
+                        }
+                    )
                 }
             }
         }
@@ -632,5 +676,53 @@ fun ReactionIcon(icon: ImageVector, isLiked: Boolean = false, onClick: (() -> Un
             .size(24.dp)
             .clickable { onClick?.invoke() },
         tint = if (isLiked) Color.Red else Color.Gray
+    )
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun PostCardSimplePreview() {
+    val context = LocalContext.current
+    val mockPost = NewsFeedDataClassItem(
+        id = 1,
+        user_id = 1,
+        username = "TestUser",
+        profile_picture = null,
+        content = "This is a test post",
+        images = listOf("https://example.com/image1.jpg", "https://example.com/image2.jpg"),
+        created_at = "2025-03-19T10:00:00Z",
+        like_count = 20,
+        comment_count = 5,
+        repost_count = 3,
+        isLiked = false,
+        title = "t"
+    )
+    val mockNavController = remember { object : NavController(context) {} }
+    val mockUserPreferences = UserPreferences(context)
+    val mockPreferenceViewModel = NewsFeedPreferenceViewModel(
+        userPreferences = mockUserPreferences
+    )
+    val mockViewModel = NewsFeedViewModel(
+        userPreferences = mockUserPreferences,
+        preferenceViewModel = mockPreferenceViewModel,
+        context = context
+    )
+
+    PostCard(
+        post = mockPost,
+        navController = mockNavController,
+        onCommentClick = { /* No-op for preview */ },
+        onLikeClick = { _ -> /* No-op for preview */ },
+        viewModel = mockViewModel,
+        onShowFullScreenImage = { _, _ -> /* No-op for preview */ },
+        userPreferences = mockUserPreferences,
+        onReportClick = { _, _, _ -> /* No-op for preview */ },
+        onShowRepostScreen = { _ -> /* No-op for preview */ },
+        onUserActionClick = { _, _, _ -> /* No-op for preview */ },
+        context = context,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
     )
 }

@@ -116,6 +116,10 @@ dependencies {
 
     implementation ("com.google.accompanist:accompanist-pager:0.27.1")
 
+
+    //google fonts
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
+
 }
 
 

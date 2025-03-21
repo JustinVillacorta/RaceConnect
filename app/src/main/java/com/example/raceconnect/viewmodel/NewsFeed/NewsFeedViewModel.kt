@@ -56,6 +56,13 @@ class NewsFeedViewModel(
     private val _userLikeIds = MutableStateFlow<Map<Int, Int>>(emptyMap())
     val userLikeIds: StateFlow<Map<Int, Int>> = _userLikeIds
 
+    // New StateFlows for comment and repost counts
+    private val _commentCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
+    val commentCounts: StateFlow<Map<Int, Int>> = _commentCounts.asStateFlow()
+
+    private val _repostCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
+    val repostCounts: StateFlow<Map<Int, Int>> = _repostCounts.asStateFlow()
+
     private val _newPostTrigger = MutableStateFlow(false)
     val newPostTrigger: StateFlow<Boolean> = _newPostTrigger.asStateFlow()
 
@@ -217,17 +224,69 @@ class NewsFeedViewModel(
                 val response = apiService.GetPostImg(postId)
                 if (response.isSuccessful) {
                     val postResponses = response.body() ?: emptyList()
+                    Log.d("NewsFeedViewModel", "Raw response for postId=$postId: ${response.body()}")
                     val imageUrls = postResponses.map { it.image_url }
                     _postImages.value = _postImages.value.toMutableMap().apply {
                         this[postId] = imageUrls
                     }
+                    fetchPostLikes(postId)
+                    fetchPostComments(postId)
+                    fetchPostReposts(postId)
                 } else {
+                    Log.w("NewsFeedViewModel", "Failed to fetch images for post ID: $postId, HTTP ${response.code()}")
                     _postImages.value = _postImages.value.toMutableMap().apply {
                         this[postId] = emptyList()
                     }
                 }
             } catch (e: Exception) {
-                Log.e("NewsFeedViewModel", "Error fetching post images", e)
+                Log.e("NewsFeedViewModel", "Error fetching post images for postId=$postId", e)
+            }
+        }
+    }
+    // Fetch comments for a post
+    fun fetchPostComments(postId: Int) {
+        viewModelScope.launch {
+            try {
+                val token = userPreferences.token.first() ?: run {
+                    Log.w("NewsFeedViewModel", "No auth token available for fetching comments for post ID: $postId")
+                    return@launch
+                }
+                Log.d("NewsFeedViewModel", "Fetching comments for post ID: $postId")
+                val response = apiService.getCommentsByPostId("Bearer $token", postId)
+                if (response.isSuccessful) {
+                    val comments = response.body() ?: emptyList()
+                    Log.d("NewsFeedViewModel", "Comments fetched: ${comments.size} for post ID: $postId")
+                    val commentCount = comments.size
+                    _commentCounts.value = _commentCounts.value + (postId to commentCount)
+                } else {
+                    Log.w("NewsFeedViewModel", "Failed to fetch comments for post ID: $postId, HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "❌ Error fetching comments for post ID: $postId", e)
+            }
+        }
+    }
+
+    // Fetch reposts for a post
+    fun fetchPostReposts(postId: Int) {
+        viewModelScope.launch {
+            try {
+                Log.d("NewsFeedViewModel", "Fetching reposts for post ID: $postId")
+                val response = apiService.getRepostsCountByPostId(postId, limit = 1000, offset = 0)
+                if (response.isSuccessful) {
+                    val reposts = response.body() ?: emptyList()
+                    // Filter reposts client-side
+                    val filteredReposts = reposts.filter { it.postId == postId }
+                    Log.d("NewsFeedViewModel", "Raw reposts response for post ID $postId: $reposts")
+                    Log.d("NewsFeedViewModel", "Filtered reposts for post ID $postId: $filteredReposts")
+                    val repostCount = filteredReposts.size
+                    _repostCounts.value = _repostCounts.value + (postId to repostCount)
+                    Log.d("NewsFeedViewModel", "Updated _repostCounts for postId=$postId: ${_repostCounts.value}")
+                } else {
+                    Log.w("NewsFeedViewModel", "Failed to fetch reposts for post ID: $postId, HTTP ${response.code()} - ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "❌ Error fetching reposts for post ID: $postId", e)
             }
         }
     }

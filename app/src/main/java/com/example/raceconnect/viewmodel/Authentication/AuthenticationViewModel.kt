@@ -166,8 +166,19 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
     // Load User Data from DataStore
     private fun loadUser() {
         viewModelScope.launch {
-            loggedInUser.value = userPreferences.user.first()
-            Log.d("AuthenticationViewModel", "Loaded user: ${loggedInUser.value}")
+            val token = withContext(Dispatchers.IO) { userPreferences.getToken() }
+            if (!token.isNullOrEmpty()) {
+                loggedInUser.value = userPreferences.user.first()
+                Log.d("AuthenticationViewModel", "Loaded user: ${loggedInUser.value}")
+            } else {
+                logout(null, null) { success, error ->
+                    if (success) {
+                        Log.d("AuthenticationViewModel", "Logged out due to no token")
+                    } else {
+                        Log.e("AuthenticationViewModel", "Logout failed: $error")
+                    }
+                }
+            }
         }
     }
 
