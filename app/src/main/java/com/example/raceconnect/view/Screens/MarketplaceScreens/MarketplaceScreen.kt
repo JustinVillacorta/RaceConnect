@@ -142,6 +142,7 @@ fun MarketplaceScreen(
         }
     }
 
+    /**
     LaunchedEffect(errorMessage) {
         if (errorMessage != null) {
             coroutineScope.launch {
@@ -153,5 +154,5 @@ fun MarketplaceScreen(
                 viewModel.clearErrorMessage()
             }
         }
-    }
+    }**/
 }
