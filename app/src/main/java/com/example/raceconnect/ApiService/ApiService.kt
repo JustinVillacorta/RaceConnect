@@ -171,6 +171,20 @@ interface ApiService {
     ): Response<UpdateMarketplaceItemResponse>
 
     @Multipart
+    @POST("marketplace-items/{id}/update")
+    suspend fun updateMarketplaceItemWithImages(
+        @Path("id") id: Int,
+        @Part("title") title: RequestBody?,
+        @Part("description") description: RequestBody?,
+        @Part("price") price: RequestBody?,
+        @Part("category") category: RequestBody?,
+        @Part("listing_status") listingStatus: RequestBody?,
+        @Part("status") status: RequestBody?,
+        @Part("delete_image_ids") deleteImageIds: RequestBody?,
+        @Part images: List<MultipartBody.Part>?
+    ): Response<UpdateMarketplaceItemResponse>
+
+    @Multipart
     @POST("marketplace-items/{id}/images")
     suspend fun uploadMarketplaceItemImages(
         @Path("id") id: Int,

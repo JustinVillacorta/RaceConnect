@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -25,17 +26,20 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import android.net.Uri // Added import for Uri
+import android.net.Uri
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import android.util.Log
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.example.raceconnect.network.RetrofitInstance
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditMarketplaceItemScreen(
-    itemId: Int, // Ensure itemId is Int
+    itemId: Int,
     navController: NavController,
     viewModel: MarketplaceViewModel,
     onClose: () -> Unit
@@ -45,10 +49,11 @@ fun EditMarketplaceItemScreen(
     var item by remember { mutableStateOf(userItems.find { it.id == itemId }) }
     var isLoading by remember { mutableStateOf(item == null && itemId != -1) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var saveTriggered by remember { mutableStateOf(false) } // Track save action
 
     // Editable fields with initial values from the item
     var title by remember { mutableStateOf(item?.title ?: "") }
-    var price by remember { mutableStateOf(item?.price ?: "") } // String to match MarketplaceDataClassItem
+    var price by remember { mutableStateOf(item?.price ?: "") }
     var category by remember { mutableStateOf(item?.category ?: "Formula 1") }
     var description by remember { mutableStateOf(item?.description ?: "") }
     var listingStatus by remember { mutableStateOf(item?.listing_status ?: "Available") }
@@ -65,15 +70,18 @@ fun EditMarketplaceItemScreen(
     )
 
     // State for new images (URIs of images picked by the user)
-    var newImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) } // Explicitly typed
+    var newImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+
+    // State for images to be deleted
+    var imagesToDelete by remember { mutableStateOf<List<Int>>(emptyList()) }
 
     // Image picker launcher
-    val context = LocalContext.current // Moved outside onClick
+    val context = LocalContext.current
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            newImageUris = newImageUris + listOf(it) // Add Uri to list
+            newImageUris = newImageUris + listOf(it)
         }
     }
 
@@ -96,6 +104,26 @@ fun EditMarketplaceItemScreen(
             isLoading = false
         }
         viewModel.getMarketplaceItemImages(itemId)
+    }
+
+    // Handle navigation after save completes
+    LaunchedEffect(saveTriggered) {
+        if (saveTriggered) {
+            item?.let {
+                val updatedItem = it.copy(
+                    title = title,
+                    price = price,
+                    category = category,
+                    description = description,
+                    listing_status = listingStatus
+                )
+                viewModel.updateItem(itemId, updatedItem, newImageUris, context, imagesToDelete)
+                // Wait briefly to ensure state updates propagate
+                delay(500) // Adjust delay if needed based on API response time
+                navController.popBackStack()
+                saveTriggered = false // Reset trigger
+            }
+        }
     }
 
     Scaffold(
@@ -147,7 +175,7 @@ fun EditMarketplaceItemScreen(
                 ) {
                     // Image section
                     Column {
-                        // Display existing images
+                        // Display existing images with "X" button and new images
                         if (imagesMap[itemId]?.isNotEmpty() == true || newImageUris.isNotEmpty()) {
                             LazyRow(
                                 modifier = Modifier
@@ -155,12 +183,57 @@ fun EditMarketplaceItemScreen(
                                     .height(if (isWideScreen) 400.dp else 300.dp)
                                     .padding(bottom = 16.dp)
                             ) {
-                                // Existing images from the server
+                                // Existing images from the server with "X" button
                                 imagesMap[itemId]?.let { images ->
-                                    items(images) { imageUrl ->
+                                    items(images.filter { imageUrl ->
+                                        val imageId = runBlocking {
+                                            val allImages = RetrofitInstance.api.getMarketplaceItemImages(itemId).body()
+                                            allImages?.find { it.image_url == imageUrl }?.id
+                                        }
+                                        imageId != null && !imagesToDelete.contains(imageId)
+                                    }) { imageUrl ->
+                                        Box {
+                                            AsyncImage(
+                                                model = imageUrl,
+                                                contentDescription = "Item Image",
+                                                modifier = Modifier
+                                                    .width(if (isWideScreen) 400.dp else 300.dp)
+                                                    .fillMaxHeight()
+                                                    .padding(end = 8.dp)
+                                                    .clip(RoundedCornerShape(8.dp)),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                            // Fetch the image ID from the backend response
+                                            val imageId = runBlocking {
+                                                val allImages = RetrofitInstance.api.getMarketplaceItemImages(itemId).body()
+                                                allImages?.find { it.image_url == imageUrl }?.id
+                                            }
+                                            if (imageId != null) {
+                                                IconButton(
+                                                    onClick = {
+                                                        imagesToDelete = imagesToDelete + imageId
+                                                        Log.d("EditMarketplaceItem", "Marked image $imageId for deletion")
+                                                    },
+                                                    modifier = Modifier
+                                                        .align(Alignment.TopEnd)
+                                                        .padding(4.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Close,
+                                                        contentDescription = "Remove Image",
+                                                        tint = Color.Red
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                // New images picked by the user with "X" button
+                                items(newImageUris) { imageUri ->
+                                    Box {
                                         AsyncImage(
-                                            model = imageUrl,
-                                            contentDescription = "Item Image",
+                                            model = imageUri,
+                                            contentDescription = "New Item Image",
                                             modifier = Modifier
                                                 .width(if (isWideScreen) 400.dp else 300.dp)
                                                 .fillMaxHeight()
@@ -168,33 +241,37 @@ fun EditMarketplaceItemScreen(
                                                 .clip(RoundedCornerShape(8.dp)),
                                             contentScale = ContentScale.Crop
                                         )
+                                        IconButton(
+                                            onClick = {
+                                                newImageUris = newImageUris.filter { it != imageUri }
+                                                Log.d("EditMarketplaceItem", "Removed new image URI: $imageUri")
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .padding(4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Remove New Image",
+                                                tint = Color.Red
+                                            )
+                                        }
                                     }
-                                }
-                                // New images picked by the user
-                                items(newImageUris) { imageUri ->
-                                    AsyncImage(
-                                        model = imageUri,
-                                        contentDescription = "New Item Image",
-                                        modifier = Modifier
-                                            .width(if (isWideScreen) 400.dp else 300.dp)
-                                            .fillMaxHeight()
-                                            .padding(end = 8.dp)
-                                            .clip(RoundedCornerShape(8.dp)),
-                                        contentScale = ContentScale.Crop
-                                    )
                                 }
                             }
                         } else if (!item?.image_url.isNullOrEmpty()) {
-                            AsyncImage(
-                                model = item!!.image_url,
-                                contentDescription = "Item Image",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(if (isWideScreen) 400.dp else 300.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .padding(bottom = 16.dp),
-                                contentScale = ContentScale.Crop
-                            )
+                            Box {
+                                AsyncImage(
+                                    model = item!!.image_url,
+                                    contentDescription = "Item Image",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(if (isWideScreen) 400.dp else 300.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .padding(bottom = 16.dp),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
                         }
 
                         // Add Image Button
@@ -338,17 +415,7 @@ fun EditMarketplaceItemScreen(
                     // Save Button
                     Button(
                         onClick = {
-                            item?.let {
-                                val updatedItem = it.copy(
-                                    title = title,
-                                    price = price,
-                                    category = category,
-                                    description = description,
-                                    listing_status = listingStatus
-                                )
-                                viewModel.updateItem(itemId, updatedItem, newImageUris, context)
-                                navController.popBackStack()
-                            }
+                            saveTriggered = true // Trigger save and navigation
                         },
                         modifier = Modifier
                             .fillMaxWidth()

@@ -499,9 +499,9 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         itemId: Int,
         updatedItem: MarketplaceDataClassItem,
         newImageUris: List<Uri>? = null,
-        context: Context
+        context: Context,
+        imagesToDelete: List<Int> = emptyList()
     ) {
-        val gson = Gson()
         viewModelScope.launch {
             val userId = _currentUserId.value ?: run {
                 Log.e("MarketplaceViewModel", "No user logged in, cannot update item")
@@ -511,50 +511,64 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
 
             try {
                 Log.d("MarketplaceViewModel", "Updating item with ID: $itemId")
-                val updateRequest = UpdateMarketplaceItemRequest(
-                    title = updatedItem.title.takeIf { it.isNotEmpty() } ?: "",
-                    description = updatedItem.description.takeIf { it.isNotEmpty() } ?: "",
-                    price = updatedItem.price.takeIf { it.isNotEmpty() } ?: "0.0",
-                    category = updatedItem.category.takeIf { it.isNotEmpty() } ?: "",
-                    listing_status = updatedItem.listing_status.takeIf { it.isNotEmpty() } ?: "Available",
-                    status = updatedItem.status.takeIf { it.isNotEmpty() } ?: "Active"
+
+                // Prepare request parts
+                val titlePart = updatedItem.title.toRequestBody("text/plain".toMediaTypeOrNull())
+                val descriptionPart = updatedItem.description.toRequestBody("text/plain".toMediaTypeOrNull())
+                val pricePart = updatedItem.price.toRequestBody("text/plain".toMediaTypeOrNull())
+                val categoryPart = updatedItem.category.toRequestBody("text/plain".toMediaTypeOrNull())
+                val listingStatusPart = updatedItem.listing_status.toRequestBody("text/plain".toMediaTypeOrNull())
+                val statusPart = updatedItem.status.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                // Handle image deletions
+                val deleteImageIdsPart = if (imagesToDelete.isNotEmpty()) {
+                    imagesToDelete.joinToString(",").toRequestBody("text/plain".toMediaTypeOrNull())
+                } else null
+
+                // Handle new image uploads
+                val imageParts: List<MultipartBody.Part> = newImageUris?.mapNotNull { uri ->
+                    val file = getFileFromUri(context, uri)
+                    file?.let {
+                        val requestFile = it.asRequestBody("image/*".toMediaTypeOrNull())
+                        MultipartBody.Part.createFormData("image[]", it.name, requestFile)
+                    }
+                } ?: emptyList()
+
+                // Call the update endpoint
+                val response = RetrofitInstance.api.updateMarketplaceItemWithImages(
+                    id = itemId,
+                    title = titlePart,
+                    description = descriptionPart,
+                    price = pricePart,
+                    category = categoryPart,
+                    listingStatus = listingStatusPart,
+                    status = statusPart,
+                    deleteImageIds = deleteImageIdsPart,
+                    images = if (imageParts.isNotEmpty()) imageParts else null
                 )
 
-                val requestJson = gson.toJson(updateRequest)
-                Log.d("MarketplaceViewModel", "Update request: $requestJson")
-
-                val updateResponse = RetrofitInstance.api.updateMarketplaceItem(itemId, updateRequest)
-                if (updateResponse.isSuccessful) {
-                    Log.d("MarketplaceViewModel", "Item updated successfully: ${updateResponse.body()}")
-                    val updatedItems = _userItems.value.map {
-                        if (it.id == itemId) updatedItem else it
-                    }
-                    _userItems.value = updatedItems
-                    fetchUserListedItems()
-
-                    if (!newImageUris.isNullOrEmpty()) {
-                        val imageParts = newImageUris.mapNotNull { uri ->
-                            val file = getFileFromUri(context, uri)
-                            file?.let {
-                                val requestFile = it.asRequestBody("image/*".toMediaTypeOrNull())
-                                MultipartBody.Part.createFormData("image[]", it.name, requestFile)
-                            }
+                if (response.isSuccessful) {
+                    val responseBody = response.body()
+                    if (responseBody != null && responseBody.message == "Item updated successfully") {
+                        Log.d("MarketplaceViewModel", "Item updated successfully: ${responseBody.item_id}")
+                        // Update userItems immediately
+                        val updatedItems = _userItems.value.map {
+                            if (it.id == itemId) updatedItem else it
                         }
-                        if (imageParts.isNotEmpty()) {
-                            Log.d("MarketplaceViewModel", "Uploading images: ${imageParts.size} parts")
-                            val uploadResponse = RetrofitInstance.api.uploadMarketplaceItemImages(itemId, imageParts)
-                            if (uploadResponse.isSuccessful) {
-                                Log.d("MarketplaceViewModel", "Images uploaded successfully: ${uploadResponse.body()}")
-                                getMarketplaceItemImages(itemId)
-                            } else {
-                                val errorBody = uploadResponse.errorBody()?.string() ?: "Unknown error"
-                                Log.e("MarketplaceViewModel", "Failed to upload images: $errorBody")
-                                _errorMessage.value = "Failed to upload images: $errorBody"
-                            }
+                        _userItems.value = updatedItems
+                        // Update marketplaceImages immediately with the returned image URLs
+                        _marketplaceImages.value = _marketplaceImages.value.toMutableMap().apply {
+                            this[itemId] = responseBody.image_urls.map { "$it?ts=${System.currentTimeMillis()}" }
                         }
+                        // Optional: Refresh from server in the background
+                        fetchUserListedItems()
+                        getMarketplaceItemImages(itemId)
+                    } else {
+                        Log.e("MarketplaceViewModel", "Update failed: ${responseBody?.message}")
+                        _errorMessage.value = "Failed to update item $itemId: ${responseBody?.message}"
                     }
                 } else {
-                    val errorBody = updateResponse.errorBody()?.string() ?: "Unknown error"
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
                     Log.e("MarketplaceViewModel", "Failed to update item $itemId: $errorBody")
                     _errorMessage.value = "Failed to update item $itemId: $errorBody"
                 }
