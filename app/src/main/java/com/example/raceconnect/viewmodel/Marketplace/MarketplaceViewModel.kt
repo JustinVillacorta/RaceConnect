@@ -66,6 +66,9 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
     private val _conversationExists = MutableStateFlow<Pair<Boolean, Int?>?>(null)
     val conversationExists: StateFlow<Pair<Boolean, Int?>?> = _conversationExists.asStateFlow()
 
+    private val _updateStatus = MutableStateFlow<Boolean?>(null)
+    val updateStatus: StateFlow<Boolean?> = _updateStatus.asStateFlow()
+
     init {
         viewModelScope.launch {
             userPreferences.user.collect { user ->
@@ -504,28 +507,21 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
     ) {
         viewModelScope.launch {
             val userId = _currentUserId.value ?: run {
-                Log.e("MarketplaceViewModel", "No user logged in, cannot update item")
                 _errorMessage.value = "Cannot update item: No user logged in"
                 return@launch
             }
 
             try {
                 Log.d("MarketplaceViewModel", "Updating item with ID: $itemId")
-
-                // Prepare request parts
                 val titlePart = updatedItem.title.toRequestBody("text/plain".toMediaTypeOrNull())
                 val descriptionPart = updatedItem.description.toRequestBody("text/plain".toMediaTypeOrNull())
                 val pricePart = updatedItem.price.toRequestBody("text/plain".toMediaTypeOrNull())
                 val categoryPart = updatedItem.category.toRequestBody("text/plain".toMediaTypeOrNull())
                 val listingStatusPart = updatedItem.listing_status.toRequestBody("text/plain".toMediaTypeOrNull())
                 val statusPart = updatedItem.status.toRequestBody("text/plain".toMediaTypeOrNull())
-
-                // Handle image deletions
                 val deleteImageIdsPart = if (imagesToDelete.isNotEmpty()) {
                     imagesToDelete.joinToString(",").toRequestBody("text/plain".toMediaTypeOrNull())
                 } else null
-
-                // Handle new image uploads
                 val imageParts: List<MultipartBody.Part> = newImageUris?.mapNotNull { uri ->
                     val file = getFileFromUri(context, uri)
                     file?.let {
@@ -534,7 +530,6 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                     }
                 } ?: emptyList()
 
-                // Call the update endpoint
                 val response = RetrofitInstance.api.updateMarketplaceItemWithImages(
                     id = itemId,
                     title = titlePart,
@@ -551,30 +546,25 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                     val responseBody = response.body()
                     if (responseBody != null && responseBody.message == "Item updated successfully") {
                         Log.d("MarketplaceViewModel", "Item updated successfully: ${responseBody.item_id}")
-                        // Update userItems immediately
-                        val updatedItems = _userItems.value.map {
+                        _userItems.value = _userItems.value.map {
                             if (it.id == itemId) updatedItem else it
                         }
-                        _userItems.value = updatedItems
-                        // Update marketplaceImages immediately with the returned image URLs
                         _marketplaceImages.value = _marketplaceImages.value.toMutableMap().apply {
                             this[itemId] = responseBody.image_urls.map { "$it?ts=${System.currentTimeMillis()}" }
                         }
-                        // Optional: Refresh from server in the background
-                        fetchUserListedItems()
-                        getMarketplaceItemImages(itemId)
+                        _updateStatus.value = true // Signal success
                     } else {
-                        Log.e("MarketplaceViewModel", "Update failed: ${responseBody?.message}")
                         _errorMessage.value = "Failed to update item $itemId: ${responseBody?.message}"
+                        _updateStatus.value = false
                     }
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                    Log.e("MarketplaceViewModel", "Failed to update item $itemId: $errorBody")
                     _errorMessage.value = "Failed to update item $itemId: $errorBody"
+                    _updateStatus.value = false
                 }
             } catch (e: Exception) {
-                Log.e("MarketplaceViewModel", "Error updating item $itemId", e)
                 _errorMessage.value = "Error updating item $itemId: ${e.message}"
+                _updateStatus.value = false
             }
         }
     }
@@ -688,6 +678,10 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
 
     fun clearMessageSentStatus() {
         _messageSentStatus.value = null
+    }
+
+    fun resetUpdateStatus() {
+        _updateStatus.value = null
     }
 
     fun clearErrorMessage() {

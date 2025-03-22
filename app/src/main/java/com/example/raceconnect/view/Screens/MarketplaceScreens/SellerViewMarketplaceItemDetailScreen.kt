@@ -12,13 +12,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,22 +38,41 @@ import kotlinx.coroutines.launch
 fun SellerViewMarketplaceItemDetailScreen(
     itemId: Int,
     navController: NavController,
-    viewModel: MarketplaceViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    viewModel: MarketplaceViewModel,
     onClose: () -> Unit,
     onRefreshListedItems: () -> Unit = {}
 ) {
     val userItems by viewModel.userItems.collectAsState()
     val imagesMap by viewModel.marketplaceImages.collectAsState()
-    var item by remember { mutableStateOf(userItems.find { it.id == itemId }) }
+    val item = userItems.find { it.id == itemId }
     var isLoading by remember { mutableStateOf(item == null && itemId != -1) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var triggerDelete by remember { mutableStateOf(false) }
-
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
-    // Preload images into Coil cache
+    LaunchedEffect(itemId) {
+        Log.d("SellerView", "Composing with itemId: $itemId, current item: $item")
+        if (item == null && itemId != -1) {
+            Log.d("SellerView", "Item $itemId not found locally, fetching from API...")
+            isLoading = true
+            viewModel.fetchItemById(itemId)?.let { fetchedItem ->
+                Log.d("SellerView", "Fetched item: $fetchedItem")
+            } ?: run {
+                errorMessage = "Failed to load item $itemId"
+                Log.e("SellerView", "Failed to fetch item $itemId")
+            }
+            viewModel.fetchUserListedItems()
+            isLoading = false
+        }
+        if (imagesMap[itemId]?.isEmpty() != false) {
+            viewModel.getMarketplaceItemImages(itemId)
+        }
+        Log.d("SellerView", "userItems after fetch: ${userItems.map { it.id to it.title }}")
+        Log.d("SellerView", "imagesMap after fetch: ${imagesMap[itemId]}")
+    }
+
     LaunchedEffect(imagesMap[itemId]) {
         imagesMap[itemId]?.forEach { imageUrl ->
             scope.launch {
@@ -64,7 +84,6 @@ fun SellerViewMarketplaceItemDetailScreen(
         }
     }
 
-    // Observe deletion result
     LaunchedEffect(triggerDelete) {
         if (triggerDelete) {
             viewModel._errorMessage.collect { error ->
@@ -77,31 +96,6 @@ fun SellerViewMarketplaceItemDetailScreen(
                 triggerDelete = false
             }
         }
-    }
-
-    // Fetch data only if absolutely necessary
-    LaunchedEffect(itemId) {
-        if (item == null && itemId != -1) {
-            Log.d("SellerView", "Item $itemId not found locally, fetching from API...")
-            isLoading = true
-            viewModel.fetchItemById(itemId)?.let { fetchedItem ->
-                item = fetchedItem
-                Log.d("SellerView", "Fetched item: $fetchedItem")
-            } ?: run {
-                errorMessage = "Failed to load item $itemId"
-                Log.e("SellerView", "Failed to fetch item $itemId")
-            }
-            isLoading = false
-        }
-        // Fetch images only if not in cache
-        if (imagesMap[itemId]?.isEmpty() != false) {
-            viewModel.getMarketplaceItemImages(itemId)
-        }
-    }
-
-    // Log for debugging
-    LaunchedEffect(imagesMap, userItems) {
-        Log.d("SellerView", "Item: $item, Images for item $itemId: ${imagesMap[itemId]}")
     }
 
     Scaffold(
@@ -151,7 +145,6 @@ fun SellerViewMarketplaceItemDetailScreen(
                 }
                 item != null -> {
                     Column {
-                        // Image display with immediate fallback
                         val images = imagesMap[itemId]
                         when {
                             images?.isNotEmpty() == true -> {
@@ -170,15 +163,15 @@ fun SellerViewMarketplaceItemDetailScreen(
                                                 .padding(end = 8.dp)
                                                 .clip(RoundedCornerShape(8.dp)),
                                             contentScale = ContentScale.Crop,
-                                            placeholder = painterResource(androidx.core.R.drawable.ic_call_answer), // Optional placeholder
-                                            error = painterResource(androidx.core.R.drawable.ic_call_decline) // Optional error image
+                                            placeholder = painterResource(androidx.core.R.drawable.ic_call_answer),
+                                            error = painterResource(androidx.core.R.drawable.ic_call_decline)
                                         )
                                     }
                                 }
                             }
-                            !item!!.image_url.isNullOrEmpty() -> {
+                            !item.image_url.isNullOrEmpty() -> {
                                 AsyncImage(
-                                    model = item!!.image_url,
+                                    model = item.image_url,
                                     contentDescription = "Item Image",
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -198,7 +191,7 @@ fun SellerViewMarketplaceItemDetailScreen(
                                         .background(Color.LightGray),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CircularProgressIndicator() // Show loading while images fetch
+                                    CircularProgressIndicator()
                                 }
                             }
                         }
@@ -206,7 +199,7 @@ fun SellerViewMarketplaceItemDetailScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = item!!.title,
+                            text = item.title,
                             style = MaterialTheme.typography.headlineSmall,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -218,7 +211,7 @@ fun SellerViewMarketplaceItemDetailScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "₱${item!!.price}",
+                            text = "₱${item.price}",
                             style = MaterialTheme.typography.bodyLarge,
                             color = Red,
                             modifier = Modifier
@@ -229,7 +222,7 @@ fun SellerViewMarketplaceItemDetailScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = item!!.description,
+                            text = item.description,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -298,7 +291,6 @@ fun SellerViewMarketplaceItemDetailScreen(
                 }
             }
 
-            // Delete Confirmation Dialog
             if (showDeleteDialog) {
                 AlertDialog(
                     onDismissRequest = { showDeleteDialog = false },
@@ -323,7 +315,6 @@ fun SellerViewMarketplaceItemDetailScreen(
                 )
             }
 
-            // Error messages
             errorMessage?.let {
                 Text(
                     text = it,

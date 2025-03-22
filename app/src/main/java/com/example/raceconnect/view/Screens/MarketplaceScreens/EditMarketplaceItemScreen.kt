@@ -27,13 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import android.net.Uri
+import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import android.util.Log
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.example.raceconnect.network.RetrofitInstance
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,43 +46,32 @@ fun EditMarketplaceItemScreen(
 ) {
     val userItems by viewModel.userItems.collectAsState()
     val imagesMap by viewModel.marketplaceImages.collectAsState()
+    val updateStatus by viewModel.updateStatus.collectAsState()
     var item by remember { mutableStateOf(userItems.find { it.id == itemId }) }
     var isLoading by remember { mutableStateOf(item == null && itemId != -1) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var saveTriggered by remember { mutableStateOf(false) } // Track save action
+    var saveTriggered by remember { mutableStateOf(false) }
 
-    // Editable fields with initial values from the item
     var title by remember { mutableStateOf(item?.title ?: "") }
     var price by remember { mutableStateOf(item?.price ?: "") }
     var category by remember { mutableStateOf(item?.category ?: "Formula 1") }
     var description by remember { mutableStateOf(item?.description ?: "") }
     var listingStatus by remember { mutableStateOf(item?.listing_status ?: "Available") }
 
-    // Status and Category options
     val listingStatusOptions = listOf("Available", "Sold", "Reserved")
     val categories = listOf(
-        "Formula 1",
-        "24 Hours of Lemans",
-        "World Rally Championship",
-        "NASCAR",
-        "Formula Drift",
-        "GT Championship"
+        "Formula 1", "24 Hours of Lemans", "World Rally Championship",
+        "NASCAR", "Formula Drift", "GT Championship"
     )
 
-    // State for new images (URIs of images picked by the user)
     var newImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
-
-    // State for images to be deleted
     var imagesToDelete by remember { mutableStateOf<List<Int>>(emptyList()) }
 
-    // Image picker launcher
     val context = LocalContext.current
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        uri?.let {
-            newImageUris = newImageUris + listOf(it)
-        }
+        uri?.let { newImageUris = newImageUris + listOf(it) }
     }
 
     LaunchedEffect(itemId) {
@@ -106,9 +95,8 @@ fun EditMarketplaceItemScreen(
         viewModel.getMarketplaceItemImages(itemId)
     }
 
-    // Handle navigation after save completes
-    LaunchedEffect(saveTriggered) {
-        if (saveTriggered) {
+    LaunchedEffect(saveTriggered, updateStatus) {
+        if (saveTriggered && updateStatus == null) {
             item?.let {
                 val updatedItem = it.copy(
                     title = title,
@@ -118,11 +106,21 @@ fun EditMarketplaceItemScreen(
                     listing_status = listingStatus
                 )
                 viewModel.updateItem(itemId, updatedItem, newImageUris, context, imagesToDelete)
-                // Wait briefly to ensure state updates propagate
-                delay(500) // Adjust delay if needed based on API response time
-                navController.popBackStack()
-                saveTriggered = false // Reset trigger
+                Log.d("EditMarketplaceItem", "Update triggered for item $itemId")
             }
+        } else if (saveTriggered && updateStatus == true) {
+            Log.d("EditMarketplaceItem", "Update successful, navigating to MarketplaceItemDetail")
+            navController.navigate(NavRoutes.MarketplaceItemDetail.createRoute(itemId)) {
+                popUpTo(NavRoutes.MarketplaceItemDetail.route) { inclusive = true }
+                launchSingleTop = true
+            }
+            saveTriggered = false
+            viewModel.resetUpdateStatus()
+        } else if (saveTriggered && updateStatus == false) {
+            errorMessage = viewModel.errorMessage.value ?: "Update failed"
+            Log.e("EditMarketplaceItem", "Update failed: $errorMessage")
+            saveTriggered = false
+            viewModel.resetUpdateStatus()
         }
     }
 
@@ -173,9 +171,7 @@ fun EditMarketplaceItemScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(vertical = 16.dp)
                 ) {
-                    // Image section
                     Column {
-                        // Display existing images with "X" button and new images
                         if (imagesMap[itemId]?.isNotEmpty() == true || newImageUris.isNotEmpty()) {
                             LazyRow(
                                 modifier = Modifier
@@ -183,7 +179,6 @@ fun EditMarketplaceItemScreen(
                                     .height(if (isWideScreen) 400.dp else 300.dp)
                                     .padding(bottom = 16.dp)
                             ) {
-                                // Existing images from the server with "X" button
                                 imagesMap[itemId]?.let { images ->
                                     items(images.filter { imageUrl ->
                                         val imageId = runBlocking {
@@ -203,7 +198,6 @@ fun EditMarketplaceItemScreen(
                                                     .clip(RoundedCornerShape(8.dp)),
                                                 contentScale = ContentScale.Crop
                                             )
-                                            // Fetch the image ID from the backend response
                                             val imageId = runBlocking {
                                                 val allImages = RetrofitInstance.api.getMarketplaceItemImages(itemId).body()
                                                 allImages?.find { it.image_url == imageUrl }?.id
@@ -228,7 +222,6 @@ fun EditMarketplaceItemScreen(
                                         }
                                     }
                                 }
-                                // New images picked by the user with "X" button
                                 items(newImageUris) { imageUri ->
                                     Box {
                                         AsyncImage(
@@ -274,11 +267,8 @@ fun EditMarketplaceItemScreen(
                             }
                         }
 
-                        // Add Image Button
                         Button(
-                            onClick = {
-                                imagePickerLauncher.launch("image/*")
-                            },
+                            onClick = { imagePickerLauncher.launch("image/*") },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 16.dp),
@@ -299,7 +289,6 @@ fun EditMarketplaceItemScreen(
                         }
                     }
 
-                    // Editable Title
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
@@ -309,7 +298,6 @@ fun EditMarketplaceItemScreen(
                             .padding(bottom = 8.dp)
                     )
 
-                    // Editable Price
                     OutlinedTextField(
                         value = price,
                         onValueChange = { price = it },
@@ -320,7 +308,6 @@ fun EditMarketplaceItemScreen(
                             .padding(bottom = 8.dp)
                     )
 
-                    // Category Dropdown
                     var categoryExpanded by remember { mutableStateOf(false) }
                     Box(
                         modifier = Modifier
@@ -360,7 +347,6 @@ fun EditMarketplaceItemScreen(
                         }
                     }
 
-                    // Editable Description
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
@@ -372,7 +358,6 @@ fun EditMarketplaceItemScreen(
                         maxLines = 5
                     )
 
-                    // Listing Status Dropdown
                     var listingStatusExpanded by remember { mutableStateOf(false) }
                     Box(
                         modifier = Modifier
@@ -412,11 +397,8 @@ fun EditMarketplaceItemScreen(
                         }
                     }
 
-                    // Save Button
                     Button(
-                        onClick = {
-                            saveTriggered = true // Trigger save and navigation
-                        },
+                        onClick = { saveTriggered = true },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
