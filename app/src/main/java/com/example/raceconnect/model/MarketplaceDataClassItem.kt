@@ -58,5 +58,6 @@ data class UpdateMarketplaceItemRequest(
 
 data class UpdateMarketplaceItemResponse(
     val message: String,
-    val image_urls: List<String>? = null // Matches the backend's response structure
+    val item_id: Int,
+    val image_urls: List<String>
 )

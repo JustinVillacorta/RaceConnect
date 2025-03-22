@@ -38,6 +38,11 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
         fetchFriends()
     }
 
+    fun clearSearchResults() {
+        _searchResults.value = emptyList()
+        _isSearching.value = false
+    }
+
     fun searchUsers(query: String) {
         if (query.isBlank()) {
             _searchResults.value = emptyList()
@@ -55,16 +60,22 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                 val response = RetrofitInstance.api.searchUsers(userId, query)
                 if (response.isSuccessful) {
                     response.body()?.let { users ->
-                        _searchResults.value = users.map { user ->
+                        // Convert search results to Friend objects and merge with existing friend statuses
+                        val searchedUsers = users.map { user ->
+                            // Check if this user exists in our friends list and get their status
+                            val existingFriend = _friends.value.find { it.id == user.id.toString() }
                             Friend(
-                                id = user.id,
+                                id = user.id.toString(),
                                 name = user.name,
                                 profileImageUrl = user.profileImageUrl,
                                 bio = user.bio,
-                                status = "NonFriends",
-                                receiverId = null // Explicitly set to null for search results
+                                // Use existing friend status if available, otherwise "NonFriends"
+                                status = existingFriend?.status ?: "NonFriends",
+                                // Keep the existing receiverId if available
+                                receiverId = existingFriend?.receiverId
                             )
                         }
+                        _searchResults.value = searchedUsers
                         Log.d(TAG, "searchUsers: Found ${users.size} results")
                     } ?: run {
                         Log.e(TAG, "searchUsers: Response body is null")

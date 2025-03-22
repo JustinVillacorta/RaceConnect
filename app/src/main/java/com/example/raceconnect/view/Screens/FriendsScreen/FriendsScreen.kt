@@ -12,8 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.SearchBar
@@ -27,6 +25,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -34,15 +34,20 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.Friend
-import com.example.raceconnect.view.ui.theme.Red // Assuming Red is defined as #D32F2F or similar
+import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.FriendsViewModel
 import com.example.raceconnect.viewmodel.FriendsViewModelFactory
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.style.TextOverflow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsScreen(
     userPreferences: UserPreferences,
     onClose: () -> Unit,
+    onNavigateToProfile: (String) -> Unit,
     viewModel: FriendsViewModel = viewModel(factory = FriendsViewModelFactory(userPreferences))
 ) {
 
@@ -85,9 +90,17 @@ fun FriendsScreen(
                         searchQuery = it
                         viewModel.searchUsers(it)
                     },
-                    onSearch = { viewModel.searchUsers(it) },
+                    onSearch = { viewModel.searchUsers(it)},
                     active = isSearchActive,
-                    onActiveChange = { isSearchActive = it },
+                    onActiveChange = { 
+                        isSearchActive = it
+                        if (!it) {
+                            searchQuery = ""
+                            viewModel.clearSearchResults()
+                        }else{
+                            viewModel.searchUsers(searchQuery)
+                        }
+                    },
                     placeholder = { Text("Search users") },
                     leadingIcon = {
                         Icon(
@@ -103,6 +116,7 @@ fun FriendsScreen(
                                     viewModel.searchUsers("")
                                 } else {
                                     isSearchActive = false
+                                    viewModel.clearSearchResults()
                                 }
                             }) {
                                 Icon(
@@ -132,11 +146,35 @@ fun FriendsScreen(
                                 items(searchResults) { user ->
                                     FriendItem(
                                         friend = user,
-                                        onAdd = {
-                                            viewModel.addFriend(user.id)
-                                            searchQuery = ""
-                                            isSearchActive = false
-                                        }
+                                        onAdd = if (user.status == "NonFriends") {
+                                            { 
+                                                viewModel.addFriend(user.id)
+                                                searchQuery = ""
+                                                isSearchActive = false
+                                            }
+                                        } else null,
+                                        onConfirm = if (user.status == "Pending") {
+                                            { 
+                                                viewModel.confirmFriendRequest(user.id)
+                                                searchQuery = ""
+                                                isSearchActive = false
+                                            }
+                                        } else null,
+                                        onCancel = if (user.status == "Pending") {
+                                            { 
+                                                viewModel.cancelFriendRequest(user.id)
+                                                searchQuery = ""
+                                                isSearchActive = false
+                                            }
+                                        } else null,
+                                        onRemove = if (user.status == "PendingSent") {
+                                            { 
+                                                viewModel.cancelFriendRequest(user.id)
+                                                searchQuery = ""
+                                                isSearchActive = false
+                                            }
+                                        } else null,
+                                        onProfileClick = { onNavigateToProfile(user.id.toString()) }
                                     )
                                 }
                             }
@@ -172,7 +210,8 @@ fun FriendsScreen(
                     FriendItem(
                         friend = friend,
                         onConfirm = { viewModel.confirmFriendRequest(friend.id) },
-                        onCancel = { viewModel.cancelFriendRequest(friend.id) }
+                        onCancel = { viewModel.cancelFriendRequest(friend.id) },
+                        onProfileClick = { onNavigateToProfile(friend.id.toString()) }
                     )
                 }
 
@@ -202,11 +241,15 @@ fun FriendsScreen(
                         shouldShow
                     }
                 ) { friend ->
-                    println("Rendering FriendItem in People You May Know - Friend: ${friend.name}, id=${friend.id}, status=${friend.status}")
                     FriendItem(
                         friend = friend,
-                        onAdd = { viewModel.addFriend(friend.id) },
-                        onRemove = { viewModel.removeFriend(friend.id) }
+                        onAdd = if (friend.status == "NonFriends") {
+                            { viewModel.addFriend(friend.id) }
+                        } else null,
+                        onRemove = if (friend.status == "PendingSent") {
+                            { viewModel.cancelFriendRequest(friend.id) }
+                        } else null,
+                        onProfileClick = { onNavigateToProfile(friend.id.toString()) }
                     )
                 }
             }
@@ -220,7 +263,8 @@ fun FriendItem(
     onConfirm: (() -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
     onAdd: (() -> Unit)? = null,
-    onRemove: (() -> Unit)? = null
+    onRemove: (() -> Unit)? = null,
+    onProfileClick: (String) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -232,7 +276,10 @@ fun FriendItem(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         // Left side: Profile picture and username
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.clickable { onProfileClick(friend.id.toString()) },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Image(
                 painter = rememberAsyncImagePainter(
                     model = friend.profileImageUrl ?: "",
@@ -266,12 +313,12 @@ fun FriendItem(
                         onClick = { onConfirm?.invoke() },
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFD32F2F), // Red from screenshot
+                            containerColor = Color(0xFFD32F2F),
                             contentColor = Color.White
                         ),
                         modifier = Modifier
-                            .width(100.dp) // Fixed width for consistency
-                            .height(40.dp)
+                            .width(120.dp)
+                            .height(36.dp)
                     ) {
                         Text("Confirm", fontSize = 14.sp)
                     }
@@ -279,12 +326,12 @@ fun FriendItem(
                         onClick = { onCancel?.invoke() },
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE0E0E0), // Light gray
+                            containerColor = Color(0xFFE0E0E0),
                             contentColor = Color.Black
                         ),
                         modifier = Modifier
-                            .width(100.dp) // Fixed width for consistency
-                            .height(40.dp)
+                            .width(120.dp)
+                            .height(36.dp)
                     ) {
                         Text("Delete", fontSize = 14.sp)
                     }
@@ -295,12 +342,14 @@ fun FriendItem(
                     onClick = { onRemove?.invoke() },
                     shape = RoundedCornerShape(6.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE0E0E0), // Your light gray
+                        containerColor = Color(0xFFE0E0E0),
                         contentColor = Color.Black
                     ),
-                    modifier = Modifier.height(36.dp)
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(36.dp)
                 ) {
-                    Text("Pending", fontSize = 14.sp)
+                    Text("Pending", fontSize = 14.sp,)
                 }
             }
             "NonFriends" -> {
@@ -308,12 +357,19 @@ fun FriendItem(
                     onClick = { onAdd?.invoke() },
                     shape = RoundedCornerShape(6.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF9C0C13), // Your darker red from original code
+                        containerColor = Color(0xFF9C0C13),
                         contentColor = Color.White
                     ),
-                    modifier = Modifier.height(36.dp)
+                    modifier = Modifier
+                        .width(120.dp) // Ensures minimum width
+                        .height(36.dp)
                 ) {
-                    Text("Add Friend", fontSize = 14.sp)
+                    Text("Add Friend",
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }
