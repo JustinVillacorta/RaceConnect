@@ -2,6 +2,7 @@ package com.example.raceconnect.view.Screens.MarketplaceScreens
 
 import android.util.Log
 import androidx.compose.foundation.background
+import com.example.raceconnect.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -163,8 +164,8 @@ fun SellerViewMarketplaceItemDetailScreen(
                                                 .padding(end = 8.dp)
                                                 .clip(RoundedCornerShape(8.dp)),
                                             contentScale = ContentScale.Crop,
-                                            placeholder = painterResource(androidx.core.R.drawable.ic_call_answer),
-                                            error = painterResource(androidx.core.R.drawable.ic_call_decline)
+                                            placeholder = painterResource(id = R.drawable.baseline_image_24),
+                                            error = painterResource(id = R.drawable.baseline_error_24)
                                         )
                                     }
                                 }
@@ -178,8 +179,8 @@ fun SellerViewMarketplaceItemDetailScreen(
                                         .height(if (isWideScreen) 400.dp else 300.dp)
                                         .clip(RoundedCornerShape(8.dp)),
                                     contentScale = ContentScale.Crop,
-                                    placeholder = painterResource(androidx.core.R.drawable.ic_call_answer),
-                                    error = painterResource(androidx.core.R.drawable.ic_call_decline)
+                                    placeholder = painterResource(id = R.drawable.baseline_image_24),
+                                    error = painterResource(id = R.drawable.baseline_error_24)
                                 )
                             }
                             else -> {
