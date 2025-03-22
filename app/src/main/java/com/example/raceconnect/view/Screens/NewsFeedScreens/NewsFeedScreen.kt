@@ -45,6 +45,7 @@ import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.ui.platform.LocalContext
+import com.example.raceconnect.model.AnnouncementDataClass
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,7 +54,7 @@ fun NewsFeedScreen(
     navController: NavController,
     userPreferences: UserPreferences,
     onShowCreatePost: () -> Unit,
-    onShowFullScreenImage: (List<String>, Int, Int) -> Unit, // Updated to List<String>
+    onShowFullScreenImage: (List<String>, Int, Int) -> Unit,
     onShowProfileView: () -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
@@ -67,7 +68,6 @@ fun NewsFeedScreen(
     val likeCounts by viewModel.likeCounts.collectAsState()
     val newPostTriggerState by viewModel.newPostTrigger.collectAsState()
     val user by userPreferences.user.collectAsState(initial = null)
-    val latestAnnouncement by viewModel.latestAnnouncement.collectAsState()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
@@ -75,8 +75,7 @@ fun NewsFeedScreen(
 
     // Log received items for debugging
     LaunchedEffect(posts.itemCount) {
-        Log.d("NewsFeedScreen", "Received ${posts.itemCount} items in posts: ${posts.itemSnapshotList.items.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}, Content=${it.content}" }}")
-        Log.d("NewsFeedScreen", "Full item list: ${posts.itemSnapshotList.items}")
+        Log.d("NewsFeedScreen", "Received ${posts.itemCount} items in posts")
     }
 
     // Handle ban navigation
@@ -94,14 +93,13 @@ fun NewsFeedScreen(
     LaunchedEffect(Unit, newPostTriggerState) {
         if (!viewModel.isInitialRefreshDone || newPostTriggerState) {
             isRefreshing = true
-            NewsFeedPagingSourceAllPosts.clearCaches() // Clear caches to fetch fresh data
-            Log.d("NewsFeedScreen", "Caches cleared before refresh")
+            NewsFeedPagingSourceAllPosts.clearCaches()
             viewModel.refreshPosts()
             posts.refresh()
-            delay(100) // Small debounce to ensure refresh stabilizes
+            delay(100)
             if (newPostTriggerState) viewModel.resetNewPostTrigger()
             viewModel.isInitialRefreshDone = true
-            Log.d("NewsFeedScreen", "Refresh triggered: Initial=${!viewModel.isInitialRefreshDone}, NewPost=$newPostTriggerState")
+            Log.d("NewsFeedScreen", "Refresh triggered")
         }
     }
 
@@ -119,10 +117,6 @@ fun NewsFeedScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.fetchLatestAnnouncement()
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -136,10 +130,8 @@ fun NewsFeedScreen(
             state = rememberSwipeRefreshState(isRefreshing),
             onRefresh = {
                 isRefreshing = true
-                NewsFeedPagingSourceAllPosts.clearCaches() // Clear caches to fetch fresh data
-                Log.d("NewsFeedScreen", "Caches cleared before swipe refresh")
+                NewsFeedPagingSourceAllPosts.clearCaches()
                 viewModel.refreshPosts()
-                viewModel.fetchLatestAnnouncement() // Refresh announcement too
                 posts.refresh()
                 Log.d("NewsFeedScreen", "Swipe-to-refresh triggered")
             },
@@ -149,8 +141,6 @@ fun NewsFeedScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-
-
                 item {
                     AddPostSection(
                         navController,
@@ -158,106 +148,101 @@ fun NewsFeedScreen(
                         onShowProfileView = onShowProfileView
                     )
                 }
-                item {
-                    latestAnnouncement?.let { announcement ->
-                        AnnouncementCard(announcement = announcement)
-                    }
-                }
 
                 items(posts.itemCount) { index ->
-                    val post = posts[index]
-                    post?.let { postItem ->
-                        // Fetch likes, comments and reposts only once per post lifecycle
-                        LaunchedEffect(postItem.id) {
-                            if (postLikes[postItem.id] == null) { // Avoid redundant fetches
-                                viewModel.fetchPostLikes(postItem.id)
-                                Log.d("NewsFeedScreen", "Fetching likes for post ID: ${postItem.id}")
-                                viewModel.fetchPostComments(postItem.id)
-                                Log.d("NewsFeedScreen", "Fetching comments for post ID: ${postItem.id}")
-                                viewModel.fetchPostReposts(postItem.id)
-                                Log.d("NewsFeedScreen", "Fetching reposts for post ID: ${postItem.id}")
+                    val item = posts[index]
+                    item?.let { feedItem ->
+                        LaunchedEffect(feedItem.id) {
+                            if (postLikes[feedItem.id] == null && !feedItem.isAnnouncement) {
+                                viewModel.fetchPostLikes(feedItem.id)
+                                viewModel.fetchPostComments(feedItem.id)
+                                viewModel.fetchPostReposts(feedItem.id)
                             }
                         }
 
-                        val isLiked = postLikes[postItem.id] ?: false
-                        val likeCount = likeCounts[postItem.id] ?: postItem.like_count
-                        Log.d("NewsFeedScreen", "Rendering Post ID: ${postItem.id}, IsRepost: ${postItem.isRepost}, OriginalPostId: ${postItem.original_post_id}, CreatedAt: ${postItem.created_at}, Content: ${postItem.content}")
+                        val isLiked = postLikes[feedItem.id] ?: false
+                        val likeCount = likeCounts[feedItem.id] ?: feedItem.like_count
 
-                        if (postItem.isRepost == true) {
-                            // Find the original post in the list
-                            val originalPost = posts.itemSnapshotList.items.find { it.id == postItem.original_post_id }
-                            if (originalPost == null) {
-                                Log.w("NewsFeedScreen", "Original post ID ${postItem.original_post_id} not found for repost ID ${postItem.id}")
+                        when {
+                            feedItem.isAnnouncement -> {
+                                AnnouncementCard(
+                                    announcement = AnnouncementDataClass(
+                                        id = feedItem.id,
+                                        title = feedItem.title ?: "Announcement",
+                                        content = feedItem.content,
+                                        image_url = feedItem.images?.firstOrNull(),
+                                        status = "active", // Assume active for display
+                                        created_at = feedItem.created_at
+                                    )
+                                )
                             }
-                            val displayOriginalPost = originalPost ?: NewsFeedDataClassItem(
-                                id = postItem.original_post_id ?: -1,
-                                user_id = -1,
-                                content = "Original post unavailable",
-                                created_at = "",
-                                isRepost = false,
-                                original_post_id = null,
-                                like_count = 0,
-                                comment_count = 0,
-                                repost_count = 0,
-                                category = postItem.category,
-                                privacy = "Public",
-                                type = "text",
-                                postType = "normal",
-                                title = "Unavailable",
-                                username = "Unknown"
-                            )
-                            Log.d("NewsFeedScreen", "Rendering repost ID: ${postItem.id}, Original Post ID: ${displayOriginalPost.id}, Content: ${displayOriginalPost.content}")
-                            RepostCard(
-                                repost = postItem.copy(isLiked = isLiked, like_count = likeCount),
-                                originalPost = displayOriginalPost,
-                                navController = navController,
-                                viewModel = viewModel,
-                                onCommentClick = { selectedPostId = postItem.id; showBottomSheet = true },
-                                onLikeClick = { liked ->
-                                    if (liked) viewModel.toggleLike(postItem.id, postItem.user_id) else viewModel.unlikePost(postItem.id)
-                                },
-                                onShowFullScreenImage = { imageUrls, initialIndex ->
-                                    onShowFullScreenImage(imageUrls, initialIndex, postItem.id)
-                                }, // Updated to match (List<String>, Int) -> Unit
-                                userPreferences = userPreferences,
-                                onReportClick = { postId, reason, otherText ->
-                                    viewModel.reportPost(postId, reason, otherText, onSuccess = {
-                                        Log.d("NewsFeedScreen", "Post reported successfully")
-                                    }, onFailure = { error ->
-                                        Log.e("NewsFeedScreen", "Failed to report post: $error")
-                                    })
-                                },
-                                onShowRepostScreen = onShowRepostScreen,
-                                onUserActionClick = { userId, action, otherText ->
-                                    if (action == "Report User") viewModel.reportUser(userId, action, otherText)
-                                }
-                            )
-                        } else {
-                            Log.d("NewsFeedScreen", "Rendering post ID: ${postItem.id} (original), Content: ${postItem.content}")
-                            PostCard(
-                                post = postItem.copy(isLiked = isLiked, like_count = likeCount),
-                                navController = navController,
-                                viewModel = viewModel,
-                                onCommentClick = { selectedPostId = postItem.id; showBottomSheet = true },
-                                onLikeClick = { liked ->
-                                    if (liked) viewModel.toggleLike(postItem.id, postItem.user_id) else viewModel.unlikePost(postItem.id)
-                                },
-                                onShowFullScreenImage = { imageUrls, initialIndex ->
-                                    onShowFullScreenImage(imageUrls, initialIndex, postItem.id)
-                                }, // Updated to match (List<String>, Int) -> Unit
-                                userPreferences = userPreferences,
-                                onReportClick = { postId, reason, otherText ->
-                                    viewModel.reportPost(postId, reason, otherText, onSuccess = {
-                                        Log.d("NewsFeedScreen", "Post reported successfully")
-                                    }, onFailure = { error ->
-                                        Log.e("NewsFeedScreen", "Failed to report post: $error")
-                                    })
-                                },
-                                onShowRepostScreen = onShowRepostScreen,
-                                onUserActionClick = { userId, action, otherText ->
-                                    if (action == "Report User") viewModel.reportUser(userId, action, otherText)
-                                }
-                            )
+                            feedItem.isRepost == true -> {
+                                val originalPost = posts.itemSnapshotList.items.find { it.id == feedItem.original_post_id }
+                                    ?: NewsFeedDataClassItem(
+                                        id = feedItem.original_post_id ?: -1,
+                                        user_id = -1,
+                                        content = "Original post unavailable",
+                                        created_at = "",
+                                        isRepost = false,
+                                        original_post_id = null,
+                                        like_count = 0,
+                                        comment_count = 0,
+                                        repost_count = 0,
+                                        category = feedItem.category,
+                                        privacy = "Public",
+                                        type = "text",
+                                        postType = "normal",
+                                        title = "Unavailable",
+                                        username = "Unknown"
+                                    )
+                                RepostCard(
+                                    repost = feedItem.copy(isLiked = isLiked, like_count = likeCount),
+                                    originalPost = originalPost,
+                                    navController = navController,
+                                    viewModel = viewModel,
+                                    onCommentClick = { selectedPostId = feedItem.id; showBottomSheet = true },
+                                    onLikeClick = { liked ->
+                                        if (liked) viewModel.toggleLike(feedItem.id, feedItem.user_id) else viewModel.unlikePost(feedItem.id)
+                                    },
+                                    onShowFullScreenImage = { imageUrls, initialIndex ->
+                                        onShowFullScreenImage(imageUrls, initialIndex, feedItem.id)
+                                    },
+                                    userPreferences = userPreferences,
+                                    onReportClick = { postId, reason, otherText ->
+                                        viewModel.reportPost(postId, reason, otherText, onSuccess = {}, onFailure = { error ->
+                                            Log.e("NewsFeedScreen", "Failed to report post: $error")
+                                        })
+                                    },
+                                    onShowRepostScreen = onShowRepostScreen,
+                                    onUserActionClick = { userId, action, otherText ->
+                                        if (action == "Report User") viewModel.reportUser(userId, action, otherText)
+                                    }
+                                )
+                            }
+                            else -> {
+                                PostCard(
+                                    post = feedItem.copy(isLiked = isLiked, like_count = likeCount),
+                                    navController = navController,
+                                    viewModel = viewModel,
+                                    onCommentClick = { selectedPostId = feedItem.id; showBottomSheet = true },
+                                    onLikeClick = { liked ->
+                                        if (liked) viewModel.toggleLike(feedItem.id, feedItem.user_id) else viewModel.unlikePost(feedItem.id)
+                                    },
+                                    onShowFullScreenImage = { imageUrls, initialIndex ->
+                                        onShowFullScreenImage(imageUrls, initialIndex, feedItem.id)
+                                    },
+                                    userPreferences = userPreferences,
+                                    onReportClick = { postId, reason, otherText ->
+                                        viewModel.reportPost(postId, reason, otherText, onSuccess = {}, onFailure = { error ->
+                                            Log.e("NewsFeedScreen", "Failed to report post: $error")
+                                        })
+                                    },
+                                    onShowRepostScreen = onShowRepostScreen,
+                                    onUserActionClick = { userId, action, otherText ->
+                                        if (action == "Report User") viewModel.reportUser(userId, action, otherText)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -268,7 +253,7 @@ fun NewsFeedScreen(
                             Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) {
                                 CircularProgressIndicator()
                             }
-                            isRefreshing = false // Reset refreshing state
+                            isRefreshing = false
                             Log.d("NewsFeedScreen", "Refresh state: Loading")
                         }
                         is LoadState.Error -> item {
@@ -278,13 +263,13 @@ fun NewsFeedScreen(
                                 modifier = Modifier.padding(16.dp)
                             )
                             isRefreshing = false
-                            Log.e("NewsFeedScreen", "Refresh state: Error - ${(loadState.refresh as LoadState.Error).error.message}")
+                            Log.e("NewsFeedScreen", "Refresh state: Error")
                         }
                         is LoadState.NotLoading -> {
                             isRefreshing = false
                             if (posts.itemCount == 0) item {
-                                Text("No posts available", color = Color.Gray, modifier = Modifier.padding(16.dp))
-                                Log.d("NewsFeedScreen", "Refresh state: NotLoading, no posts available")
+                                Text("No items available", color = Color.Gray, modifier = Modifier.padding(16.dp))
+                                Log.d("NewsFeedScreen", "Refresh state: NotLoading, no items available")
                             }
                         }
                     }
@@ -294,8 +279,8 @@ fun NewsFeedScreen(
                             Log.d("NewsFeedScreen", "Append state: Loading")
                         }
                         is LoadState.Error -> item {
-                            Text("Error loading more posts", color = Color.Red, modifier = Modifier.padding(16.dp))
-                            Log.e("NewsFeedScreen", "Append state: Error - ${(loadState.append as LoadState.Error).error.message}")
+                            Text("Error loading more items", color = Color.Red, modifier = Modifier.padding(16.dp))
+                            Log.e("NewsFeedScreen", "Append state: Error")
                         }
                         else -> {}
                     }

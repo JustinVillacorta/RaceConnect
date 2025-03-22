@@ -17,7 +17,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
-
 class NewsFeedPagingSourceAllPosts(
     private val apiService: ApiService,
     private val userId: Int,
@@ -56,6 +55,11 @@ class NewsFeedPagingSourceAllPosts(
                 return LoadResult.Error(Exception("No network available"))
             }
 
+            // Fetch announcements
+            val announcementsResponse = apiService.getAnnouncements(limit = limit, offset = offset)
+            val announcements = announcementsResponse ?: emptyList()
+            Log.d("PagingSourceAllPosts", "Fetched ${announcements.size} announcements")
+
             // Fetch original posts for the current page
             val postsResponse: Response<List<NewsFeedDataClassItem>> = apiService.getPostsByCategoryAndPrivacy(
                 userId = userId,
@@ -71,9 +75,42 @@ class NewsFeedPagingSourceAllPosts(
             val posts = postsResponse.body() ?: emptyList()
             Log.d("PagingSourceAllPosts", "Fetched ${posts.size} posts: ${posts.map { "ID=${it.id}, CreatedAt=${it.created_at}, Username=${it.username}" }}")
             val allItems = mutableListOf<NewsFeedDataClassItem>()
-            val processedIds = mutableSetOf<Int>() // Page-specific deduplication for original posts
+            val processedIds = mutableSetOf<Int>() // Page-specific deduplication for posts and announcements
             val processedRepostIds = mutableSetOf<Int>() // Separate deduplication for reposts
             val originalPostIds = mutableSetOf<Int>()
+
+            // Map and add announcements to the feed
+            announcements.forEach { announcement ->
+                val announcementItem = NewsFeedDataClassItem(
+                    id = announcement.id,
+                    user_id = -1, // Announcements typically don't have a user_id; use a placeholder
+                    username = "Official",
+                    profile_picture = null,
+                    content = announcement.content,
+                    images = announcement.image_url?.let { listOf(it) } ?: emptyList(),
+                    created_at = announcement.created_at,
+                    like_count = 0, // Announcements typically don't have likes
+                    comment_count = 0, // No comments for announcements
+                    repost_count = 0, // No reposts for announcements
+                    isLiked = false,
+                    isRepost = false,
+                    original_post_id = null,
+                    category = null.toString(),
+                    privacy = "Public",
+                    type = "announcement",
+                    postType = "announcement",
+                    title = announcement.title,
+                    isAnnouncement = true
+                )
+                if (!processedIds.contains(announcementItem.id) && !processedIdsGlobal.containsKey(announcementItem.id)) {
+                    allItems.add(announcementItem)
+                    processedIds.add(announcementItem.id)
+                    processedIdsGlobal[announcementItem.id] = true
+                    Log.d("PagingSourceAllPosts", "Added announcement ID: ${announcementItem.id}, CreatedAt: ${announcementItem.created_at}")
+                } else {
+                    Log.d("PagingSourceAllPosts", "Skipped announcement ID: ${announcementItem.id} due to deduplication")
+                }
+            }
 
             // Add original posts to the current page
             posts.forEach { post ->
@@ -107,24 +144,13 @@ class NewsFeedPagingSourceAllPosts(
                                     repost.id != null && repost.userId != null && repost.createdAt != null && repost.postId != null
                                             && repost.postId == postId
                                 } ?: emptyList()
-                                Log.d("PagingSourceAllPosts", "Fetched ${reposts.size} reposts for postId $postId: ${reposts.map { "RepostID=${it.id}, OriginalPostId=${it.postId}, CreatedAt=${it.createdAt}, UserId=${it.userId}" }}")
+                                Log.d("PagingSourceAllPosts", "Fetched ${reposts.size} reposts for postId $postId")
 
                                 reposts.map { repost ->
                                     val originalPost = posts.find { it.id == repost.postId }
-                                    // Fetch username and profile picture based on userId
                                     val userResponse = apiService.getUser(repost.userId!!)
-                                    val username = if (userResponse.isSuccessful) {
-                                        userResponse.body()?.username
-                                    } else {
-                                        Log.e("PagingSourceAllPosts", "Failed to fetch user for userId ${repost.userId}: ${userResponse.code()}")
-                                        null
-                                    }
-                                    val profilePicture = if (userResponse.isSuccessful) {
-                                        userResponse.body()?.profilePicture // Adjust field name if necessary
-                                    } else {
-                                        Log.e("PagingSourceAllPosts", "Failed to fetch profile picture for userId ${repost.userId}: ${userResponse.code()}")
-                                        null
-                                    }
+                                    val username = if (userResponse.isSuccessful) userResponse.body()?.username else null
+                                    val profilePicture = if (userResponse.isSuccessful) userResponse.body()?.profilePicture else null
                                     NewsFeedDataClassItem(
                                         id = repost.id!!,
                                         user_id = repost.userId!!,
@@ -145,7 +171,7 @@ class NewsFeedPagingSourceAllPosts(
                                     )
                                 }
                             } else {
-                                Log.e("PagingSourceAllPosts", "Failed to fetch reposts for post $postId: ${repostsResponse.code()} - ${repostsResponse.message()}")
+                                Log.e("PagingSourceAllPosts", "Failed to fetch reposts for post $postId: ${repostsResponse.code()}")
                                 emptyList()
                             }
                         } catch (e: Exception) {
@@ -154,7 +180,6 @@ class NewsFeedPagingSourceAllPosts(
                         }
                     }
                 }
-
                 repostJobs.awaitAll().flatten()
             }
 
@@ -163,9 +188,9 @@ class NewsFeedPagingSourceAllPosts(
                 if (!processedRepostIds.contains(repost.id)) {
                     allItems.add(repost)
                     processedRepostIds.add(repost.id)
-                    Log.d("PagingSourceAllPosts", "Added repost ID: ${repost.id}, OriginalPostId: ${repost.original_post_id}, CreatedAt: ${repost.created_at}, Username: ${repost.username}")
+                    Log.d("PagingSourceAllPosts", "Added repost ID: ${repost.id}, OriginalPostId: ${repost.original_post_id}, CreatedAt: ${repost.created_at}")
                 } else {
-                    Log.d("PagingSourceAllPosts", "Skipped repost ID: ${repost.id} due to repost-specific deduplication")
+                    Log.d("PagingSourceAllPosts", "Skipped repost ID: ${repost.id} due to deduplication")
                 }
             }
 
@@ -183,12 +208,12 @@ class NewsFeedPagingSourceAllPosts(
             }
 
             val endTime = System.currentTimeMillis()
-            Log.d("PagingSourceAllPosts", "Load completed in ${endTime - startTime}ms with ${allItems.size} items: ${allItems.map { "ID=${it.id}, IsRepost=${it.isRepost}, OriginalPostId=${it.original_post_id}, CreatedAt=${it.created_at}, Username=${it.username}" }}")
+            Log.d("PagingSourceAllPosts", "Load completed in ${endTime - startTime}ms with ${allItems.size} items")
 
             LoadResult.Page(
                 data = allItems,
                 prevKey = if (page == 0) null else page - 1,
-                nextKey = if (posts.isEmpty() && repostResults.isEmpty()) null else page + 1
+                nextKey = if (allItems.isEmpty()) null else page + 1
             )
         } catch (e: Exception) {
             Log.e("PagingSourceAllPosts", "Exception during load: ${e.message}", e)

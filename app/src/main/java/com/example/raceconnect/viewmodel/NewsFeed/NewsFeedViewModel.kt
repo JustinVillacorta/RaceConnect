@@ -584,21 +584,4 @@ class NewsFeedViewModel(
             }
         }
     }
-
-    private val _latestAnnouncement = MutableStateFlow<AnnouncementDataClass?>(null)
-    val latestAnnouncement: StateFlow<AnnouncementDataClass?> = _latestAnnouncement.asStateFlow()
-
-    fun fetchLatestAnnouncement() {
-        viewModelScope.launch {
-            try {
-                val response = apiService.getAnnouncements(limit = 10, offset = 0)
-                _latestAnnouncement.value = if (response.isNotEmpty()) response.first() else null
-                Log.d("NewsFeedViewModel", "Fetched latest announcement: ${_latestAnnouncement.value}")
-            } catch (e: Exception) {
-                Log.e("NewsFeedViewModel", "Error fetching latest announcement", e)
-                _latestAnnouncement.value = null
-            }
-        }
-    }
-
 }

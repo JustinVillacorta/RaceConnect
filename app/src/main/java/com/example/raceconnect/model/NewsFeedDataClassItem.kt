@@ -27,7 +27,8 @@ data class NewsFeedDataClassItem(
     val isLiked: Boolean = false,
     val isRepost: Boolean? = false,
     val original_post_id: Int? = null,
-    val quote: String? = null
+    val quote: String? = null,
+    val isAnnouncement: Boolean = false // New field to flag announcements
 )
 
 data class PostResponse(
