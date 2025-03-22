@@ -341,4 +341,11 @@ interface ApiService {
         @Query("seller_id") sellerId: Int,
         @Query("product_id") productId: Int
     ): Response<Map<String, Any?>>
+
+    @GET("announcements")
+    suspend fun getAnnouncements(
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int
+    ): List<AnnouncementDataClass>
+
 }

@@ -67,6 +67,7 @@ fun NewsFeedScreen(
     val likeCounts by viewModel.likeCounts.collectAsState()
     val newPostTriggerState by viewModel.newPostTrigger.collectAsState()
     val user by userPreferences.user.collectAsState(initial = null)
+    val latestAnnouncement by viewModel.latestAnnouncement.collectAsState()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
@@ -118,6 +119,10 @@ fun NewsFeedScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.fetchLatestAnnouncement()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -134,6 +139,7 @@ fun NewsFeedScreen(
                 NewsFeedPagingSourceAllPosts.clearCaches() // Clear caches to fetch fresh data
                 Log.d("NewsFeedScreen", "Caches cleared before swipe refresh")
                 viewModel.refreshPosts()
+                viewModel.fetchLatestAnnouncement() // Refresh announcement too
                 posts.refresh()
                 Log.d("NewsFeedScreen", "Swipe-to-refresh triggered")
             },
@@ -143,12 +149,19 @@ fun NewsFeedScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
+
+
                 item {
                     AddPostSection(
                         navController,
                         onAddPostClick = onShowCreatePost,
                         onShowProfileView = onShowProfileView
                     )
+                }
+                item {
+                    latestAnnouncement?.let { announcement ->
+                        AnnouncementCard(announcement = announcement)
+                    }
                 }
 
                 items(posts.itemCount) { index ->
