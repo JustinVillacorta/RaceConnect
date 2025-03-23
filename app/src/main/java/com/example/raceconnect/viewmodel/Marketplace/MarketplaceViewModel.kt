@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.model.MarketplaceItemLike
+import com.example.raceconnect.model.ReportRequest
 import com.example.raceconnect.model.SendMessageRequest
 import com.example.raceconnect.model.SendMessageResponse
 import com.example.raceconnect.model.UpdateMarketplaceItemRequest
@@ -688,4 +689,51 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
         _errorMessage.value = null
         _messageSentStatus.value = null
     }
+
+    fun reportMarketplaceItem(
+        marketplaceItemId: Int,
+        reason: String,
+        otherText: String?,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d("ReportMarketplaceItem", "Attempting to report marketplace item $marketplaceItemId with reason: $reason")
+
+                val userId = _currentUserId.value ?: run {
+                    Log.w("ReportMarketplaceItem", "User not logged in, aborting report")
+                    onFailure("User not logged in")
+                    return@launch
+                }
+
+                val finalReason = if (reason == "Others" && otherText != null) otherText else reason
+                Log.i("ReportMarketplaceItem", "Final reason determined: $finalReason")
+
+                val reportRequest = ReportRequest(
+                    post_id = null,
+                    marketplace_item_id = marketplaceItemId,
+                    reporter_id = userId,
+                    reason = finalReason
+                )
+                Log.d("ReportMarketplaceItem", "Report request created: $reportRequest")
+
+                val response = RetrofitInstance.api.createReport(reportRequest)
+                Log.i("ReportMarketplaceItem", "API response received with code: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    Log.i("ReportMarketplaceItem", "Marketplace item reported successfully")
+                    onSuccess()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("ReportMarketplaceItem", "Failed to report marketplace item. Error: $errorBody")
+                    onFailure("Failed to report marketplace item: $errorBody")
+                }
+            } catch (e: Exception) {
+                Log.e("ReportMarketplaceItem", "Exception occurred while reporting marketplace item", e)
+                onFailure("Error reporting marketplace item: ${e.message}")
+            }
+        }
+    }
+
 }

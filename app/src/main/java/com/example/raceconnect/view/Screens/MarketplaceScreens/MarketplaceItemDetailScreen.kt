@@ -1,8 +1,10 @@
 package com.example.raceconnect.view.Screens.MarketplaceScreens
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -23,6 +25,7 @@ import androidx.compose.ui.graphics.Color.Companion.DarkGray
 import androidx.compose.ui.graphics.Color.Companion.LightGray
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -70,11 +73,9 @@ fun MarketplaceItemDetailScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val messageSentStatus by viewModel.messageSentStatus.collectAsState()
 
-    // Use StateFlow from ViewModel for conversation state
     val conversationState by viewModel.conversationExists.collectAsState()
     val (conversationExists, conversationId) = conversationState ?: Pair(false, null)
 
-    // Check conversation on initial load or when user/item changes
     LaunchedEffect(item.value, currentUserId) {
         if (item.value != null && currentUserId != null) {
             viewModel.checkConversationExists(
@@ -85,7 +86,6 @@ fun MarketplaceItemDetailScreen(
         }
     }
 
-    // Navigate to ChatSellerScreen after a new message is sent successfully
     LaunchedEffect(messageSentStatus) {
         if (messageSentStatus == "Message sent successfully" && viewModel.lastConversationId.value != null) {
             navController.navigate(
@@ -103,6 +103,12 @@ fun MarketplaceItemDetailScreen(
 
     val isWideScreen = LocalConfiguration.current.screenWidthDp > 600
 
+    // State for reporting
+    var showReportDialog by remember { mutableStateOf(false) }
+    var selectedReason by remember { mutableStateOf("") }
+    var otherText by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -112,7 +118,7 @@ fun MarketplaceItemDetailScreen(
                         style = TextStyle(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White // White text for contrast with red background
+                            color = Color.White
                         )
                     )
                 },
@@ -121,12 +127,21 @@ fun MarketplaceItemDetailScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White // White icon for contrast with red background
+                            tint = Color.White
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showReportDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Report,
+                            contentDescription = "Report item",
+                            tint = Color.White
                         )
                     }
                 },
                 colors = TopAppBarDefaults.smallTopAppBarColors(
-                    containerColor = Red // Set the TopAppBar background to red
+                    containerColor = Red
                 )
             )
         },
@@ -234,7 +249,6 @@ fun MarketplaceItemDetailScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Chat Section with light theme
                 if (conversationExists && conversationId != null) {
                     Button(
                         onClick = {
@@ -271,7 +285,7 @@ fun MarketplaceItemDetailScreen(
                     }
                 } else {
                     Surface(
-                        color = Color(0xFFF0F0F0), // Light grey background
+                        color = Color(0xFFF0F0F0),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -288,7 +302,7 @@ fun MarketplaceItemDetailScreen(
                                             productId = itemId,
                                             message = message
                                         )
-                                        onMessageSent("Message sent") // Notify parent if needed
+                                        onMessageSent("Message sent")
                                     }
                                 } else {
                                     coroutineScope.launch {
@@ -306,7 +320,6 @@ fun MarketplaceItemDetailScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Favorite Button with racing flag icon
                 Button(
                     onClick = {
                         coroutineScope.launch {
@@ -364,6 +377,92 @@ fun MarketplaceItemDetailScreen(
                     )
                 }
             }
+        }
+
+        // Report Dialog
+        if (showReportDialog) {
+            AlertDialog(
+                onDismissRequest = { showReportDialog = false },
+                title = { Text(text = "Report Item") },
+                text = {
+                    Column {
+                        Text(text = "Please select a reason for reporting this item:")
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
+                        reportOptions.forEach { reason ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .clickable { selectedReason = reason },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedReason == reason,
+                                    onClick = { selectedReason = reason }
+                                )
+                                Text(
+                                    text = reason,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                        }
+
+                        if (selectedReason == "Others") {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            TextField(
+                                value = otherText,
+                                onValueChange = { otherText = it },
+                                label = { Text("Please specify") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Text(
+                        text = "Confirm",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (selectedReason.isNotEmpty() && (selectedReason != "Others" || otherText.isNotEmpty()))
+                            MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier
+                            .clickable {
+                                if (selectedReason.isNotEmpty()) {
+                                    if (selectedReason == "Others" && otherText.isEmpty()) {
+                                        Toast.makeText(context, "Please specify the reason", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        viewModel.reportMarketplaceItem(
+                                            marketplaceItemId = itemId,
+                                            reason = selectedReason,
+                                            otherText = if (selectedReason == "Others") otherText else null,
+                                            onSuccess = {
+                                                Toast.makeText(context, "Item reported successfully", Toast.LENGTH_SHORT).show()
+                                                showReportDialog = false
+                                            },
+                                            onFailure = { error ->
+                                                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            .padding(8.dp)
+                    )
+                },
+                dismissButton = {
+                    Text(
+                        text = "Cancel",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .clickable { showReportDialog = false }
+                            .padding(8.dp)
+                    )
+                }
+            )
         }
     }
 }
