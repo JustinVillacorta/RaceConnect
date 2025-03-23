@@ -300,6 +300,35 @@ interface ApiService {
         @Path("id") id: Int
     ): Response<Map<String, String>>
 
+
+    @GET("comments-replies")
+    suspend fun getRepliesByCommentId(
+        @Header("Authorization") token: String,
+        @Query("parent_comment_id") parentCommentId: Int,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int
+    ): Response<List<Reply>>
+
+    @POST("comments-replies")
+    suspend fun addReply(
+        @Header("Authorization") token: String,
+        @Body reply: ReplyRequest
+    ): Response<AddReplyResponse>
+
+    // Like a comment
+    @POST("comments-likes")
+    suspend fun addCommentLike(
+        @Header("Authorization") token: String,
+        @Body likeData: Map<String, Int> // e.g., {"user_id": 1, "comment_id": 2}
+    ): Response<Map<String, Any>>
+
+    // Unlike a comment
+    @DELETE("comments-likes")
+    suspend fun removeCommentLike(
+        @Header("Authorization") token: String,
+        @Body unlikeData: Map<String, Int> // e.g., {"user_id": 1, "comment_id": 2}
+    ): Response<Map<String, String>>
+
     @POST("post-reposts")
     suspend fun createRepost(
         @Body request: CreateRepostRequest
