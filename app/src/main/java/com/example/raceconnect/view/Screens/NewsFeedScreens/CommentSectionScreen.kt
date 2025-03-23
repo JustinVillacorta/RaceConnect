@@ -1,7 +1,11 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
+import android.annotation.SuppressLint
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,6 +33,7 @@ import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
 
+@SuppressLint("RememberReturnType")
 @Composable
 fun CommentSectionScreen(
     postId: Int,
@@ -42,6 +47,7 @@ fun CommentSectionScreen(
 
     var userId by remember { mutableStateOf(0) }
     var username by remember { mutableStateOf("Unknown") }
+    var selectedCommentId by remember { mutableStateOf<Int?>(null) } // Tracks the comment showing options
 
     LaunchedEffect(Unit) {
         val user = userPreferences.user.first()
@@ -93,7 +99,11 @@ fun CommentSectionScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .weight(1f)
+                    .clickable(
+                        indication = null, // No ripple effect
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { selectedCommentId = null }, // Hide options when clicking outside
                 contentAlignment = Alignment.Center
             ) {
                 when {
@@ -121,9 +131,17 @@ fun CommentSectionScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
-                            items(viewModel.comments) { comment ->
+                            items(
+                                items = viewModel.comments,
+                                key = { comment -> comment.id!! }
+                            ) { comment ->
                                 CommentItem(
                                     comment = comment,
+                                    currentUserId = userId,
+                                    selectedCommentId = selectedCommentId,
+                                    onCommentSelected = { commentId -> selectedCommentId = commentId },
+                                    onDeleteComment = { commentId -> viewModel.deleteComment(commentId) },
+                                    onUpdateComment = { commentId, newText -> viewModel.updateComment(commentId, newText) },
                                     navController = navController,
                                     onShowProfileView = onShowProfileView
                                 )
@@ -140,7 +158,6 @@ fun CommentSectionScreen(
         }
     }
 }
-
 @Composable
 fun CommentInput(
     commentText: String,
@@ -185,9 +202,15 @@ fun CommentInput(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CommentItem(
     comment: PostComment,
+    currentUserId: Int,
+    selectedCommentId: Int?,
+    onCommentSelected: (Int?) -> Unit,
+    onDeleteComment: (Int) -> Unit,
+    onUpdateComment: (Int, String) -> Unit,
     navController: NavController,
     onShowProfileView: () -> Unit
 ) {
@@ -196,10 +219,22 @@ fun CommentItem(
         formatter.format(it)
     } ?: "Just now"
 
+    val isEditing = remember { mutableStateOf(false) }
+    val editedText = remember { mutableStateOf(comment.comment ?: "") }
+    val isSelected = selectedCommentId == comment.id // Check if this comment is selected
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+            .padding(vertical = 8.dp, horizontal = 4.dp)
+            .combinedClickable(
+                onClick = {},
+                onLongClick = {
+                    if (comment.userId == currentUserId) {
+                        onCommentSelected(if (isSelected) null else comment.id) // Toggle selection
+                    }
+                }
+            ),
         verticalAlignment = Alignment.Top
     ) {
         Box(
@@ -240,11 +275,62 @@ fun CommentItem(
                     maxLines = 1
                 )
             }
-            Text(
-                text = comment.comment ?: comment.text ?: "",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+
+            if (isEditing.value) {
+                TextField(
+                    value = editedText.value,
+                    onValueChange = { editedText.value = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    placeholder = { Text("Edit comment") },
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = {
+                        isEditing.value = false
+                        editedText.value = comment.comment ?: ""
+                    }) {
+                        Text("Cancel")
+                    }
+                    TextButton(onClick = {
+                        comment.id?.let { onUpdateComment(it, editedText.value) }
+                        isEditing.value = false
+                        onCommentSelected(null) // Hide options after saving
+                    }) {
+                        Text("Save")
+                    }
+                }
+            } else {
+                Text(
+                    text = comment.comment ?: comment.text ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                if (isSelected && comment.userId == currentUserId) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { isEditing.value = true }) {
+                            Text("Edit")
+                        }
+                        TextButton(onClick = {
+                            comment.id?.let { onDeleteComment(it) }
+                            onCommentSelected(null) // Hide options after deleting
+                        }) {
+                            Text("Delete")
+                        }
+                    }
+                }
+            }
         }
 
         if (comment.likes > 0) {
