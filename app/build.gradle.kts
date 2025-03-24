@@ -122,6 +122,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
 
     implementation ("androidx.compose.foundation:foundation:1.5.0") // Use the latest stable version
+
+
+    implementation ("androidx.compose.ui:ui-graphics:1.6.8")
 }
 
 

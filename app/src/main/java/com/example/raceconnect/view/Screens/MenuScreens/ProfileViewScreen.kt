@@ -26,6 +26,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -205,80 +207,115 @@ fun UserProfileScreen(
                                                     .padding(8.dp),
                                                 elevation = CardDefaults.cardElevation(4.dp)
                                             ) {
-                                                Column(modifier = Modifier.padding(16.dp)) {
-                                                    Row(
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        modifier = Modifier.fillMaxWidth()
-                                                    ) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(40.dp)
-                                                                .clip(CircleShape)
-                                                                .background(Color.Gray)
+                                                Box {
+                                                    Column(modifier = Modifier.padding(16.dp)) {
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            modifier = Modifier.fillMaxWidth()
                                                         ) {
-                                                            Image(
-                                                                painter = painterResource(id = R.drawable.baseline_account_circle_24),
-                                                                contentDescription = "User Profile",
-                                                                contentScale = ContentScale.Crop,
-                                                                modifier = Modifier.fillMaxSize()
-                                                            )
-                                                        }
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                            Text(text = post.username ?: "Anonymous", fontWeight = FontWeight.Bold)
-                                                            Text(text = post.created_at ?: "Just now", color = Color.Gray)
-                                                        }
-                                                        Box {
-                                                            IconButton(onClick = {
-                                                                currentPostId = post.id
-                                                                showDropdown = true
-                                                            }) {
-                                                                Icon(
-                                                                    imageVector = Icons.Default.MoreVert,
-                                                                    contentDescription = "More Options",
-                                                                    tint = MaterialTheme.colorScheme.onBackground
-                                                                )
-                                                            }
-                                                            DropdownMenu(
-                                                                expanded = showDropdown && currentPostId == post.id,
-                                                                onDismissRequest = { showDropdown = false }
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(40.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(Color.Gray)
                                                             ) {
-                                                                DropdownMenuItem(
-                                                                    text = { Text("Edit") },
-                                                                    onClick = {
-                                                                        val postJson = Gson().toJson(post)
-                                                                        navController.navigate(
-                                                                            NavRoutes.EditPost.createRoute(postJson)
-                                                                        )
-                                                                        showDropdown = false
+                                                                Image(
+                                                                    painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                                                                    contentDescription = "User Profile",
+                                                                    contentScale = ContentScale.Crop,
+                                                                    modifier = Modifier.fillMaxSize()
+                                                                )
+                                                            }
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                            Column(modifier = Modifier.weight(1f)) {
+                                                                Text(
+                                                                    text = post.username ?: "Anonymous",
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    modifier = if (post.status?.lowercase() == "hidden" && !showHiddenPost) {
+                                                                        Modifier.blur(10.dp)
+                                                                    } else {
+                                                                        Modifier
                                                                     }
                                                                 )
-                                                                DropdownMenuItem(
-                                                                    text = { Text("Delete") },
-                                                                    onClick = {
-                                                                        postToDelete = post
-                                                                        showDropdown = false
+                                                                Text(
+                                                                    text = post.created_at ?: "Just now",
+                                                                    color = Color.Gray,
+                                                                    modifier = if (post.status?.lowercase() == "hidden" && !showHiddenPost) {
+                                                                        Modifier.blur(10.dp)
+                                                                    } else {
+                                                                        Modifier
                                                                     }
                                                                 )
                                                             }
+                                                            Box {
+                                                                IconButton(onClick = {
+                                                                    currentPostId = post.id
+                                                                    showDropdown = true
+                                                                }) {
+                                                                    Icon(
+                                                                        imageVector = Icons.Default.MoreVert,
+                                                                        contentDescription = "More Options",
+                                                                        tint = MaterialTheme.colorScheme.onBackground
+                                                                    )
+                                                                }
+                                                                DropdownMenu(
+                                                                    expanded = showDropdown && currentPostId == post.id,
+                                                                    onDismissRequest = { showDropdown = false }
+                                                                ) {
+                                                                    DropdownMenuItem(
+                                                                        text = { Text("Edit") },
+                                                                        onClick = {
+                                                                            val postJson = Gson().toJson(post)
+                                                                            navController.navigate(
+                                                                                NavRoutes.EditPost.createRoute(postJson)
+                                                                            )
+                                                                            showDropdown = false
+                                                                        }
+                                                                    )
+                                                                    DropdownMenuItem(
+                                                                        text = { Text("Delete") },
+                                                                        onClick = {
+                                                                            postToDelete = post
+                                                                            showDropdown = false
+                                                                        }
+                                                                    )
+                                                                }
+                                                            }
                                                         }
-                                                    }
-                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                        Spacer(modifier = Modifier.height(8.dp))
 
-                                                    // Handle hidden posts
-                                                    when {
-                                                        post.status?.lowercase() == "hidden" && !showHiddenPost -> {
+                                                        // Handle hidden posts with blur effect
+                                                        if (post.status?.lowercase() == "hidden" && !showHiddenPost) {
+                                                            // Blurred content
                                                             Text(
-                                                                text = "This post is hidden",
-                                                                style = MaterialTheme.typography.bodyMedium,
-                                                                color = Color.Gray
+                                                                text = post.content ?: "",
+                                                                modifier = Modifier.blur(10.dp)
                                                             )
-                                                            Spacer(modifier = Modifier.height(8.dp))
-                                                            Button(onClick = { showConfirmationDialog = true }) {
-                                                                Text("See Post")
+                                                            if (postImages[post.id]?.isNotEmpty() == true) {
+                                                                Spacer(modifier = Modifier.height(8.dp))
+                                                                LazyRow(
+                                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                                    modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .height(200.dp)
+                                                                ) {
+                                                                    items(postImages[post.id]!!) { imageUrl ->
+                                                                        val painter = rememberAsyncImagePainter(model = imageUrl)
+                                                                        Image(
+                                                                            painter = painter,
+                                                                            contentDescription = "Post Image",
+                                                                            modifier = Modifier
+                                                                                .width(200.dp)
+                                                                                .fillMaxHeight()
+                                                                                .clip(RoundedCornerShape(8.dp))
+                                                                                .blur(10.dp),
+                                                                            contentScale = ContentScale.Crop
+                                                                        )
+                                                                    }
+                                                                }
                                                             }
-                                                        }
-                                                        else -> {
+                                                        } else {
+                                                            // Normal content
                                                             Text(text = post.content ?: "")
                                                             if (postImages[post.id]?.isNotEmpty() == true) {
                                                                 Spacer(modifier = Modifier.height(8.dp))
@@ -309,6 +346,31 @@ fun UserProfileScreen(
                                                                     colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
                                                                 ) {
                                                                     Text("Hide Post", color = Color.Black)
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // Overlay for hidden posts
+                                                    if (post.status?.lowercase() == "hidden" && !showHiddenPost) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .fillMaxSize()
+                                                                .background(Color.Black.copy(alpha = 0.3f)),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Column(
+                                                                horizontalAlignment = Alignment.CenterHorizontally
+                                                            ) {
+                                                                Text(
+                                                                    text = "This post is hidden",
+                                                                    color = Color.White,
+                                                                    fontSize = 18.sp,
+                                                                    fontWeight = FontWeight.Bold
+                                                                )
+                                                                Spacer(modifier = Modifier.height(8.dp))
+                                                                Button(onClick = { showConfirmationDialog = true }) {
+                                                                    Text("See Post")
                                                                 }
                                                             }
                                                         }
