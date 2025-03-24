@@ -5,8 +5,11 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -22,17 +25,187 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.raceconnect.R
 
+
+@Composable
+fun TermsOfServiceDialog(
+    onDismiss: () -> Unit,
+    onAccept: () -> Unit
+) {
+    var isChecked by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    var canProceed by remember { mutableStateOf(false) }
+
+    val uriHandler = LocalUriHandler.current
+
+    // Define the terms text with an annotated email link
+    val fullText = """
+        Terms and Conditions for RaceConnect
+
+        Welcome to RaceConnect! By creating an account and using our services, you agree to comply with and be bound by these Terms of Service. If you do not agree to these terms, please do not use RaceConnect.
+
+        1. Acceptance of Terms
+        By accessing and using RaceConnect, you agree to be bound by these Terms of Service.
+
+        2. Account Registration
+        •	You must provide accurate and complete information when creating an account.
+        •	You are responsible for maintaining the confidentiality of your account credentials.
+        •	RaceConnect is not responsible for any unauthorized use of your account.
+
+        3. User Conduct
+        When using RaceConnect, you agree not to:
+            •	Violate any applicable laws or regulations.
+            •	Engage in any fraudulent, abusive, or harmful activity.
+            •	Interfere with or disrupt RaceConnect services or servers.
+            •	Attempt to gain unauthorized access to any part of our system.
+            •	Post any content that is illegal, harmful, or infringes on the rights of others.
+
+        4. Data Privacy
+        We value your privacy and are committed to protecting your personal information. While we are in the process of finalizing our comprehensive Privacy Policy, please be assured that:
+            •   We collect only the data necessary to provide and improve our services (e.g., email addresses or usage data).
+            •   Your data is used solely for these purposes and is not shared with third parties without your consent, except as required by law.
+            •   We implement appropriate security measures to protect your information.
+            •   You have the right to access, correct, or delete your data by contacting us at raceconnect.team@gmail.com.
+
+        5. Content
+        Users are responsible for all content they post on RaceConnect.
+
+        6. Termination of Account
+        RaceConnect reserves the right to suspend or terminate your account at any time if you violate these terms or engage in harmful behavior.
+
+        7. Changes to Terms
+        We may update these Terms from time to time. Continued use of RaceConnect after changes are posted constitutes acceptance of the new terms.
+
+        8. Limitation of Liability
+        To the fullest extent permitted by law, RaceConnect shall not be liable for any direct, indirect, incidental, or consequential damages resulting from your use of the platform.
+
+        9. Governing Law
+        These terms are governed by applicable laws.
+
+        10. Contact information
+        If you have any questions about these Terms, please contact us at raceconnect.team@gmail.com
+    """.trimIndent()
+
+    val email = "raceconnect.team@gmail.com"
+    val startIndex = fullText.indexOf(email)
+    val endIndex = if (startIndex != -1) startIndex + email.length else -1
+
+    val termsText = buildAnnotatedString {
+        append(fullText)
+        if (startIndex != -1) {
+            addStyle(
+                style = SpanStyle(
+                    color = Color.Blue,
+                    textDecoration = TextDecoration.Underline
+                ),
+                start = startIndex,
+                end = endIndex
+            )
+            addStringAnnotation(
+                tag = "URL",
+                annotation = "mailto:$email",
+                start = startIndex,
+                end = endIndex
+            )
+        }
+    }
+
+    //Monitor the scroll state to enable the "Continue" button when the user reaches the end of TOS
+    LaunchedEffect(scrollState) {
+        snapshotFlow { scrollState.value to scrollState.maxValue }
+            .collect { (value, maxValue) ->
+                if (maxValue == 0 || value == maxValue) {
+                    canProceed = true
+                }
+            }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Terms of Service",
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .height(300.dp)
+                        .fillMaxWidth()
+                        .background(Color.LightGray.copy(alpha = 0.1f))
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 4.dp)
+                ) {
+                    ClickableText(
+                        text = termsText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        onClick = { offset ->
+                            termsText.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                                .firstOrNull()?.let { annotation ->
+                                    // Use the uriHandler captured from the composable context
+                                    uriHandler.openUri(annotation.item)
+                                }
+                        }
+                    )
+                }
+                Divider(modifier = Modifier.padding(vertical = 8.dp)) // Visual separation
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = isChecked,
+                        onCheckedChange = { isChecked = it }
+                    )
+                    Text(
+                        text = "By clicking \"Sign Up,\" you acknowledge that you have read, understood, and agreed to these Terms of Service.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+                Spacer(modifier = Modifier.width(8.dp)) // Add space between buttons
+                Button(
+                    onClick = onAccept,
+                    enabled = isChecked && canProceed
+                ) {
+                    Text("Continue")
+                }
+            }
+        }
+    )
+}
 
 @Composable
 fun SignupScreen(
@@ -67,6 +240,9 @@ fun SignupScreen(
         hasNumber = password.any { it.isDigit() }
         hasMinLength = password.length >= 8
     }
+
+    var showTosDialog by remember { mutableStateOf(false) }
+    var tosAccepted by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -285,29 +461,30 @@ fun SignupScreen(
 
                 // Sign Up button (red)
                 Button(
-                    onClick = {
-                        onSignupClick(context, username, email, password) {
-                            Toast.makeText(
-                                context,
-                                "Account Created Successfully!",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            onBackNavigate()
+                    onClick = { 
+                        if (!tosAccepted) {
+                            showTosDialog = true
+                        } else {
+                            onSignupClick(context, username, email, password) {
+                                username = ""
+                                email = ""
+                                password = ""
+                                confirmPassword = ""
+                            }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFC62828),
-                        contentColor = Color.White
-                    ),
-                    enabled = passwordsMatch &&
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    enabled = username.isNotEmpty() &&
+                            email.isNotEmpty() &&
+                            password.isNotEmpty() &&
+                            confirmPassword.isNotEmpty() &&
+                            passwordsMatch &&
                             hasLowerCase &&
                             hasUpperCase &&
                             hasNumber &&
-                            hasMinLength &&
-                            username.isNotBlank() &&
-                            email.isNotBlank() &&
-                            password.isNotBlank()
+                            hasMinLength
                 ) {
                     Text("Sign Up")
                 }
@@ -317,14 +494,31 @@ fun SignupScreen(
             }
         }
     }
+
+    // Show TOS Dialog when needed
+    if (showTosDialog) {
+        TermsOfServiceDialog(
+            onDismiss = { showTosDialog = false },
+            onAccept = {
+                tosAccepted = true
+                showTosDialog = false
+                onSignupClick(context, username, email, password) {
+                    username = ""
+                    email = ""
+                    password = ""
+                    confirmPassword = ""
+                }
+            }
+        )
+    }
 }
 
 
-        @Preview(showBackground = true, widthDp = 360, heightDp = 800)
-        @Composable
-        fun PreviewSignupScreen() {
-            SignupScreen(
-                onSignupClick = { _, _, _, _, _ -> },
-                onBackNavigate = {}
-            )
-        }
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+fun PreviewSignupScreen() {
+    SignupScreen(
+        onSignupClick = { _, _, _, _, _ -> },
+        onBackNavigate = {}
+    )
+}
