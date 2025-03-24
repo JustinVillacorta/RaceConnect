@@ -34,33 +34,19 @@ class NewsFeedPagingSourceAllPosts(
     }
 
     override fun getRefreshKey(state: PagingState<Int, NewsFeedDataClassItem>): Int? {
-        val refreshKey = state.anchorPosition?.let { anchorPosition ->
+        return state.anchorPosition?.let { anchorPosition ->
             val anchorPage = state.closestPageToPosition(anchorPosition)
             if (anchorPage?.data.isNullOrEmpty()) 0 else anchorPage?.prevKey?.plus(1) ?: anchorPage?.nextKey?.minus(1)
         } ?: 0
-        Log.d("PagingSourceAllPosts", "Refresh key calculated: $refreshKey")
-        return refreshKey
     }
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, NewsFeedDataClassItem> {
         return try {
-            val startTime = System.currentTimeMillis()
             val page = params.key ?: 0
             val limit = params.loadSize
             val offset = page * limit
             Log.d("PagingSourceAllPosts", "Loading page $page, limit $limit, offset $offset for userId $userId with categories $categories")
 
-            if (!NetworkUtils.isNetworkAvailable(context)) {
-                Log.e("PagingSourceAllPosts", "No network available")
-                return LoadResult.Error(Exception("No network available"))
-            }
-
-            // Fetch announcements
-            val announcementsResponse = apiService.getAnnouncements(limit = limit, offset = offset)
-            val announcements = announcementsResponse ?: emptyList()
-            Log.d("PagingSourceAllPosts", "Fetched ${announcements.size} announcements")
-
-            // Fetch original posts for the current page
             val postsResponse: Response<List<NewsFeedDataClassItem>> = apiService.getPostsByCategoryAndPrivacy(
                 userId = userId,
                 categories = categories.joinToString(","),
@@ -73,64 +59,37 @@ class NewsFeedPagingSourceAllPosts(
             }
 
             val posts = postsResponse.body() ?: emptyList()
-            Log.d("PagingSourceAllPosts", "Fetched ${posts.size} posts: ${posts.map { "ID=${it.id}, CreatedAt=${it.created_at}, Username=${it.username}" }}")
+            Log.d("PagingSourceAllPosts", "Raw posts from API (count: ${posts.size}): ${posts.map { "ID=${it.id}, Status=${it.status}, Report=${it.report}" }}")
+
             val allItems = mutableListOf<NewsFeedDataClassItem>()
-            val processedIds = mutableSetOf<Int>() // Page-specific deduplication for posts and announcements
-            val processedRepostIds = mutableSetOf<Int>() // Separate deduplication for reposts
+            val processedIds = mutableSetOf<Int>()
             val originalPostIds = mutableSetOf<Int>()
 
-            // Map and add announcements to the feed
-            announcements.forEach { announcement ->
-                val announcementItem = NewsFeedDataClassItem(
-                    id = announcement.id,
-                    user_id = -1, // Announcements typically don't have a user_id; use a placeholder
-                    username = "Official",
-                    profile_picture = null,
-                    content = announcement.content,
-                    images = announcement.image_url?.let { listOf(it) } ?: emptyList(),
-                    created_at = announcement.created_at,
-                    like_count = 0, // Announcements typically don't have likes
-                    comment_count = 0, // No comments for announcements
-                    repost_count = 0, // No reposts for announcements
-                    isLiked = false,
-                    isRepost = false,
-                    original_post_id = null,
-                    category = null.toString(),
-                    privacy = "Public",
-                    type = "announcement",
-                    postType = "announcement",
-                    title = announcement.title,
-                    isAnnouncement = true
-                )
-                if (!processedIds.contains(announcementItem.id) && !processedIdsGlobal.containsKey(announcementItem.id)) {
-                    allItems.add(announcementItem)
-                    processedIds.add(announcementItem.id)
-                    processedIdsGlobal[announcementItem.id] = true
-                    Log.d("PagingSourceAllPosts", "Added announcement ID: ${announcementItem.id}, CreatedAt: ${announcementItem.created_at}")
-                } else {
-                    Log.d("PagingSourceAllPosts", "Skipped announcement ID: ${announcementItem.id} due to deduplication")
-                }
-            }
-
-            // Add original posts to the current page
             posts.forEach { post ->
-                val updatedPost = post.copy(isRepost = post.isRepost ?: false)
-                if (!processedIds.contains(updatedPost.id) && !processedIdsGlobal.containsKey(updatedPost.id)) {
-                    allItems.add(updatedPost)
-                    processedIds.add(updatedPost.id)
-                    processedIdsGlobal[updatedPost.id] = true
-                    originalPostIds.add(updatedPost.id)
-                    Log.d("PagingSourceAllPosts", "Added original post ID: ${updatedPost.id}, CreatedAt: ${updatedPost.created_at}, Username: ${updatedPost.username}")
+                val statusLower = post.status?.lowercase()
+                Log.d("PagingSourceAllPosts", "Processing post ID: ${post.id}, Status: ${post.status}, Report: ${post.report}")
+                if (statusLower != "archived") { // Exclude 'Archived' posts
+                    val updatedPost = post.copy(isRepost = post.isRepost ?: false)
+                    if (!processedIds.contains(updatedPost.id) && !processedIdsGlobal.containsKey(updatedPost.id)) {
+                        allItems.add(updatedPost)
+                        processedIds.add(updatedPost.id)
+                        processedIdsGlobal[updatedPost.id] = true
+                        originalPostIds.add(updatedPost.id)
+                        Log.d("PagingSourceAllPosts", "Added post ID: ${updatedPost.id}, Status: ${updatedPost.status}, Report: ${updatedPost.report}")
+                        if (statusLower == "hidden") {
+                            Log.d("PagingSourceAllPosts", "Explicitly included hidden post ID: ${updatedPost.id}")
+                        }
+                    } else {
+                        Log.d("PagingSourceAllPosts", "Skipped post ID: ${updatedPost.id} due to deduplication")
+                    }
                 } else {
-                    Log.d("PagingSourceAllPosts", "Skipped original post ID: ${updatedPost.id} due to deduplication")
+                    Log.d("PagingSourceAllPosts", "Excluded archived post ID: ${post.id}")
                 }
             }
 
-            // Fetch reposts only for the original posts in this page
+            // Reposts (same logic)
             val repostResults: List<NewsFeedDataClassItem> = coroutineScope {
                 val postIdsToFetch = originalPostIds.toList()
-                Log.d("PagingSourceAllPosts", "Fetching reposts for ${postIdsToFetch.size} post IDs: $postIdsToFetch")
-
                 val repostJobs = postIdsToFetch.map { postId ->
                     async {
                         try {
@@ -144,8 +103,6 @@ class NewsFeedPagingSourceAllPosts(
                                     repost.id != null && repost.userId != null && repost.createdAt != null && repost.postId != null
                                             && repost.postId == postId
                                 } ?: emptyList()
-                                Log.d("PagingSourceAllPosts", "Fetched ${reposts.size} reposts for postId $postId")
-
                                 reposts.map { repost ->
                                     val originalPost = posts.find { it.id == repost.postId }
                                     val userResponse = apiService.getUser(repost.userId!!)
@@ -167,11 +124,12 @@ class NewsFeedPagingSourceAllPosts(
                                         postType = originalPost?.postType ?: "normal",
                                         title = originalPost?.title ?: "Repost",
                                         profile_picture = profilePicture,
-                                        username = username
+                                        username = username,
+                                        report = originalPost?.report,
+                                        status = originalPost?.status
                                     )
-                                }
+                                }.filter { it.status?.lowercase() != "archived" }
                             } else {
-                                Log.e("PagingSourceAllPosts", "Failed to fetch reposts for post $postId: ${repostsResponse.code()}")
                                 emptyList()
                             }
                         } catch (e: Exception) {
@@ -183,32 +141,23 @@ class NewsFeedPagingSourceAllPosts(
                 repostJobs.awaitAll().flatten()
             }
 
-            // Add reposts to the current page with separate deduplication
             repostResults.forEach { repost ->
-                if (!processedRepostIds.contains(repost.id)) {
+                if (!processedIds.contains(repost.id)) {
                     allItems.add(repost)
-                    processedRepostIds.add(repost.id)
-                    Log.d("PagingSourceAllPosts", "Added repost ID: ${repost.id}, OriginalPostId: ${repost.original_post_id}, CreatedAt: ${repost.created_at}")
-                } else {
-                    Log.d("PagingSourceAllPosts", "Skipped repost ID: ${repost.id} due to deduplication")
+                    processedIds.add(repost.id)
+                    Log.d("PagingSourceAllPosts", "Added repost ID: ${repost.id}, Status: ${repost.status}")
                 }
             }
 
-            // Sort items by created_at in descending order
             withContext(Dispatchers.Default) {
                 allItems.sortByDescending { item ->
                     try {
-                        if (item.created_at.isNullOrEmpty()) 0L
-                        else SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(item.created_at)?.time ?: 0L
+                        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(item.created_at ?: "")?.time ?: 0L
                     } catch (e: Exception) {
-                        Log.e("PagingSourceAllPosts", "Error parsing date ${item.created_at} for ID: ${item.id}: ${e.message}")
                         0L
                     }
                 }
             }
-
-            val endTime = System.currentTimeMillis()
-            Log.d("PagingSourceAllPosts", "Load completed in ${endTime - startTime}ms with ${allItems.size} items")
 
             LoadResult.Page(
                 data = allItems,

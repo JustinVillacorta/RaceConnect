@@ -112,26 +112,33 @@ fun PostCard(
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: post.images ?: emptyList()
     var showReportDialog by remember { mutableStateOf(false) }
-    var showUserDialog by remember { mutableStateOf(false) }
-    var menuExpanded by remember { mutableStateOf(false) }
     var selectedReason by remember { mutableStateOf("") }
     var otherText by remember { mutableStateOf("") }
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id
 
-    LaunchedEffect(post.id) {
+    // Use remember with a key to reset showHiddenPost when post changes (e.g., on refresh)
+    var showHiddenPost by remember(post.id, post.status) { mutableStateOf(false) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(post.id, post.status) {
         viewModel.getPostImages(post.id)
+        Log.d("PostCard", "Rendering post ID: ${post.id}, Status: ${post.status}, Report: ${post.report}, ShowHidden: $showHiddenPost")
+    }
+
+    if (post.status?.lowercase() == "archived") {
+        Log.w("PostCard", "Archived post ID: ${post.id} reached UI")
+        return
     }
 
     Card(
-        shape = RectangleShape,
+        shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Box(modifier = Modifier.padding(16.dp)) {
             Column {
-                // Profile and Header 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -191,153 +198,163 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = post.content ?: "No content available.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Black
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Updated Image Carousel
-                if (imageUrls.isNotEmpty()) {
-                    if (imageUrls.size == 1) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    onShowFullScreenImage(imageUrls, 0)
-                                }
-                        ) {
-                            AsyncImage(
-                                model = imageUrls.first(),
-                                contentDescription = "Post image",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1.91f),
-                                contentScale = ContentScale.Crop
-                            )
+                when {
+                    post.status?.lowercase() == "hidden" && !showHiddenPost -> {
+                        Text(
+                            text = "This post is hidden",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = { showConfirmationDialog = true }) {
+                            Text("See Post")
                         }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(340.dp)
-                                .padding(top = 8.dp)
-                        ) {
-                            // Fix 1: Pass pageCount to rememberPagerState
-                            val pagerState = rememberPagerState(pageCount = { imageUrls.size })
-
-                            // Fix 2: Use state instead of count in HorizontalPager
-                            HorizontalPager(
-                                state = pagerState,
-                                pageSpacing = 0.dp,
-                                modifier = Modifier.fillMaxSize()
-                            ) { page ->
+                    }
+                    else -> {
+                        Text(
+                            text = post.content ?: "No content available.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        if (imageUrls.isNotEmpty()) {
+                            if (imageUrls.size == 1) {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxSize()
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp)
+                                        .clip(RoundedCornerShape(8.dp))
                                         .clickable {
-                                            onShowFullScreenImage(imageUrls, page)
+                                            onShowFullScreenImage(imageUrls, 0)
                                         }
                                 ) {
                                     AsyncImage(
-                                        model = imageUrls[page],
-                                        contentDescription = "Post image $page",
-                                        modifier = Modifier.fillMaxSize().fillMaxWidth(),
+                                        model = imageUrls.first(),
+                                        contentDescription = "Post image",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .aspectRatio(1.91f),
                                         contentScale = ContentScale.Crop
                                     )
-
                                 }
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .background(Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "${pagerState.currentPage + 1}/${imageUrls.size}",
-                                    color = Color.White,
-                                    // Fix 3: Replace caption with bodySmall
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-
-                            Row(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                imageUrls.forEachIndexed { index, _ ->
-                                    val isSelected = index == pagerState.currentPage
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(340.dp)
+                                        .padding(top = 8.dp)
+                                ) {
+                                    val pagerState = rememberPagerState(pageCount = { imageUrls.size })
+                                    HorizontalPager(
+                                        state = pagerState,
+                                        pageSpacing = 0.dp,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) { page ->
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clickable {
+                                                    onShowFullScreenImage(imageUrls, page)
+                                                }
+                                        ) {
+                                            AsyncImage(
+                                                model = imageUrls[page],
+                                                contentDescription = "Post image $page",
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        }
+                                    }
                                     Box(
                                         modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(if (isSelected) Color.White else Color.Transparent)
-                                            // Fix 4: border is already imported
-                                            .then(
-                                                if (!isSelected) Modifier.border(1.dp, Color.White, CircleShape)
-                                                else Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(8.dp)
+                                            .background(Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(4.dp))
+                                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "${pagerState.currentPage + 1}/${imageUrls.size}",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .padding(bottom = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        imageUrls.forEachIndexed { index, _ ->
+                                            val isSelected = index == pagerState.currentPage
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .clip(CircleShape)
+                                                    .background(if (isSelected) Color.White else Color.Transparent)
+                                                    .then(
+                                                        if (!isSelected) Modifier.border(1.dp, Color.White, CircleShape)
+                                                        else Modifier
+                                                    )
                                             )
-                                    )
+                                        }
+                                    }
                                 }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ReactionIcon(
+                                icon = Icons.Default.Favorite,
+                                isLiked = isLiked,
+                                onClick = { viewModel.toggleLike(post.id, post.user_id) }
+                            )
+                            Text(
+                                text = "$likeCount",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(start = 4.dp, end = 12.dp)
+                            )
+                            ReactionIcon(
+                                icon = Icons.Default.ChatBubble,
+                                onClick = onCommentClick
+                            )
+                            Text(
+                                text = "$commentCount",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(start = 4.dp, end = 12.dp)
+                            )
+                            ReactionIcon(
+                                icon = Icons.Default.Repeat,
+                                onClick = { onShowRepostScreen(post) }
+                            )
+                            Text(
+                                text = "$repostCount",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+                        }
+                        // Add "Hide Post" button for hidden posts when shown
+                        if (post.status?.lowercase() == "hidden" && showHiddenPost) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = { showHiddenPost = false },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
+                            ) {
+                                Text("Hide Post", color = Color.Black)
                             }
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Reactions 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ReactionIcon(
-                        icon = Icons.Default.Favorite,
-                        isLiked = isLiked,
-                        onClick = { viewModel.toggleLike(post.id, post.user_id) }
-                    )
-                    Text(
-                        text = "$likeCount",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(start = 4.dp, end = 12.dp)
-                    )
-                    ReactionIcon(
-                        icon = Icons.Default.ChatBubble,
-                        onClick = onCommentClick
-                    )
-                    Text(
-                        text = "$commentCount",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(start = 4.dp, end = 12.dp)
-                    )
-                    ReactionIcon(
-                        icon = Icons.Default.Repeat,
-                        onClick = { onShowRepostScreen(post) }
-                    )
-                    Text(
-                        text = "$repostCount",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
             }
 
-            // More Options 
             Box(modifier = Modifier.align(Alignment.TopEnd)) {
                 Icon(
                     imageVector = Icons.Default.Report,
@@ -352,16 +369,13 @@ fun PostCard(
         }
     }
 
-    // Report Dialog and User Action Dialog 
     if (showReportDialog) {
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
-            title = { Text(text = "Report Post") },
+            title = { Text("Report Post") },
             text = {
                 Column {
-                    Text(text = "Please select a reason for reporting this post:")
-                    Spacer(modifier = Modifier.height(16.dp))
-
+                    Text("Please select a reason:")
                     val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
                     reportOptions.forEach { reason ->
                         Row(
@@ -377,53 +391,60 @@ fun PostCard(
                             )
                             Text(
                                 text = reason,
-                                style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(start = 8.dp)
                             )
                         }
                     }
-
                     if (selectedReason == "Others") {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         TextField(
                             value = otherText,
                             onValueChange = { otherText = it },
-                            label = { Text("Please specify") },
+                            label = { Text("Specify reason") },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
             },
             confirmButton = {
-                Text(
-                    text = "Confirm",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (selectedReason.isNotEmpty() && (selectedReason != "Others" || otherText.isNotEmpty()))
-                        MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier
-                        .clickable {
-                            if (selectedReason.isNotEmpty()) {
-                                if (selectedReason == "Others" && otherText.isEmpty()) {
-                                    Toast.makeText(context, "Please specify the reason", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    onReportClick(post.id, selectedReason, if (selectedReason == "Others") otherText else null)
-                                    showReportDialog = false
-                                }
-                            }
+                TextButton(
+                    onClick = {
+                        if (selectedReason.isNotEmpty() && (selectedReason != "Others" || otherText.isNotEmpty())) {
+                            onReportClick(post.id, selectedReason, if (selectedReason == "Others") otherText else null)
+                            showReportDialog = false
+                        } else if (selectedReason == "Others") {
+                            Toast.makeText(context, "Please specify the reason", Toast.LENGTH_SHORT).show()
                         }
-                        .padding(8.dp)
-                )
+                    }
+                ) {
+                    Text("Confirm")
+                }
             },
             dismissButton = {
-                Text(
-                    text = "Cancel",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .clickable { showReportDialog = false }
-                        .padding(8.dp)
-                )
+                TextButton(onClick = { showReportDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmationDialog = false },
+            title = { Text("View Hidden Post") },
+            text = { Text("Are you sure you want to view this hidden post?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showHiddenPost = true
+                    showConfirmationDialog = false
+                }) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmationDialog = false }) {
+                    Text("No")
+                }
             }
         )
     }
