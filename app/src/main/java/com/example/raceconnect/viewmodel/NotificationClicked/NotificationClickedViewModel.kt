@@ -56,63 +56,42 @@ class NotificationClickedViewModel(private val apiService: ApiService = Retrofit
     }
 
     fun fetchPost(postId: Int?, repostId: Int? = null) {
-        Log.d("NotificationClickedViewModel", "fetchPost called with postId: $postId, repostId: $repostId")
         if (postId == null || postId <= 0) {
             _error.value = "Invalid post ID: $postId"
             Log.e("NotificationClickedViewModel", "Invalid post ID: $postId")
             return
         }
-
-        // Prevent duplicate fetches for the same postId and repostId
-        if (postId == lastFetchedPostId && repostId == lastFetchedRepostId && _post.value != null) {
-            Log.d("NotificationClickedViewModel", "Skipping duplicate fetch for postId: $postId, repostId: $repostId")
-            return
-        }
-
-        lastFetchedPostId = postId
-        lastFetchedRepostId = repostId
-
         viewModelScope.launch {
             _isLoading.value = true
-            _error.value = null
-            _post.value = null
-            _repost.value = null
-            _originalPost.value = null
-            Log.d("NotificationClickedViewModel", "Starting fetch for postId: $postId")
-
             try {
                 if (repostId != null && repostId > 0) {
                     Log.d("NotificationClickedViewModel", "Fetching repost with repostId: $repostId")
                     val repostResponse = apiService.getPostById(repostId)
-                    Log.d("NotificationClickedViewModel", "Repost API response code: ${repostResponse.code()}, body: ${repostResponse.body()}")
+                    Log.d("NotificationClickedViewModel", "Repost response code: ${repostResponse.code()}, body: ${repostResponse.body()}")
                     if (repostResponse.isSuccessful && repostResponse.body() != null) {
                         _repost.value = repostResponse.body()
                         Log.d("NotificationClickedViewModel", "Repost fetched: ${_repost.value}")
                         Log.d("NotificationClickedViewModel", "Fetching original post with postId: $postId")
                         val originalPostResponse = apiService.getPostById(postId)
-                        Log.d("NotificationClickedViewModel", "Original post API response code: ${originalPostResponse.code()}, body: ${originalPostResponse.body()}")
+                        Log.d("NotificationClickedViewModel", "Original post response code: ${originalPostResponse.code()}, body: ${originalPostResponse.body()}")
                         if (originalPostResponse.isSuccessful && originalPostResponse.body() != null) {
                             _originalPost.value = originalPostResponse.body()
                             Log.d("NotificationClickedViewModel", "Original post fetched: ${_originalPost.value}")
                         } else {
                             _error.value = "Failed to fetch original post: ${originalPostResponse.message()}"
-                            Log.e("NotificationClickedViewModel", "Original post fetch failed: ${originalPostResponse.message()}")
                         }
                     } else {
                         _error.value = "Failed to fetch repost: ${repostResponse.message()}"
-                        Log.e("NotificationClickedViewModel", "Repost fetch failed: ${repostResponse.message()}")
                     }
                 } else {
-                    Log.d("NotificationClickedViewModel", "Fetching regular post with postId: $postId")
+                    Log.d("NotificationClickedViewModel", "Fetching post with postId: $postId")
                     val response = apiService.getPostById(postId)
-                    Log.d("NotificationClickedViewModel", "Post API response code: ${response.code()}, body: ${response.body()}")
+                    Log.d("NotificationClickedViewModel", "Post response code: ${response.code()}, body: ${response.body()}")
                     if (response.isSuccessful && response.body() != null) {
-                        _post.value = response.body()
-                        _repost.value = response.body() // Sync repost for UI consistency
-                        Log.d("NotificationClickedViewModel", "Post fetched: ${_post.value}")
+                        _repost.value = response.body()
+                        Log.d("NotificationClickedViewModel", "Post fetched: ${_repost.value}")
                     } else {
                         _error.value = "Failed to fetch post: ${response.message()}"
-                        Log.e("NotificationClickedViewModel", "Post fetch failed: ${response.message()}")
                     }
                 }
             } catch (e: Exception) {
@@ -120,7 +99,6 @@ class NotificationClickedViewModel(private val apiService: ApiService = Retrofit
                 Log.e("NotificationClickedViewModel", "Exception during fetch: ${e.message}", e)
             } finally {
                 _isLoading.value = false
-                Log.d("NotificationClickedViewModel", "Fetch completed. isLoading: ${_isLoading.value}, error: ${_error.value}")
             }
         }
     }

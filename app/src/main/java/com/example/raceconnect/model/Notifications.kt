@@ -20,10 +20,14 @@ data class Notification(
     @SerializedName("convo_id") val convoId: Int?,
     @SerializedName("trigger_user_id") val triggerUserId: Int?,
     @SerializedName("trigger_username") val triggerUsername: String?,
-    @SerializedName("trigger_profile_picture") val triggerProfilePicture: String?
+    @SerializedName("trigger_profile_picture") val triggerProfilePicture: String?,
+    @SerializedName("is_admin") private val isAdminInt: Int?
 ) {
     val isRead: Boolean
         get() = isReadInt == 1
+
+    val isAdmin: Boolean
+        get() = isAdminInt == 1 // True if sent by admin
 }
 
 data class NotificationRequest(
