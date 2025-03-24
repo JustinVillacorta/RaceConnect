@@ -31,12 +31,20 @@ class UserPostsPagingSource(
             )
 
             if (response.isSuccessful) {
-                val posts = response.body() ?: emptyList()
-                Log.d("UserPostsPagingSource", "Fetched ${posts.size} posts for userId $userId")
+                val rawPosts = response.body() ?: emptyList()
+                Log.d("UserPostsPagingSource", "Fetched ${rawPosts.size} raw posts for userId $userId")
+
+                // Filter out archived posts, keep active and hidden
+                val filteredPosts = rawPosts.filter { post ->
+                    val statusLower = post.status?.lowercase()
+                    statusLower != "archived"
+                }
+                Log.d("UserPostsPagingSource", "Filtered to ${filteredPosts.size} posts (excluded archived)")
+
                 LoadResult.Page(
-                    data = posts,
+                    data = filteredPosts,
                     prevKey = if (page == 0) null else page - 1,
-                    nextKey = if (posts.isEmpty() || posts.size < limit) null else page + 1
+                    nextKey = if (filteredPosts.isEmpty() || filteredPosts.size < limit) null else page + 1
                 )
             } else {
                 Log.e("UserPostsPagingSource", "Failed to fetch posts: ${response.message()}")
