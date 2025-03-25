@@ -32,13 +32,13 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
 
         composable(NavRoutes.Signup.route) {
             SignupScreen(
-                onSignupClick = { ctx, username, email, password, onSignupSuccess ->
-                    viewModel.signUp(ctx, username, email, password) { message ->
-                        Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
-                        if (message.contains("success", ignoreCase = true)) onSignupSuccess()
-                    }
+                navController = navController,
+                onSignupClick = { context, username, email, password, onSuccess ->
+                    // Simulate signup logic (e.g., API call)
+                    // On success:
+                    onSuccess()
                 },
-                onBackNavigate = { navController.navigateUp() }
+                onBackNavigate = { navController.popBackStack() }
             )
         }
     }
