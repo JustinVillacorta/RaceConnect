@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -600,7 +601,6 @@ fun EditPostScreen(
     val userPreferences = remember { UserPreferences(context) }
     val user by userPreferences.user.collectAsState(initial = null)
 
-    // Define mappings for category and privacy
     val categoryMap = mapOf(
         "F1" to "Formula 1",
         "LEM" to "24 Hours of Lemans",
@@ -615,35 +615,29 @@ fun EditPostScreen(
         "private" to "Only me"
     )
 
-    // State variables
     var title by remember { mutableStateOf(post.title ?: "") }
     var content by remember { mutableStateOf(post.content ?: "") }
-    var selectedCategory by remember { mutableStateOf(post.category ?: "Formula 1") }
-    var selectedPrivacy by remember { mutableStateOf(post.privacy ?: "Public") }
+    var selectedCategory by remember { mutableStateOf(categoryMap[post.category] ?: "Formula 1") }
+    var selectedPrivacy by remember { mutableStateOf(privacyMap[post.privacy] ?: "Public") }
     val existingImages = remember { mutableStateListOf<PostImage>() }
     val deleteImageIds = remember { mutableStateListOf<Int>() }
     val newImageUris = remember { mutableStateListOf<Uri>() }
 
-    // Fetch existing images when the screen loads
     LaunchedEffect(Unit) {
         try {
             val response = RetrofitInstance.api.GetPostImg(post.id)
             if (response.isSuccessful) {
                 existingImages.addAll(response.body() ?: emptyList())
-            } else {
-                Log.e("EditPostScreen", "Failed to fetch images: ${response.message()}")
             }
         } catch (e: Exception) {
             Log.e("EditPostScreen", "Error fetching images: ${e.message}")
         }
     }
 
-    // Image picker launcher for multiple images
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
-        newImageUris.addAll(uris)
+        newImageUris.addAll(uris.distinct()) // Avoid duplicates
     }
 
-    // Dropdown options
     val categories = listOf("Formula 1", "24 Hours of Lemans", "World Rally Championship", "NASCAR", "Formula Drift", "GT Championship")
     val privacyOptions = listOf("Public", "Friends Only", "Only me")
 
@@ -656,7 +650,7 @@ fun EditPostScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Header with back button and save button
+            // TopBar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -707,159 +701,256 @@ fun EditPostScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
             )
 
-            // Main content
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                // Title field
-                OutlinedTextField(
+                // Profile Section
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                ) {
+                    val profilePictureUri = user?.profilePicture?.let { Uri.parse(it) }
+                    if (profilePictureUri != null) {
+                        val painter = rememberAsyncImagePainter(model = profilePictureUri)
+                        Image(
+                            painter = painter,
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier.size(40.dp).clip(CircleShape)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = user?.username ?: "Anonymous",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+
+                // Title TextField
+                TextField(
                     value = title,
                     onValueChange = { title = it },
                     label = { Text("Title") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
                 )
-                Spacer(modifier = Modifier.height(8.dp))
 
-                // Content field
+                // Dropdowns
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    var categoryExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = categoryExpanded,
+                        onExpandedChange = { categoryExpanded = !categoryExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        TextField(
+                            value = selectedCategory,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Category", style = MaterialTheme.typography.labelMedium) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .height(48.dp)
+                                .fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            textStyle = MaterialTheme.typography.bodySmall,
+                            colors = ExposedDropdownMenuDefaults.textFieldColors(
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = categoryExpanded,
+                            onDismissRequest = { categoryExpanded = false },
+                            modifier = Modifier
+                                .width(IntrinsicSize.Min)
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                        ) {
+                            categories.forEach { category ->
+                                DropdownMenuItem(
+                                    text = { Text(category, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    onClick = {
+                                        selectedCategory = category
+                                        categoryExpanded = false
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                    var privacyExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = privacyExpanded,
+                        onExpandedChange = { privacyExpanded = !privacyExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        TextField(
+                            value = selectedPrivacy,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Privacy", style = MaterialTheme.typography.labelMedium) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = privacyExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .height(48.dp)
+                                .fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            textStyle = MaterialTheme.typography.bodySmall,
+                            colors = ExposedDropdownMenuDefaults.textFieldColors(
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = privacyExpanded,
+                            onDismissRequest = { privacyExpanded = false },
+                            modifier = Modifier
+                                .width(IntrinsicSize.Min)
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                        ) {
+                            privacyOptions.forEach { privacy ->
+                                DropdownMenuItem(
+                                    text = { Text(privacy, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    onClick = {
+                                        selectedPrivacy = privacy
+                                        privacyExpanded = false
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Content TextField
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
                     label = { Text("Content") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Category dropdown
-                var categoryExpanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = categoryExpanded,
-                    onExpandedChange = { categoryExpanded = !categoryExpanded },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    TextField(
-                        value = selectedCategory,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Category") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                        modifier = Modifier.menuAnchor(),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = categoryExpanded,
-                        onDismissRequest = { categoryExpanded = false }
-                    ) {
-                        categories.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category) },
-                                onClick = {
-                                    selectedCategory = category
-                                    categoryExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Privacy dropdown
-                var privacyExpanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = privacyExpanded,
-                    onExpandedChange = { privacyExpanded = !privacyExpanded },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    TextField(
-                        value = selectedPrivacy,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Privacy") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = privacyExpanded) },
-                        modifier = Modifier.menuAnchor(),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = privacyExpanded,
-                        onDismissRequest = { privacyExpanded = false }
-                    ) {
-                        privacyOptions.forEach { privacy ->
-                            DropdownMenuItem(
-                                text = { Text(privacy) },
-                                onClick = {
-                                    selectedPrivacy = privacy
-                                    privacyExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Existing images section
-                Text("Existing Images:", modifier = Modifier.padding(top = 8.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(existingImages) { image ->
-                        Box(modifier = Modifier.padding(4.dp)) {
-                            Image(
-                                painter = rememberAsyncImagePainter(image.image_url),
-                                contentDescription = "Existing post image",
-                                modifier = Modifier.size(100.dp)
-                            )
-                            IconButton(
-                                onClick = {
-                                    deleteImageIds.add(image.id)
-                                    existingImages.remove(image)
-                                },
-                                modifier = Modifier.align(Alignment.TopEnd)
-                            ) {
-                                Icon(Icons.Default.Close, contentDescription = "Remove image")
-                            }
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // New images section
-                Text("New Images:", modifier = Modifier.padding(top = 8.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(newImageUris) { uri ->
-                        Box(modifier = Modifier.padding(4.dp)) {
-                            Image(
-                                painter = rememberAsyncImagePainter(uri),
-                                contentDescription = "New post image",
-                                modifier = Modifier.size(100.dp)
-                            )
-                            IconButton(
-                                onClick = { newImageUris.remove(uri) },
-                                modifier = Modifier.align(Alignment.TopEnd)
-                            ) {
-                                Icon(Icons.Default.Close, contentDescription = "Remove image")
-                            }
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Button to add new images
-                OutlinedButton(
-                    onClick = { launcher.launch("image/*") },
+                    placeholder = { Text("What's on your mind?") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 8.dp)
+                        .background(Color.Transparent, shape = RoundedCornerShape(8.dp)),
+                    textStyle = MaterialTheme.typography.bodyLarge
+                )
+
+                // Existing Images Preview
+                if (existingImages.isNotEmpty()) {
+                    Text("Existing Images:", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 8.dp))
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        itemsIndexed(existingImages) { _, image ->
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                            ) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(image.image_url),
+                                    contentDescription = "Existing Image",
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                                IconButton(
+                                    onClick = {
+                                        deleteImageIds.add(image.id)
+                                        existingImages.remove(image)
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(24.dp)
+                                        .background(Color.Gray.copy(alpha = 0.7f), CircleShape)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove Image",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // New Images Preview
+                if (newImageUris.isNotEmpty()) {
+                    Text("New Images:", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 8.dp))
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        itemsIndexed(newImageUris) { index, uri ->
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                            ) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(uri),
+                                    contentDescription = "New Image",
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                                IconButton(
+                                    onClick = {
+                                        newImageUris.removeAt(index)
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(24.dp)
+                                        .background(Color.Gray.copy(alpha = 0.7f), CircleShape)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove Image",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Add Photo Button
+                OutlinedButton(
+                    onClick = { launcher.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Add Images")
+                    Icon(Icons.Default.Image, contentDescription = "Pick Images")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add Photos")
                 }
+
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
