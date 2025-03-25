@@ -618,8 +618,8 @@ fun EditPostScreen(
     // State variables
     var title by remember { mutableStateOf(post.title ?: "") }
     var content by remember { mutableStateOf(post.content ?: "") }
-    var selectedCategory by remember { mutableStateOf(categoryMap[post.category] ?: "Formula 1") }
-    var selectedPrivacy by remember { mutableStateOf(privacyMap[post.privacy] ?: "Public") }
+    var selectedCategory by remember { mutableStateOf(post.category ?: "Formula 1") }
+    var selectedPrivacy by remember { mutableStateOf(post.privacy ?: "Public") }
     val existingImages = remember { mutableStateListOf<PostImage>() }
     val deleteImageIds = remember { mutableStateListOf<Int>() }
     val newImageUris = remember { mutableStateListOf<Uri>() }
@@ -682,8 +682,8 @@ fun EditPostScreen(
                                 postId = post.id,
                                 updatedContent = content,
                                 updatedTitle = title,
-                                updatedCategory = updatedCategoryCode,
-                                updatedPrivacy = updatedPrivacyCode,
+                                updatedCategory = selectedCategory,
+                                updatedPrivacy = selectedPrivacy,
                                 deleteImageIds = deleteImageIds,
                                 newImageUris = newImageUris,
                                 onSuccess = { onClose() },

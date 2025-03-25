@@ -92,4 +92,5 @@ data class UpdatePostRequest(
     val category: String? = null,
 
     @SerializedName("privacy")
-    val privacy: String? = null)
+    val privacy: String? = null
+)

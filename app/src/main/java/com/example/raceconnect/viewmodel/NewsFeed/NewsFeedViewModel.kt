@@ -408,18 +408,25 @@ class NewsFeedViewModel(
         updatedTitle: String?,
         updatedCategory: String?,
         updatedPrivacy: String?,
-        deleteImageIds: List<Int>, // Added to support image deletion
-        newImageUris: List<Uri>,   // Updated to support multiple images
+        deleteImageIds: List<Int>,
+        newImageUris: List<Uri>,
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
         viewModelScope.launch {
             try {
+                if (updatedContent.isBlank()) {
+                    onFailure("Content cannot be empty")
+                    return@launch
+                }
+
+                Log.d("UpdatePost", "Sending update: postId=$postId, content=$updatedContent, title=$updatedTitle, category=$updatedCategory, privacy=$updatedPrivacy")
+
                 val contentPart = updatedContent.toRequestBody("text/plain".toMediaTypeOrNull())
-                val titlePart = updatedTitle?.toRequestBody("text/plain".toMediaTypeOrNull())
-                val categoryPart = updatedCategory?.toRequestBody("text/plain".toMediaTypeOrNull())
-                val privacyPart = updatedPrivacy?.toRequestBody("text/plain".toMediaTypeOrNull())
-                val hasImages = newImageUris.isNotEmpty() // Simplified type determination
+                val titlePart = updatedTitle?.takeIf { it.isNotBlank() }?.toRequestBody("text/plain".toMediaTypeOrNull())
+                val categoryPart = updatedCategory?.takeIf { it.isNotBlank() }?.toRequestBody("text/plain".toMediaTypeOrNull())
+                val privacyPart = updatedPrivacy?.takeIf { it.isNotBlank() }?.toRequestBody("text/plain".toMediaTypeOrNull())
+                val hasImages = newImageUris.isNotEmpty()
                 val typePart = (if (hasImages) "image" else "text").toRequestBody("text/plain".toMediaTypeOrNull())
                 val postTypePart = "normal".toRequestBody("text/plain".toMediaTypeOrNull())
                 val deleteImageIdsPart = if (deleteImageIds.isNotEmpty()) {
