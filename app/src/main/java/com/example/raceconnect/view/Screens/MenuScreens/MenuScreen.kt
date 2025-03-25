@@ -55,9 +55,9 @@ fun MenuScreen(
     val userState by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = userState?.id ?: 0
 
-    LaunchedEffect(Unit) {
-        if (profileData == null && loggedInUserId != 0) {
-            Log.d("ProfileScreen", "Loading profile data on screen start")
+    LaunchedEffect(loggedInUserId) {
+        if (loggedInUserId != 0) {
+            Log.d("MenuScreen", "Reloading profile data for userId: $loggedInUserId")
             profileDetailsViewModel.loadProfileData()
         }
     }

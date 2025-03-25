@@ -32,6 +32,14 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
     internal val _isEditMode = MutableStateFlow(false)
     val isEditMode: StateFlow<Boolean> = _isEditMode.asStateFlow()
 
+    private val _navigationEvent = MutableStateFlow<NavigationEvent>(NavigationEvent.Idle)
+    val navigationEvent: StateFlow<NavigationEvent> = _navigationEvent.asStateFlow()
+
+    sealed class NavigationEvent {
+        object Idle : NavigationEvent()
+        object NavigateBack : NavigationEvent()
+    }
+
     private val apiService: ApiService = RetrofitInstance.api
 
     init {
@@ -92,6 +100,7 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
         contactNumber: String,
         address: String,
         bio: String,
+        imageFile: File?,
         userPreferences: UserPreferences
     ) {
         viewModelScope.launch {
@@ -108,6 +117,10 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
                     Log.w("ProfileDetailsViewModel", "No token available for API request")
                     _isLoading.value = false
                     return@launch
+                }
+
+                if (imageFile != null) {
+                    uploadProfileImage(imageFile)
                 }
 
                 val updateRequest = UpdateUserRequest(
@@ -135,6 +148,7 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
                     }
                     _isEditMode.value = false
                     _errorMessage.value = null
+                    _navigationEvent.value = NavigationEvent.NavigateBack
                 } else {
                     _errorMessage.value = response.body()?.message ?: "Failed to save user data: ${response.message()}"
                     Log.e("ProfileDetailsViewModel", "Failed to save user data: ${response.message()}")
@@ -190,6 +204,10 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
         }
     }
 
+    fun resetNavigationEvent() {
+        _navigationEvent.value = NavigationEvent.Idle
+    }
+
     fun toggleEditMode() {
         _isEditMode.value = !_isEditMode.value
         if (!_isEditMode.value) {
@@ -217,8 +235,19 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
             birthdate = user.birthdate,
             number = user.number,
             address = user.address,
+            age = user.age,
+            profilePicture = user.profilePicture,
             bio = user.bio,
-            profilePicture = user.profilePicture
+            favoriteCategories = user.favoriteCategories?.toSet(),
+            favoriteMarketplaceItems = user.favoriteMarketplaceItems?.toSet(),
+            friendsList = user.friendsList?.toSet(),
+            friendPrivacy = user.friendPrivacy,
+            lastOnline = user.lastOnline,
+            status = user.status,
+            report = user.report,
+            suspensionEndDate = user.suspensionEndDate,
+            createdAt = user.createdAt,
+            updatedAt = user.updatedAt
         )
         Log.d("ProfileDetailsViewModel", "User preferences synced: $user")
     }

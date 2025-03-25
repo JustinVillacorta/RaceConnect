@@ -63,6 +63,7 @@ fun MyProfileScreen(
     val isLoading by profileDetailsViewModel.isLoading.collectAsState()
     val errorMessage by profileDetailsViewModel.errorMessage.collectAsState()
     val isEditMode by profileDetailsViewModel.isEditMode.collectAsState()
+    val navigationEvent by profileDetailsViewModel.navigationEvent.collectAsState()
 
     var username by remember { mutableStateOf(TextFieldValue(profileData?.username ?: "")) }
     var birthDate by remember { mutableStateOf(TextFieldValue(profileData?.birthdate ?: "")) }
@@ -70,11 +71,20 @@ fun MyProfileScreen(
     var address by remember { mutableStateOf(TextFieldValue(profileData?.address ?: "")) }
     var bio by remember { mutableStateOf(TextFieldValue(profileData?.bio ?: "")) }
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedImageFile by remember { mutableStateOf<File?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     // Reset edit mode when the screen is first created
     LaunchedEffect(Unit) {
-        profileDetailsViewModel.resetEditMode()
+        profileDetailsViewModel.loadProfileData()
+    }
+
+    // Handle navigation after save
+    LaunchedEffect(navigationEvent) {
+        if (navigationEvent == ProfileDetailsViewModel.NavigationEvent.NavigateBack) {
+            onClose()
+            profileDetailsViewModel.resetNavigationEvent()
+        }
     }
 
     // Reset edit mode when navigating away
@@ -106,7 +116,7 @@ fun MyProfileScreen(
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     file.outputStream().use { output -> input.copyTo(output) }
                 }
-                profileDetailsViewModel.uploadProfileImage(file)
+                selectedImageFile = file
             }
         }
     }
@@ -373,6 +383,7 @@ fun MyProfileScreen(
                                 contactNumber.text,
                                 address.text,
                                 bio.text,
+                                selectedImageFile,
                                 userPreferences
                             )
                             onCloseWithReset()
