@@ -74,7 +74,8 @@ class NewsFeedPagingSourceAllPosts(
 
             val posts = postsResponse.body() ?: emptyList()
             Log.d("PagingSourceAllPosts", "Fetched ${posts.size} posts: ${posts.map { "ID=${it.id}, CreatedAt=${it.created_at}, Username=${it.username}" }}")
-            val allItems = mutableListOf<NewsFeedDataClassItem>()
+            val userPosts = apiService.getPostsByUserId(userId, limit, offset).body()?.filter { it.status?.lowercase() != "archived" } ?: emptyList()
+            val allItems = (userPosts + posts).distinctBy { it.id }.toMutableList()
             val processedIds = mutableSetOf<Int>() // Page-specific deduplication for posts and announcements
             val processedRepostIds = mutableSetOf<Int>() // Separate deduplication for reposts
             val originalPostIds = mutableSetOf<Int>()
