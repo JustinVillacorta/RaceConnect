@@ -58,6 +58,7 @@ fun NewsFeedPreferencesScreen(
     var searchQuery by remember { mutableStateOf("") }
     var isEditable by remember { mutableStateOf(false) } // New state for edit mode
 
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {

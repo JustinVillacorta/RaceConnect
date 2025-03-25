@@ -38,11 +38,24 @@ class UserPreferences(private val context: Context) {
         private val UPDATED_AT = stringPreferencesKey("updated_at")
     }
 
+    suspend fun cleanupInvalidCategories() {
+        context.dataStore.edit { preferences ->
+            val currentCategories = preferences[FAVORITE_CATEGORIES]?.toList() ?: emptyList()
+            val cleanedCategories = currentCategories.filter { it.isNotEmpty() && it != "[]" }.toSet()
+            if (currentCategories != cleanedCategories) {
+                preferences[FAVORITE_CATEGORIES] = cleanedCategories
+                Log.d("UserPreferences", "Cleaned up invalid categories. Before: $currentCategories, After: $cleanedCategories")
+            } else {
+                Log.d("UserPreferences", "No invalid categories found. Current categories: $currentCategories")
+            }
+        }
+    }
+
     suspend fun migrateOldDataIfNeeded() {
         context.dataStore.edit { preferences ->
             val oldFavoriteCategories = preferences[OLD_FAVORITE_CATEGORIES]
             if (oldFavoriteCategories != null) {
-                val categoriesSet = oldFavoriteCategories.split(",").filter { it.isNotEmpty() }.toSet()
+                val categoriesSet = oldFavoriteCategories.split(",").filter { it.isNotEmpty() && it != "[]" }.toSet()
                 preferences[FAVORITE_CATEGORIES] = categoriesSet
                 preferences.remove(OLD_FAVORITE_CATEGORIES)
                 Log.d("UserPreferences", "Migrated favorite_categories to favorite_categories_v2: $categoriesSet")
@@ -99,7 +112,7 @@ class UserPreferences(private val context: Context) {
             age?.let { preferences[AGE] = it }
             profilePicture?.let { preferences[PROFILE_PICTURE] = it }
             bio?.let { preferences[BIO] = it }
-            favoriteCategories?.let { preferences[FAVORITE_CATEGORIES] = it }
+            favoriteCategories?.let { preferences[FAVORITE_CATEGORIES] = it.filter { it.isNotEmpty() && it != "[]" }.toSet() }
             favoriteMarketplaceItems?.let { preferences[FAVORITE_MARKETPLACE_ITEMS] = it }
             friendsList?.let { preferences[FRIENDS_LIST] = it.map { it.toString() }.toSet() }
             friendPrivacy?.let { preferences[FRIEND_PRIVACY] = it }
@@ -126,7 +139,7 @@ class UserPreferences(private val context: Context) {
             age = preferences[AGE],
             profilePicture = preferences[PROFILE_PICTURE],
             bio = preferences[BIO],
-            favoriteCategories = preferences[FAVORITE_CATEGORIES]?.toList() ?: emptyList(),
+            favoriteCategories = preferences[FAVORITE_CATEGORIES]?.filter { it.isNotEmpty() && it != "[]" }?.toList() ?: emptyList(),
             favoriteMarketplaceItems = preferences[FAVORITE_MARKETPLACE_ITEMS]?.toList() ?: emptyList(),
             friendsList = preferences[FRIENDS_LIST]?.mapNotNull { it.toIntOrNull() } ?: emptyList(),
             friendPrivacy = preferences[FRIEND_PRIVACY],
@@ -144,22 +157,27 @@ class UserPreferences(private val context: Context) {
     }
 
     val selectedCategories: Flow<List<String>> = context.dataStore.data.map { preferences ->
-        if (preferences[USER_ID] != null) {
-            preferences[FAVORITE_CATEGORIES]?.toList() ?: listOf("F1")
+        val categories = if (preferences[USER_ID] != null) {
+            preferences[FAVORITE_CATEGORIES]?.filter { it.isNotEmpty() && it != "[]" }?.toList() ?: listOf("F1")
         } else {
             listOf("F1")
         }
+        Log.d("UserPreferences", "Emitting selected categories: $categories")
+        categories
     }
 
     suspend fun saveSelectedCategories(categories: List<String>) {
+        val filteredCategories = categories.filter { it.isNotEmpty() && it != "[]" }
         context.dataStore.edit { preferences ->
-            preferences[FAVORITE_CATEGORIES] = categories.toSet()
+            preferences[FAVORITE_CATEGORIES] = filteredCategories.toSet()
+            Log.d("UserPreferences", "Saved selected categories: $filteredCategories")
         }
     }
 
     suspend fun clearSelectedCategories() {
         context.dataStore.edit { preferences ->
             preferences.remove(FAVORITE_CATEGORIES)
+            Log.d("UserPreferences", "Cleared selected categories")
         }
     }
 

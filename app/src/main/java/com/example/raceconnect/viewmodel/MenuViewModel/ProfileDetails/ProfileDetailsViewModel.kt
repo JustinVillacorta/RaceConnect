@@ -238,14 +238,6 @@ class ProfileDetailsViewModel(private val userPreferences: UserPreferences) : Vi
             age = user.age,
             profilePicture = user.profilePicture,
             bio = user.bio,
-            favoriteCategories = user.favoriteCategories?.toSet(),
-            favoriteMarketplaceItems = user.favoriteMarketplaceItems?.toSet(),
-            friendsList = user.friendsList?.toSet(),
-            friendPrivacy = user.friendPrivacy,
-            lastOnline = user.lastOnline,
-            status = user.status,
-            report = user.report,
-            suspensionEndDate = user.suspensionEndDate,
             createdAt = user.createdAt,
             updatedAt = user.updatedAt
         )
