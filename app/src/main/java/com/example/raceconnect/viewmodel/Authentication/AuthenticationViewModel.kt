@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.ApiResponse
+import com.example.raceconnect.model.AppealRequest
 import com.example.raceconnect.model.ForgotPasswordRequest
 import com.example.raceconnect.model.LoginRequest
 import com.example.raceconnect.model.LoginResponse
@@ -41,6 +42,9 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
+
+    val _appealSubmitted = MutableStateFlow(false)
+    val appealSubmitted: StateFlow<Boolean> = _appealSubmitted
 
     init {
         loadUser()
@@ -363,6 +367,26 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
             } catch (e: Exception) {
                 Log.e("ResetPasswordScreen", "❌ Network error while resetting password: ${e.message}", e)
                 onResult(false, "Network error: ${e.message}")
+            }
+        }
+    }
+
+    fun submitAppeal(appealRequest: AppealRequest) {
+        viewModelScope.launch {
+            try {
+                isLoading.value = true
+                // TODO: Replace with your actual API endpoint
+                val response = RetrofitInstance.api.submitAppeal(appealRequest)
+                if (response.isSuccessful) {
+                    _appealSubmitted.value = true
+                    ErrorMessage.value = null
+                } else {
+                    ErrorMessage.value = "Failed to submit appeal. Please try again."
+                }
+            } catch (e: Exception) {
+                ErrorMessage.value = "Error: ${e.message}"
+            } finally {
+                isLoading.value = false
             }
         }
     }

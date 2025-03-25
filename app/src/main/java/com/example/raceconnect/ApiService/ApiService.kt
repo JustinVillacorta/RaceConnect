@@ -348,4 +348,7 @@ interface ApiService {
         @Query("offset") offset: Int
     ): List<AnnouncementDataClass>
 
+    @POST("appeals/submit")
+    suspend fun submitAppeal(@Body appealRequest: AppealRequest): Response<ApiResponse>
+
 }

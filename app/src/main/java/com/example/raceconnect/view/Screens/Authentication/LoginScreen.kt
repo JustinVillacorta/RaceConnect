@@ -26,11 +26,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.raceconnect.R // Replace with your own R import if needed
+import com.example.raceconnect.view.Screens.Authentication.AppealDialog
 import com.example.raceconnect.view.Screens.Authentication.ForgotPasswordDialog
 import com.example.raceconnect.view.Screens.Authentication.OtpVerificationDialog
 import com.example.raceconnect.view.Screens.Authentication.ResetPasswordDialog
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.time.delay
 
 @Composable
 fun LoginScreen(
@@ -51,10 +54,12 @@ fun LoginScreen(
     var showForgotPasswordDialog by remember { mutableStateOf(false) }
     var showOtpDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
+    var showAppealDialog by remember { mutableStateOf(false) }
 
-// Holds the email from Forgot Password step to OTP, then to Reset
+    // Holds the email from Forgot Password step to OTP, then to Reset
     var tempEmail by remember { mutableStateOf("") }
 
+    val appealSubmitted by viewModel.appealSubmitted.collectAsState()
 
     // Main column fills the screen
     Column(modifier = Modifier.fillMaxSize()) {
@@ -213,6 +218,15 @@ fun LoginScreen(
                         )
                     }
 
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Need to submit an appeal?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.clickable { showAppealDialog = true }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     // Push the footer (logo + text) to the bottom
                     Spacer(modifier = Modifier.weight(1f))
 
@@ -288,7 +302,26 @@ fun LoginScreen(
         )
     }
 
+    if (showAppealDialog) {
+        AppealDialog(
+            onDismiss = { showAppealDialog = false },
+            onSubmit = { appealRequest ->
+                viewModel.submitAppeal(appealRequest)
+            }
+        )
+    }
 
+    if (appealSubmitted) {
+        LaunchedEffect(Unit) {
+            // Reset the appeal submitted state after showing the message
+            delay(3000)
+            viewModel._appealSubmitted.value = false
+        }
+        Text(
+            text = "Appeal submitted successfully!",
+            color = Color.Green,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    }
 }
-
-
