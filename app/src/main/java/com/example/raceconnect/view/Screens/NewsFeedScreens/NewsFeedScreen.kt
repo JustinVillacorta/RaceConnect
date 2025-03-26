@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,8 +29,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.paging.LoadState
@@ -45,7 +48,6 @@ import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.sp
 import com.example.raceconnect.model.AnnouncementDataClass
 import com.example.raceconnect.view.ui.theme.fontFamily
 import kotlinx.coroutines.delay
@@ -74,6 +76,11 @@ fun NewsFeedScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
+
+
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val sheetHeight = screenHeight * 0.85f
 
     // Log received items for debugging
     LaunchedEffect(posts.itemCount) {
@@ -108,7 +115,10 @@ fun NewsFeedScreen(
     if (showBottomSheet) {
         ModalBottomSheet(
             sheetState = sheetState,
-            onDismissRequest = { showBottomSheet = false }
+            onDismissRequest = { showBottomSheet = false },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(sheetHeight) // Set the height to 3/4 of the screen
         ) {
             CommentSectionScreen(
                 postId = selectedPostId ?: -1,
@@ -202,7 +212,7 @@ fun NewsFeedScreen(
                                     originalPost = originalPost,
                                     navController = navController,
                                     viewModel = viewModel,
-                                    onCommentClick = { selectedPostId = originalPost.id; showBottomSheet = true }, // Fixed here
+                                    onCommentClick = { selectedPostId = originalPost.id; showBottomSheet = true },
                                     onLikeClick = { liked ->
                                         if (liked) viewModel.toggleLike(feedItem.id, feedItem.user_id) else viewModel.unlikePost(feedItem.id)
                                     },

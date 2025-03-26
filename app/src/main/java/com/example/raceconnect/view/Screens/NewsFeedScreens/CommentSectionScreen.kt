@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,7 +34,7 @@ import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
 
-@SuppressLint("RememberReturnType")
+@SuppressLint("RememberReturnType", "UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun CommentSectionScreen(
     postId: Int,
@@ -89,13 +90,22 @@ fun CommentSectionScreen(
                 }
             )
         }
-    ) { paddingValues ->
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
+            // Header Text "Comments" centered at the top
+            Text(
+                text = "Comments",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                textAlign = TextAlign.Center
+            )
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -158,6 +168,7 @@ fun CommentSectionScreen(
         }
     }
 }
+
 @Composable
 fun CommentInput(
     commentText: String,
@@ -174,7 +185,7 @@ fun CommentInput(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(

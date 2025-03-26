@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="RaceConnect">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-03-26T10:48:36.087135100Z">
+        <DropdownSelection timestamp="2025-03-26T10:58:54.360466600Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\proga\.android\avd\Pixel_9_Pro_API_35.avd" />
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=10944373AK101625" />
             </handle>
           </Target>
         </DropdownSelection>
