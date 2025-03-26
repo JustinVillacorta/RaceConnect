@@ -354,8 +354,8 @@ fun EditMarketplaceItemScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 100.dp)
-                            .padding(bottom = 8.dp),
-                        maxLines = 5
+                            .padding(bottom = 4.dp),
+                        maxLines = 3
                     )
 
                     var listingStatusExpanded by remember { mutableStateOf(false) }
@@ -402,7 +402,7 @@ fun EditMarketplaceItemScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
-                            .padding(top = 16.dp),
+                            .padding(top = 12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Red)
                     ) {
                         Text("Save Changes", color = Color.White)

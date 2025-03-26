@@ -45,6 +45,7 @@ fun AppealDialog(
                 
                 OutlinedTextField(
                     value = username,
+                    singleLine = true,
                     onValueChange = { username = it },
                     label = { Text("Username") },
                     modifier = Modifier.fillMaxWidth()
@@ -52,6 +53,7 @@ fun AppealDialog(
 
                 OutlinedTextField(
                     value = email,
+                    singleLine = true,
                     onValueChange = { email = it },
                     label = { Text("Email Address") },
                     modifier = Modifier.fillMaxWidth()
