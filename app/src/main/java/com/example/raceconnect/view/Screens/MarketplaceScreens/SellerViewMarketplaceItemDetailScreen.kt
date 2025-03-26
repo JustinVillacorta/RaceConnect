@@ -25,12 +25,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import kotlinx.coroutines.launch
 
@@ -105,8 +107,7 @@ fun SellerViewMarketplaceItemDetailScreen(
                 title = {
                     Text(
                         text = "${item?.title ?: "Loading..."} details",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        fontFamily = fontFamily, color = Color.White, fontSize = 24.sp
                     )
                 },
                 navigationIcon = {

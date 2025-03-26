@@ -41,6 +41,7 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import kotlinx.coroutines.launch
@@ -125,9 +126,7 @@ fun MarketplaceItemDetailScreen(
                     Text(
                         text = "${item.value?.title ?: "Loading..."} details",
                         style = TextStyle(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            fontFamily = fontFamily, color = Color.White, fontSize = 24.sp
                         )
                     )
                 },
