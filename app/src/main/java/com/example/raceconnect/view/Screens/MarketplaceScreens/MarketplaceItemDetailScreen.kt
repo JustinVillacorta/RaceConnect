@@ -4,11 +4,11 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -171,7 +171,7 @@ fun MarketplaceItemDetailScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(if (isSystemInDarkTheme()) Black else Color.White)
+                    .background(Color.White)
                     .padding(paddingValues)
             ) {
                 Column(
@@ -180,26 +180,89 @@ fun MarketplaceItemDetailScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .then(
-                                if (isHidden && !showHiddenItem) Modifier.blur(10.dp) else Modifier
-                            ),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(imagesForItem) { imageUrl ->
-                            AsyncImage(
-                                model = imageUrl,
-                                contentDescription = "Item image",
+                    // Carousel with HorizontalPager (Copied from PostCard)
+                    if (imagesForItem.isNotEmpty()) {
+                        if (imagesForItem.size == 1) {
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxHeight()
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .width(200.dp)
-                                    .background(LightGray),
-                                contentScale = ContentScale.Crop
-                            )
+                                    .then(
+                                        if (isHidden && !showHiddenItem) Modifier.blur(10.dp) else Modifier
+                                    )
+                            ) {
+                                AsyncImage(
+                                    model = imagesForItem.first(),
+                                    contentDescription = "Item image",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(1.91f),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp) // Adjusted height to match previous LazyRow
+                                    .padding(top = 8.dp)
+                                    .then(
+                                        if (isHidden && !showHiddenItem) Modifier.blur(10.dp) else Modifier
+                                    )
+                            ) {
+                                val pagerState = rememberPagerState(pageCount = { imagesForItem.size })
+                                HorizontalPager(
+                                    state = pagerState,
+                                    pageSpacing = 0.dp,
+                                    modifier = Modifier.fillMaxSize()
+                                ) { page ->
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                    ) {
+                                        AsyncImage(
+                                            model = imagesForItem[page],
+                                            contentDescription = "Item image $page",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(8.dp)
+                                        .background(Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "${pagerState.currentPage + 1}/${imagesForItem.size}",
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    imagesForItem.forEachIndexed { index, _ ->
+                                        val isSelected = index == pagerState.currentPage
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .background(if (isSelected) Color.White else Color.Transparent)
+                                                .then(
+                                                    if (!isSelected) Modifier.border(1.dp, Color.White, CircleShape)
+                                                    else Modifier
+                                                )
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -208,7 +271,7 @@ fun MarketplaceItemDetailScreen(
                         style = TextStyle(
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isSystemInDarkTheme()) Color.White else Black
+                            color = Black
                         ),
                         modifier = Modifier
                             .padding(horizontal = 4.dp)
@@ -232,7 +295,7 @@ fun MarketplaceItemDetailScreen(
                             style = TextStyle(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isSystemInDarkTheme()) Color.White else Black
+                                color = Black
                             )
                         )
                         Text(
@@ -242,7 +305,7 @@ fun MarketplaceItemDetailScreen(
                                 color = when (item.value!!.listing_status) {
                                     "Available" -> Color.Green
                                     "Sold" -> Color.Red
-                                    else -> if (isSystemInDarkTheme()) LightGray else DarkGray
+                                    else -> DarkGray
                                 }
                             )
                         )
@@ -252,7 +315,7 @@ fun MarketplaceItemDetailScreen(
                         text = "Category: ${item.value!!.category}",
                         style = TextStyle(
                             fontSize = 16.sp,
-                            color = if (isSystemInDarkTheme()) LightGray else DarkGray
+                            color = DarkGray
                         ),
                         modifier = Modifier
                             .padding(horizontal = 4.dp)
@@ -265,7 +328,7 @@ fun MarketplaceItemDetailScreen(
                         text = item.value!!.description,
                         style = TextStyle(
                             fontSize = 16.sp,
-                            color = if (isSystemInDarkTheme()) Color.White else Black
+                            color = Black
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
