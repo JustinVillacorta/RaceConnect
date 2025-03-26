@@ -20,8 +20,8 @@ class NotificationViewModel(private val apiService: ApiService = RetrofitInstanc
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _selectedPost = MutableStateFlow<NewsFeedDataClassItem?>(null)
-    val selectedPost: StateFlow<NewsFeedDataClassItem?> = _selectedPost.asStateFlow()
+    private val _selectedPost = MutableStateFlow<PostByIdResponse?>(null)
+    val selectedPost: StateFlow<PostByIdResponse?> = _selectedPost.asStateFlow()
 
     fun fetchNotifications(userId: Int) {
         viewModelScope.launch {
@@ -119,7 +119,7 @@ class NotificationViewModel(private val apiService: ApiService = RetrofitInstanc
             try {
                 val response = apiService.getPostById(postId)
                 if (response.isSuccessful) {
-                    _selectedPost.value = response.body()
+                    _selectedPost.value = response.body() as PostByIdResponse?
                     _error.value = null
                 } else {
                     _error.value = "Failed to fetch post: ${response.code()} - ${response.errorBody()?.string()}"

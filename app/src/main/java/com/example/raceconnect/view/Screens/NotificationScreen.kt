@@ -32,6 +32,7 @@ import com.example.raceconnect.model.Notification
 import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.viewmodel.NotificationClickedViewModel
 import com.example.raceconnect.viewmodel.NotificationViewModel
 import com.example.raceconnect.viewmodel.NotificationViewModelFactory
 import kotlinx.coroutines.flow.first
@@ -208,6 +209,17 @@ fun NotificationItem(
     onDelete: () -> Unit,
     onClick: () -> Unit
 ) {
+    val viewModel: NotificationClickedViewModel = viewModel()
+    val repost by viewModel.repost.collectAsState()
+    val originalPost by viewModel.originalPost.collectAsState()
+
+    // Fetch repost and original post if this is a repost notification
+    LaunchedEffect(notification.repostId, notification.postId) {
+        if (notification.repostId != null && notification.postId != null) {
+            viewModel.fetchPost(notification.postId, notification.repostId)
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -222,7 +234,7 @@ fun NotificationItem(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Profile Picture (unchanged)
+        // Profile Picture
         if (notification.triggerProfilePicture != null && !notification.isAdmin) {
             Image(
                 painter = rememberAsyncImagePainter(notification.triggerProfilePicture),
@@ -244,30 +256,78 @@ fun NotificationItem(
         Spacer(modifier = Modifier.width(16.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = if (notification.isAdmin) "Admin" else (notification.triggerUsername ?: "Unknown User"),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                if (notification.isAdmin) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Default.Verified,
-                        contentDescription = "Admin Badge",
-                        tint = Color(0xFF1976D2),
-                        modifier = Modifier.size(16.dp)
+            if (notification.repostId != null && repost != null && originalPost != null) {
+                // Repost-specific UI
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "${repost!!.username} reposted",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = Color.Gray
                     )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    originalPost!!.profilePicture?.let { url ->
+                        Image(
+                            painter = rememberAsyncImagePainter(url),
+                            contentDescription = "Original User Profile",
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                        )
+                    } ?: Image(
+                        painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                        contentDescription = "Original User Profile",
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = originalPost!!.username,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Text(
+                            text = originalPost!!.content.take(50) + if (originalPost!!.content.length > 50) "..." else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+            } else {
+                // Regular notification UI
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (notification.isAdmin) "Admin" else (notification.triggerUsername ?: "Unknown User"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    if (notification.isAdmin) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.Verified,
+                            contentDescription = "Admin Badge",
+                            tint = Color(0xFF1976D2),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = notification.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             }
-            Text(
-                text = notification.content,
-                style = MaterialTheme.typography.bodyMedium,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onBackground
-            )
         }
 
         Column(horizontalAlignment = Alignment.End) {

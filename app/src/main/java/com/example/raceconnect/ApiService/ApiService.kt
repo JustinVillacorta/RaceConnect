@@ -83,6 +83,9 @@ interface ApiService {
         @Path("id") id: Int
     ): Response<NewsFeedDataClassItem>
 
+    @GET("posts/{id}")
+    suspend fun getPostDetailById(@Path("id") id: Int): Response<PostByIdResponse>
+
     @Multipart
     @POST("posts")
     suspend fun createPostWithImage(

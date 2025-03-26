@@ -31,6 +31,31 @@ data class NewsFeedDataClassItem(
     val isAnnouncement: Boolean = false // New field to flag announcements
 )
 
+data class PostByIdResponse(
+    @SerializedName("original_post_id") val originalPostId: Int? = null,
+    val id: Int,
+    @SerializedName("user_id") val userId: Int,
+    val username: String,
+    val title: String,
+    val content: String,
+    @SerializedName("like_count") val likeCount: Int,
+    @SerializedName("comment_count") val commentCount: Int,
+    @SerializedName("repost_count") val repostCount: Int,
+    val category: String,
+    val privacy: String,
+    val type: String,
+    @SerializedName("post_type") val postType: String,
+    val status: String,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("updated_at") val updatedAt: String,
+    val report: String,
+    @SerializedName("archived_at") val archivedAt: String?,
+    @SerializedName("reported_at") val reportedAt: String?,
+    @SerializedName("profile_picture") val profilePicture: String,
+    val images: List<PostImage>
+)
+
+
 data class PostResponse(
     val message: String,
     val post_id: String,
