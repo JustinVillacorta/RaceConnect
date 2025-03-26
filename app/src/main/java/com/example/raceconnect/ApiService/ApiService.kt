@@ -311,6 +311,11 @@ interface ApiService {
         @Body request: CreateRepostRequest
     ): Response<CreateRepostResponse>
 
+    @GET("post-reposts/repost/{repostId}")
+    suspend fun getRepostByRepostId(
+        @Path("repostId") repostId: Int
+    ): Response<Repost>
+
     @GET("post-reposts")
     suspend fun getRepostsByPostId(
         @Query("postId") postId: Int,

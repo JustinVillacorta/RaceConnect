@@ -35,8 +35,10 @@ import com.example.raceconnect.model.PostByIdResponse
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NotificationClickedViewModel
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.raceconnect.model.Repost
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +52,7 @@ fun PostDetailScreen(
 ) {
     val repost by viewModel.repost.collectAsState()
     val originalPost by viewModel.originalPost.collectAsState()
+    val repostData by viewModel.repostData.collectAsState() // Collect repostData
     val comments by viewModel.comments.collectAsState()
     val isLiked by viewModel.isLiked.collectAsState()
     val likeCount by viewModel.likeCount.collectAsState()
@@ -137,10 +140,10 @@ fun PostDetailScreen(
                 ) {
                     item {
                         // Log the state to debug why RepostLayout isn't triggered
-                        Log.d("PostDetailScreen", "repostId: $repostId, originalPost: $originalPost, repost: $repost")
-                        if (repostId != null && originalPost != null) {
+                        Log.d("PostDetailScreen", "repostId: $repostId, originalPost: $originalPost, repost: $repost, repostData: $repostData")
+                        if (repostId != null && originalPost != null && repostData != null) {
                             RepostLayout(
-                                repost = repost!!,
+                                repostData = repostData!!, // Pass repostData
                                 originalPost = originalPost!!,
                                 isLiked = isLiked,
                                 likeCount = likeCount,
@@ -216,7 +219,7 @@ fun PostDetailScreen(
 
 @Composable
 fun RepostLayout(
-    repost: PostByIdResponse,
+    repostData: Repost, // Use Repost instead of PostByIdResponse for repost user info
     originalPost: PostByIdResponse,
     isLiked: Boolean,
     likeCount: Int,
@@ -231,36 +234,16 @@ fun RepostLayout(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Repost header (e.g., "pogi12345 reposted")
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "${repost.username} reposted",
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = repost.createdAt.let { formatTimestamp(it) },
-                    color = Color.Gray,
-                    fontSize = 12.sp
-                )
-            }
-
-            // Original post content
+            // Repost user info (profile picture, username, "reposted", timestamp)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                originalPost.profilePicture?.let { url ->
+                // Profile picture
+                repostData.profilePicture?.let { url ->
                     Image(
                         painter = rememberAsyncImagePainter(model = imageRequest(url)),
-                        contentDescription = "Original User Profile",
+                        contentDescription = "Repost User Profile",
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape),
@@ -274,118 +257,186 @@ fun RepostLayout(
                 ) {
                     Icon(
                         imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "Original User Profile",
+                        contentDescription = "Repost User Profile",
                         modifier = Modifier.fillMaxSize(),
                         tint = Color.Black
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Column(
-                    modifier = Modifier.weight(1f)
+                // Username, "reposted", and timestamp
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = originalPost.username,
+                        text = repostData.username,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black,
                         fontSize = 16.sp
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = originalPost.createdAt.let { formatTimestamp(it) },
+                        text = "reposted",
+                        color = Color.Gray,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "·",
+                        color = Color.Gray,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = formatTimestamp(repostData.createdAt),
                         color = Color.Gray,
                         fontSize = 12.sp
                     )
                 }
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Info",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(20.dp)
-                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Original post content (text)
-            if (originalPost.content.isNotEmpty()) {
+            // Display the repost quote (if it exists)
+            repostData.quote?.takeIf { it.isNotEmpty() }?.let { quote ->
                 Text(
-                    text = originalPost.content,
+                    text = quote,
                     color = Color.Black,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Original post image (if available)
-            originalPost.images.firstOrNull()?.image_url?.let { imageUrl ->
-                Image(
-                    painter = rememberAsyncImagePainter(model = imageRequest(imageUrl)),
-                    contentDescription = "Repost Image",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+            // Nested card for original post content
+            Card(
+                shape = RoundedCornerShape(4.dp),
+                border = BorderStroke(1.dp, Color.Gray),
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Box {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        // Original post user info
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            originalPost.profilePicture?.let { url ->
+                                Image(
+                                    painter = rememberAsyncImagePainter(model = imageRequest(url)),
+                                    contentDescription = "Original User Profile",
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } ?: Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Gray)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AccountCircle,
+                                    contentDescription = "Original User Profile",
+                                    modifier = Modifier.fillMaxSize(),
+                                    tint = Color.Black
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = originalPost.username,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = formatTimestamp(originalPost.createdAt),
+                                    color = Color.Gray,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Original post content (text)
+                        if (originalPost.content.isNotEmpty()) {
+                            Text(
+                                text = originalPost.content,
+                                color = Color.Black,
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
+                        // Original post image (if available)
+                        originalPost.images.firstOrNull()?.image_url?.let { imageUrl ->
+                            Image(
+                                painter = rememberAsyncImagePainter(model = imageRequest(imageUrl)),
+                                contentDescription = "Repost Image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(150.dp)
+                                    .clip(RoundedCornerShape(4.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                    // Report button (Info icon) at the top-right corner
+                    IconButton(
+                        onClick = { /* Handle report action */ },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Report",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
 
-            // Action buttons (Like, Comment, Repost)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Action buttons (Like, Comment, Repost) - Icons only
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.Start
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onLikeClick) {
-                        Icon(
-                            imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Like",
-                            tint = if (isLiked) Color.Red else Color.Gray,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Text(
-                        text = "$likeCount",
-                        color = Color.Black,
-                        fontSize = 14.sp
-                    )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                IconButton(onClick = onLikeClick) {
                     Icon(
-                        imageVector = Icons.Default.Comment,
-                        contentDescription = "Comment",
-                        tint = Color.Gray,
+                        imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Like",
+                        tint = if (isLiked) Color.Red else Color.Gray,
                         modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "$commentsCount",
-                        color = Color.Black,
-                        fontSize = 14.sp
-                    )
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Repeat,
-                        contentDescription = "Repost",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${originalPost.repostCount}",
-                        color = Color.Black,
-                        fontSize = 14.sp
-                    )
-                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Icon(
+                    imageVector = Icons.Default.Comment,
+                    contentDescription = "Comment",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Icon(
+                    imageVector = Icons.Default.Repeat,
+                    contentDescription = "Repost",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

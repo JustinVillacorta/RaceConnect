@@ -8,7 +8,9 @@ data class Repost(
     @SerializedName("post_id") val postId: Int,
     @SerializedName("owner_id") val ownerId: Int,
     @SerializedName("quote") val quote: String?,
-    @SerializedName("created_at") val createdAt: String
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("username") val username: String,
+    @SerializedName("profile_picture") val profilePicture: String?
 )
 
 data class CreateRepostRequest(

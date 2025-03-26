@@ -7,6 +7,7 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.LikeRequest
 import com.example.raceconnect.model.PostByIdResponse
 import com.example.raceconnect.model.PostComment
+import com.example.raceconnect.model.Repost
 import com.example.raceconnect.network.ApiService
 import com.example.raceconnect.network.RetrofitInstance
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,9 @@ class NotificationClickedViewModel(
 
     private val _originalPost = MutableStateFlow<PostByIdResponse?>(null)
     val originalPost: StateFlow<PostByIdResponse?> = _originalPost.asStateFlow()
+
+    private val _repostData = MutableStateFlow<Repost?>(null) // New StateFlow for Repost data
+    val repostData: StateFlow<Repost?> = _repostData.asStateFlow()
 
     private val _comments = MutableStateFlow<List<PostComment>>(emptyList())
     val comments: StateFlow<List<PostComment>> = _comments.asStateFlow()
@@ -54,84 +58,51 @@ class NotificationClickedViewModel(
         authToken = "Bearer $token"
     }
 
-    fun fetchPost(postId: Int?, repostId: Int? = null) {
-        if (postId == null || postId <= 0) {
-            _error.value = "Invalid post ID: $postId"
-            Log.e("NotificationClickedViewModel", "Invalid post ID: $postId")
-            return
-        }
-
+    fun fetchPost(postId: Int, repostId: Int?) {
         viewModelScope.launch {
             _isLoading.value = true
+            _error.value = null
             try {
-                if (repostId != null && repostId > 0) {
-                    // Fetch the repost post
-                    Log.d("NotificationClickedViewModel", "Fetching repost with repostId: $repostId")
-                    val repostResponse = apiService.getPostDetailById(repostId)
-                    if (repostResponse.isSuccessful && repostResponse.body() != null) {
-                        val repostData = repostResponse.body()!!
-                        _repost.value = repostData
-                        Log.d("NotificationClickedViewModel", "Repost fetched: $repostData")
+                if (repostId != null) {
+                    // Fetch repost details first
+                    val repostResponse = apiService.getRepostByRepostId(repostId)
+                    if (repostResponse.isSuccessful) {
+                        val repostData = repostResponse.body()
+                        if (repostData != null) {
+                            _repostData.value = repostData // Store the Repost data
 
-                        // Fetch the original post using originalPostId if available
-                        repostData.originalPostId?.let { originalId ->
-                            if (originalId > 0) {
-                                Log.d("NotificationClickedViewModel", "Fetching original post with originalPostId: $originalId")
-                                val originalPostResponse = apiService.getPostDetailById(originalId)
-                                if (originalPostResponse.isSuccessful && originalPostResponse.body() != null) {
-                                    _originalPost.value = originalPostResponse.body()
-                                    Log.d("NotificationClickedViewModel", "Original post fetched: ${_originalPost.value}")
-                                } else {
-                                    _error.value = "Failed to fetch original post: ${originalPostResponse.message()}"
-                                    Log.w("NotificationClickedViewModel", "Failed to fetch original post: ${originalPostResponse.code()}")
-                                }
-                            } else {
-                                _originalPost.value = null
-                                Log.w("NotificationClickedViewModel", "Invalid originalPostId: $originalId")
+                            // Fetch the repost post details
+                            val repostPostResponse = apiService.getPostDetailById(repostData.id)
+                            if (repostPostResponse.isSuccessful) {
+                                _repost.value = repostPostResponse.body()
                             }
-                        } ?: run {
-                            _originalPost.value = null
-                            Log.w("NotificationClickedViewModel", "No originalPostId provided in repost")
+
+                            // Fetch the original post using the postId from repost
+                            val originalPostResponse = apiService.getPostDetailById(repostData.postId)
+                            if (originalPostResponse.isSuccessful) {
+                                _originalPost.value = originalPostResponse.body()
+                            } else {
+                                _error.value = "Failed to fetch original post: ${originalPostResponse.errorBody()?.string()}"
+                            }
+                        } else {
+                            _error.value = "Repost data is null"
                         }
                     } else {
-                        _error.value = "Failed to fetch repost: ${repostResponse.message()}"
-                        Log.w("NotificationClickedViewModel", "Failed to fetch repost: ${repostResponse.code()}")
+                        _error.value = "Failed to fetch repost: ${repostResponse.errorBody()?.string()}"
                     }
                 } else {
-                    // Fetch a single post
-                    Log.d("NotificationClickedViewModel", "Fetching post with postId: $postId")
+                    // Fetch regular post
                     val response = apiService.getPostDetailById(postId)
-                    if (response.isSuccessful && response.body() != null) {
-                        val postData = response.body()!!
-                        _repost.value = postData
-                        _originalPost.value = null // No repost context here
-                        Log.d("NotificationClickedViewModel", "Post fetched: $postData")
-
-                        // If this post is a repost, fetch the original using originalPostId
-                        postData.originalPostId?.let { originalId ->
-                            if (originalId > 0) {
-                                Log.d("NotificationClickedViewModel", "Fetching original post with originalPostId: $originalId")
-                                val originalPostResponse = apiService.getPostDetailById(originalId)
-                                if (originalPostResponse.isSuccessful && originalPostResponse.body() != null) {
-                                    _originalPost.value = originalPostResponse.body()
-                                    Log.d("NotificationClickedViewModel", "Original post fetched: ${_originalPost.value}")
-                                } else {
-                                    _error.value = "Failed to fetch original post: ${originalPostResponse.message()}"
-                                    Log.w("NotificationClickedViewModel", "Failed to fetch original post: ${originalPostResponse.code()}")
-                                }
-                            }
-                        }
+                    if (response.isSuccessful) {
+                        _repost.value = response.body()
+                        _originalPost.value = null
+                        _repostData.value = null // Clear repost data for non-reposts
                     } else {
-                        _error.value = "Failed to fetch post: ${response.message()}"
-                        Log.w("NotificationClickedViewModel", "Failed to fetch post: ${response.code()}")
+                        _error.value = "Failed to fetch post: ${response.errorBody()?.string()}"
                     }
                 }
-
-                lastFetchedPostId = postId
-                lastFetchedRepostId = repostId
             } catch (e: Exception) {
-                _error.value = "Error fetching post/repost: ${e.message}"
-                Log.e("NotificationClickedViewModel", "Exception during fetch", e)
+                _error.value = "Error fetching post: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -256,6 +227,7 @@ class NotificationClickedViewModel(
     fun clearPost() {
         _repost.value = null
         _originalPost.value = null
+        _repostData.value = null // Clear repost data
         _comments.value = emptyList()
         _isLiked.value = false
         _likeCount.value = 0
