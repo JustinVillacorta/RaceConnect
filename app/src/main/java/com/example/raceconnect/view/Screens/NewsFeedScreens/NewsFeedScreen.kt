@@ -171,7 +171,7 @@ fun NewsFeedScreen(
                                         title = feedItem.title ?: "Announcement",
                                         content = feedItem.content,
                                         image_url = feedItem.images?.firstOrNull(),
-                                        status = "active", // Assume active for display
+                                        status = "active",
                                         created_at = feedItem.created_at
                                     )
                                 )
@@ -200,7 +200,7 @@ fun NewsFeedScreen(
                                     originalPost = originalPost,
                                     navController = navController,
                                     viewModel = viewModel,
-                                    onCommentClick = { selectedPostId = feedItem.id; showBottomSheet = true },
+                                    onCommentClick = { selectedPostId = originalPost.id; showBottomSheet = true }, // Fixed here
                                     onLikeClick = { liked ->
                                         if (liked) viewModel.toggleLike(feedItem.id, feedItem.user_id) else viewModel.unlikePost(feedItem.id)
                                     },
