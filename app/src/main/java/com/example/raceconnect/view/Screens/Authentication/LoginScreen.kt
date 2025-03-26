@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
@@ -15,26 +14,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.raceconnect.R // Replace with your own R import if needed
+import com.example.raceconnect.R
 import com.example.raceconnect.view.Screens.Authentication.AppealDialog
 import com.example.raceconnect.view.Screens.Authentication.ForgotPasswordDialog
 import com.example.raceconnect.view.Screens.Authentication.OtpVerificationDialog
 import com.example.raceconnect.view.Screens.Authentication.ResetPasswordDialog
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
-import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.time.delay
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     viewModel: AuthenticationViewModel,
@@ -50,31 +46,31 @@ fun LoginScreen(
 
     val errorMessage by viewModel.ErrorMessage.collectAsState()
 
-    // In your LoginScreen:
+    // Check for 401 (Unauthorized) error
+    val isAuthError = errorMessage?.contains("401") == true ||
+            errorMessage?.contains("Unauthorized", ignoreCase = true) == true
+
+    // Check for 400 (Bad Request) error
+    val isBadRequestError = errorMessage?.contains("400") == true ||
+            errorMessage?.contains("Bad Request", ignoreCase = true) == true
+
+    // Dialog states
     var showForgotPasswordDialog by remember { mutableStateOf(false) }
     var showOtpDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showAppealDialog by remember { mutableStateOf(false) }
-
-    // Holds the email from Forgot Password step to OTP, then to Reset
     var tempEmail by remember { mutableStateOf("") }
 
     val appealSubmitted by viewModel.appealSubmitted.collectAsState()
 
-    // Main column fills the screen
     Column(modifier = Modifier.fillMaxSize()) {
-
-        // 1) Red header with "Log In" centered
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            // 1) Red header at the top
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Red header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)    // Adjust as needed
-                    .background(color = Color(0xFFC62828)) // Use your brand color
+                    .height(160.dp)
+                    .background(color = Color(0xFFC62828))
             ) {
                 Text(
                     text = "Log In",
@@ -85,12 +81,12 @@ fun LoginScreen(
                 )
             }
 
-            // 2) Main card that sits below the red header
+            // Main card
             Card(
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 120.dp) // So it overlaps the red header
+                    .padding(top = 120.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -98,16 +94,14 @@ fun LoginScreen(
                         .padding(horizontal = 16.dp, vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // 2.1) "Ready, Set, Connect!" text
                     Text(
                         text = "Ready, Set, Connect!",
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFFC62828),  // Make this red or brand color
-                        modifier = Modifier
-                            .padding(16.dp)
+                        color = Color(0xFFC62828),
+                        modifier = Modifier.padding(16.dp)
                     )
 
-                    // Email TextField with red icon
+                    // Username TextField with conditional red border for 401
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it },
@@ -120,12 +114,16 @@ fun LoginScreen(
                                 tint = Color(0xFFC62828)
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = isAuthError || isBadRequestError, // Red border for 401 or 400
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            errorBorderColor = Color.Red
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Password TextField with red icon + toggle
+                    // Password TextField with conditional red border for 401
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
@@ -138,27 +136,26 @@ fun LoginScreen(
                                 tint = Color(0xFFC62828)
                             )
                         },
-                        visualTransformation = if (isPasswordVisible) {
-                            VisualTransformation.None
-                        } else {
-                            PasswordVisualTransformation()
-                        },
+                        visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                                 Icon(
-                                    imageVector = if (isPasswordVisible) Icons.Default.Visibility
-                                    else Icons.Default.VisibilityOff,
+                                    imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                     contentDescription = null,
                                     tint = Color(0xFFC62828)
                                 )
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = isAuthError || isBadRequestError, // Red border for 401 or 400
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            errorBorderColor = Color.Red
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Row with "Remember me" + "Forgot Password?" in red
+                    // Remember me and Forgot Password row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -171,28 +168,30 @@ fun LoginScreen(
                             )
                             Text(text = "Remember me", color = Color.Black)
                         }
-
-                        // "Forgot Password?" in red
                         TextButton(
                             onClick = { showForgotPasswordDialog = true },
                             contentPadding = PaddingValues(0.dp)
                         ) {
                             Text("Forgot Password?", color = Color(0xFFC62828))
                         }
-
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Display error message, overriding for 401 and 400
                     errorMessage?.let {
                         Text(
-                            text = it,
+                            text = when {
+                                isAuthError -> "Incorrect username or password"
+                                isBadRequestError -> "Enter your username and password"
+                                else -> it
+                            },
                             color = Color.Red,
                             modifier = Modifier.padding(16.dp)
                         )
                     }
 
-                    // Log in button in red
+                    // Log in button
                     Button(
                         onClick = { onLoginClick(username, password) },
                         modifier = Modifier.fillMaxWidth(),
@@ -206,15 +205,13 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // "Don't have an account? Sign Up" - only "Sign Up" is red and clickable
+                    // Sign up link
                     Row {
                         Text(text = "Don't have an account? ", color = Color.Black)
                         Text(
                             text = "Sign Up",
                             color = Color(0xFFC62828),
-                            modifier = Modifier.clickable {
-                                onSignupNavigate()
-                            }
+                            modifier = Modifier.clickable { onSignupNavigate() }
                         )
                     }
 
@@ -225,12 +222,9 @@ fun LoginScreen(
                         modifier = Modifier.clickable { showAppealDialog = true }
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Push the footer (logo + text) to the bottom
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // 3) Footer: RaceConnect logo + text
+                    // Footer
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -239,38 +233,33 @@ fun LoginScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.logo), // Replace with your logo resource
+                            painter = painterResource(id = R.drawable.logo),
                             contentDescription = "RaceConnect Logo",
-                            modifier = Modifier.size(100.dp)  // Adjust size as needed
+                            modifier = Modifier.size(100.dp)
                         )
-
                         Spacer(modifier = Modifier.width(8.dp))
-
                         Text(
                             text = "Welcome to RaceConnect! Login to manage your account\n" +
                                     "and access exclusive features.",
-                            color = Color(0xFFC62828), // Red text; change if you prefer another color
+                            color = Color(0xFFC62828),
                             fontSize = 12.sp,
                             textAlign = TextAlign.Start
                         )
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
     }
 
+    // Dialogs (unchanged)
     if (showForgotPasswordDialog) {
         ForgotPasswordDialog(
             viewModel = viewModel,
             onDismiss = { showForgotPasswordDialog = false },
             onOtpSent = { email ->
-                // 1) Close Forgot Password dialog
                 showForgotPasswordDialog = false
-                // 2) Store the email so the next dialog knows it
                 tempEmail = email
-                // 3) Open the OTP dialog
                 showOtpDialog = true
             }
         )
@@ -282,9 +271,7 @@ fun LoginScreen(
             email = tempEmail,
             onDismiss = { showOtpDialog = false },
             onVerified = {
-                // 1) Close OTP dialog
                 showOtpDialog = false
-                // 2) Open Reset Password dialog
                 showResetDialog = true
             }
         )
@@ -295,25 +282,19 @@ fun LoginScreen(
             viewModel = viewModel,
             email = tempEmail,
             onDismiss = { showResetDialog = false },
-            onResetSuccess = {
-                // Close Reset Password dialog
-                showResetDialog = false
-            }
+            onResetSuccess = { showResetDialog = false }
         )
     }
 
     if (showAppealDialog) {
         AppealDialog(
             onDismiss = { showAppealDialog = false },
-            onSubmit = { appealRequest ->
-                viewModel.submitAppeal(appealRequest)
-            }
+            onSubmit = { appealRequest -> viewModel.submitAppeal(appealRequest) }
         )
     }
 
     if (appealSubmitted) {
         LaunchedEffect(Unit) {
-            // Reset the appeal submitted state after showing the message
             delay(3000)
             viewModel._appealSubmitted.value = false
         }

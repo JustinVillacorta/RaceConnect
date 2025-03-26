@@ -1,6 +1,7 @@
 package com.example.raceconnect.ui
 
 import android.content.Context
+import android.util.Patterns
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,6 +39,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.R
 
 
@@ -52,7 +55,6 @@ fun TermsOfServiceDialog(
 
     val uriHandler = LocalUriHandler.current
 
-    // Define the terms text with an annotated email link
     val fullText = """
         Terms and Conditions for RaceConnect
 
@@ -124,7 +126,6 @@ fun TermsOfServiceDialog(
         }
     }
 
-    //Monitor the scroll state to enable the "Continue" button when the user reaches the end of TOS
     LaunchedEffect(scrollState) {
         snapshotFlow { scrollState.value to scrollState.maxValue }
             .collect { (value, maxValue) ->
@@ -143,9 +144,7 @@ fun TermsOfServiceDialog(
             )
         },
         text = {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Box(
                     modifier = Modifier
                         .height(300.dp)
@@ -160,13 +159,12 @@ fun TermsOfServiceDialog(
                         onClick = { offset ->
                             termsText.getStringAnnotations(tag = "URL", start = offset, end = offset)
                                 .firstOrNull()?.let { annotation ->
-                                    // Use the uriHandler captured from the composable context
                                     uriHandler.openUri(annotation.item)
                                 }
                         }
                     )
                 }
-                Divider(modifier = Modifier.padding(vertical = 8.dp)) // Visual separation
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -195,7 +193,7 @@ fun TermsOfServiceDialog(
                 TextButton(onClick = onDismiss) {
                     Text("Cancel")
                 }
-                Spacer(modifier = Modifier.width(8.dp)) // Add space between buttons
+                Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = onAccept,
                     enabled = isChecked && canProceed
@@ -209,6 +207,7 @@ fun TermsOfServiceDialog(
 
 @Composable
 fun SignupScreen(
+    navController: NavController,
     onSignupClick: (Context, String, String, String, () -> Unit) -> Unit,
     onBackNavigate: () -> Unit
 ) {
@@ -219,6 +218,9 @@ fun SignupScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+
+    // Email validation state
+    var isEmailValid by remember { mutableStateOf(true) }
 
     // Password match
     var passwordsMatch by remember { mutableStateOf(true) }
@@ -233,29 +235,28 @@ fun SignupScreen(
     var hasNumber by remember { mutableStateOf(false) }
     var hasMinLength by remember { mutableStateOf(false) }
 
-    // Update validation states when password changes
+    // Update validation states when password or email changes
     LaunchedEffect(password) {
         hasLowerCase = password.any { it.isLowerCase() }
         hasUpperCase = password.any { it.isUpperCase() }
         hasNumber = password.any { it.isDigit() }
         hasMinLength = password.length >= 8
     }
+    LaunchedEffect(email) {
+        isEmailValid = email.isEmpty() || Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
 
     var showTosDialog by remember { mutableStateOf(false) }
     var tosAccepted by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        // 1) Red header
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Red header
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp)
                 .background(color = Color(0xFFC62828))
         ) {
-            // Back arrow (top-left)
             IconButton(
                 onClick = onBackNavigate,
                 modifier = Modifier
@@ -268,8 +269,6 @@ fun SignupScreen(
                     tint = Color.White
                 )
             }
-
-            // "Sign Up" text (center)
             Text(
                 text = "Sign Up",
                 style = MaterialTheme.typography.headlineMedium.copy(color = Color.White),
@@ -277,7 +276,7 @@ fun SignupScreen(
             )
         }
 
-        // 2) Main card (rounded top corners) that overlaps the header
+        // Main card
         Card(
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
             modifier = Modifier
@@ -290,16 +289,14 @@ fun SignupScreen(
                     .padding(horizontal = 16.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // "Ready, Set, Connect!" in bold red
                 Text(
                     text = "Ready, Set, Connect!",
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     color = Color(0xFFC62828)
                 )
-
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Username field with red icon
+                // Username field
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it },
@@ -314,10 +311,9 @@ fun SignupScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Email field with red icon
+                // Email field with validation
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -330,12 +326,20 @@ fun SignupScreen(
                             tint = Color(0xFFC62828)
                         )
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = !isEmailValid, // Red border if invalid
+                    supportingText = {
+                        if (!isEmailValid && email.isNotEmpty()) {
+                            Text(
+                                text = "Please enter a valid email address",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 )
+                Spacer(modifier = Modifier.height(4.dp))
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Password field with red lock + toggle
+                // Password field
                 OutlinedTextField(
                     value = password,
                     onValueChange = {
@@ -348,8 +352,7 @@ fun SignupScreen(
                     trailingIcon = {
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
                             Icon(
-                                imageVector = if (passwordVisible) Icons.Default.Visibility
-                                else Icons.Default.VisibilityOff,
+                                imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                 contentDescription = null,
                                 tint = Color(0xFFC62828)
                             )
@@ -365,10 +368,9 @@ fun SignupScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
-
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Confirm Password field with red lock + toggle
+                // Confirm Password field
                 OutlinedTextField(
                     value = confirmPassword,
                     onValueChange = {
@@ -381,8 +383,7 @@ fun SignupScreen(
                     trailingIcon = {
                         IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                             Icon(
-                                imageVector = if (confirmPasswordVisible) Icons.Default.Visibility
-                                else Icons.Default.VisibilityOff,
+                                imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                 contentDescription = null,
                                 tint = Color(0xFFC62828)
                             )
@@ -399,8 +400,6 @@ fun SignupScreen(
                     singleLine = true,
                     isError = !passwordsMatch
                 )
-
-                // If passwords don't match, show error text
                 if (!passwordsMatch) {
                     Text(
                         "Passwords do not match",
@@ -408,15 +407,14 @@ fun SignupScreen(
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Password requirements
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()  // Fill the full width of the parent
+                        .fillMaxWidth()
                         .padding(top = 8.dp),
-                    horizontalAlignment = Alignment.Start  // Align child items to the left
+                    horizontalAlignment = Alignment.Start
                 ) {
                     Text(
                         text = "PASSWORD MUST CONTAIN:",
@@ -455,21 +453,22 @@ fun SignupScreen(
                         Text(" Minimum 8 characters")
                     }
                 }
-
-
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Sign Up button (red)
+                // Sign Up button with email validation added to enabled condition
                 Button(
-                    onClick = { 
+                    onClick = {
                         if (!tosAccepted) {
                             showTosDialog = true
                         } else {
                             onSignupClick(context, username, email, password) {
+                                // Clear fields and pop the signup screen
                                 username = ""
                                 email = ""
                                 password = ""
                                 confirmPassword = ""
+                                Toast.makeText(context, "Account created successfully, please log in", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack()
                             }
                         }
                     },
@@ -477,7 +476,7 @@ fun SignupScreen(
                         .fillMaxWidth()
                         .padding(16.dp),
                     enabled = username.isNotEmpty() &&
-                            email.isNotEmpty() &&
+                            email.isNotEmpty() && isEmailValid && // Added email validation
                             password.isNotEmpty() &&
                             confirmPassword.isNotEmpty() &&
                             passwordsMatch &&
@@ -488,14 +487,12 @@ fun SignupScreen(
                 ) {
                     Text("Sign Up")
                 }
-
                 Spacer(modifier = Modifier.weight(1f))
-
             }
         }
     }
 
-    // Show TOS Dialog when needed
+    // Show TOS Dialog
     if (showTosDialog) {
         TermsOfServiceDialog(
             onDismiss = { showTosDialog = false },
@@ -503,21 +500,24 @@ fun SignupScreen(
                 tosAccepted = true
                 showTosDialog = false
                 onSignupClick(context, username, email, password) {
+                    // Clear fields and pop the signup screen
                     username = ""
                     email = ""
                     password = ""
                     confirmPassword = ""
+                    Toast.makeText(context, "Account created successfully, please log in", Toast.LENGTH_SHORT).show()
+                    navController.popBackStack()
                 }
             }
         )
     }
 }
 
-
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 fun PreviewSignupScreen() {
     SignupScreen(
+        navController = rememberNavController(), // For preview purposes
         onSignupClick = { _, _, _, _, _ -> },
         onBackNavigate = {}
     )

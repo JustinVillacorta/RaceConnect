@@ -228,9 +228,14 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
                         Log.e("MarketplaceViewModel", "Response body is null for user $userId")
                         _userItems.value = emptyList()
                     } else {
-                        _userItems.value = body
-                        Log.d("MarketplaceViewModel", "Fetched ${_userItems.value.size} listed items for user $userId")
-                        _userItems.value.forEach { item ->
+                        // Filter out "Archived" items client-side, though backend should already handle this
+                        val filteredItems = body.filter { item ->
+                            val status = item.status?.lowercase()
+                            status == "active" || status == "hidden"
+                        }
+                        _userItems.value = filteredItems
+                        Log.d("MarketplaceViewModel", "Fetched ${filteredItems.size} listed items for user $userId (Active/Hidden only)")
+                        filteredItems.forEach { item ->
                             fetchLikeStatus(item.id)
                             getMarketplaceItemImages(item.id)
                         }
@@ -384,59 +389,6 @@ class MarketplaceViewModel(private val userPreferences: UserPreferences) : ViewM
             }
         }
     }
-
-    fun addMarketplaceItem(
-        title: String,
-        price: String,
-        description: String,
-        category: String,
-        imageUrl: String = ""
-    ) {
-        viewModelScope.launch {
-            val sellerId = _currentUserId.value
-            if (sellerId == null) {
-                Log.e("MarketplaceViewModel", "No user logged in, cannot add marketplace item")
-                _errorMessage.value = "Cannot add item: No user logged in"
-                return@launch
-            }
-
-            try {
-                Log.d("MarketplaceViewModel", "Adding marketplace item without images...")
-                val sellerIdPart = sellerId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
-                val titlePart = title.toRequestBody("text/plain".toMediaTypeOrNull())
-                val pricePart = price.toRequestBody("text/plain".toMediaTypeOrNull())
-                val descriptionPart = description.toRequestBody("text/plain".toMediaTypeOrNull())
-                val categoryPart = category.toRequestBody("text/plain".toMediaTypeOrNull())
-                val statusPart = "Active".toRequestBody("text/plain".toMediaTypeOrNull())
-                val listingStatusPart = "Available".toRequestBody("text/plain".toMediaTypeOrNull())
-
-                val response = RetrofitInstance.api.MarketplacePostImage(
-                    seller_id = sellerIdPart,
-                    title = titlePart,
-                    description = descriptionPart,
-                    price = pricePart,
-                    category = categoryPart,
-                    status = statusPart,
-                    listing_status = listingStatusPart,
-                    images = null
-                )
-
-                if (response.isSuccessful) {
-                    Log.d("MarketplaceViewModel", "Item added successfully: ${response.body()}")
-                    fetchMarketplaceItems()
-                    fetchUserListedItems()
-                } else {
-                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                    Log.e("MarketplaceViewModel", "Failed to add item: $errorBody")
-                    _errorMessage.value = "Failed to add item: $errorBody"
-                }
-            } catch (e: Exception) {
-                Log.e("MarketplaceViewModel", "Error adding marketplace item", e)
-                _errorMessage.value = "Error adding item: ${e.message}"
-            }
-        }
-    }
-
     fun addMarketplaceItemWithImages(
         context: Context,
         title: String,

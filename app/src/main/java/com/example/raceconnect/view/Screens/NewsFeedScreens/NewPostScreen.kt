@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,6 +39,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
+import com.google.common.math.LinearTransformation.vertical
 
 @Composable
 fun AddPostSection(
@@ -139,9 +142,12 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
     var selectedCategory by remember { mutableStateOf("Formula 1") }
     var selectedPrivacy by remember { mutableStateOf("Public") }
 
-    // Use GetMultipleContents to select multiple images
+    // Modified launcher to append new images instead of replacing
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri>? ->
-        selectedImageUris = uris ?: emptyList()
+        if (uris != null) {
+            // Append new URIs to existing list and remove duplicates
+            selectedImageUris = (selectedImageUris + uris).distinct()
+        }
     }
 
     val userPreferences = remember { UserPreferences(context) }
@@ -341,7 +347,7 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                     }
                 }
 
-                // TextField
+                // TextField (unchanged)
                 OutlinedTextField(
                     value = postText,
                     onValueChange = { postText = it },
@@ -351,33 +357,53 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
                         .background(Color.Transparent, shape = RoundedCornerShape(8.dp)),
-                    textStyle = MaterialTheme.typography.bodyLarge,
-
+                    textStyle = MaterialTheme.typography.bodyLarge
                 )
 
-
-                // Image Preview for Multiple Images
+                // Modified Image Preview with Remove Functionality
                 if (selectedImageUris.isNotEmpty()) {
                     LazyRow(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
                     ) {
-                        items(selectedImageUris) { uri ->
-                            Image(
-                                painter = rememberAsyncImagePainter(uri),
-                                contentDescription = "Selected Image",
+                        itemsIndexed(selectedImageUris) { index, uri ->
+                            Box(
                                 modifier = Modifier
-                                    .size(100.dp)
                                     .padding(end = 8.dp)
-                                    .clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Crop
-                            )
+                            ) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(uri),
+                                    contentDescription = "Selected Image",
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                                IconButton(
+                                    onClick = {
+                                        selectedImageUris = selectedImageUris.toMutableList().apply {
+                                            removeAt(index)
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(24.dp)
+                                        .background(Color.Gray.copy(alpha = 0.7f), CircleShape)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove Image",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
 
-                // Add Photo Button
+                // Add Photo Button (unchanged)
                 OutlinedButton(
                     onClick = { launcher.launch("image/*") },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
