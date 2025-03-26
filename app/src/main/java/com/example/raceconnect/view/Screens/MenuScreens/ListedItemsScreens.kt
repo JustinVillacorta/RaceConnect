@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -26,6 +27,7 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import kotlinx.coroutines.launch
@@ -66,7 +68,7 @@ fun ListedItemsScreen(
     Scaffold(
         topBar = {
             SmallTopAppBar(
-                title = { Text("My Listed Items", color = Color.White) },
+                title = { Text("My Listed Items", fontFamily = fontFamily, color = Color.White, fontSize = 24.sp) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(

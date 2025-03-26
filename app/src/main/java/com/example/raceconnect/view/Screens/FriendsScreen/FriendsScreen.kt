@@ -41,6 +41,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.raceconnect.view.ui.theme.fontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +51,6 @@ fun FriendsScreen(
     onNavigateToProfile: (String) -> Unit,
     viewModel: FriendsViewModel = viewModel(factory = FriendsViewModelFactory(userPreferences))
 ) {
-
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
 
@@ -59,11 +59,10 @@ fun FriendsScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
     val loggedInUser by userPreferences.user.collectAsState(initial = null)
-    // Assuming loggedInUser is of type Users?, extract the id field
-    val loggedInUserId = loggedInUser?.id?.toString() // Ensure id is accessed correctly
+    val loggedInUserId = loggedInUser?.id?.toString()
 
     LaunchedEffect(Unit) {
-        viewModel.fetchFriends() // Ensure data is fetched on screen load
+        viewModel.fetchFriends()
     }
 
     Scaffold(
@@ -74,8 +73,9 @@ fun FriendsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "Friends",
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = Color.White
+                                fontFamily = fontFamily,
+                                color = Color.White,
+                                fontSize = 30.sp
                             )
                         }
                     },
@@ -90,14 +90,14 @@ fun FriendsScreen(
                         searchQuery = it
                         viewModel.searchUsers(it)
                     },
-                    onSearch = { viewModel.searchUsers(it)},
+                    onSearch = { viewModel.searchUsers(it) },
                     active = isSearchActive,
-                    onActiveChange = { 
+                    onActiveChange = {
                         isSearchActive = it
                         if (!it) {
                             searchQuery = ""
                             viewModel.clearSearchResults()
-                        }else{
+                        } else {
                             viewModel.searchUsers(searchQuery)
                         }
                     },
@@ -133,7 +133,7 @@ fun FriendsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 300.dp) // Limit height of search results
+                            .heightIn(max = 300.dp)
                     ) {
                         if (isSearching) {
                             CircularProgressIndicator(
@@ -147,28 +147,28 @@ fun FriendsScreen(
                                     FriendItem(
                                         friend = user,
                                         onAdd = if (user.status == "NonFriends") {
-                                            { 
+                                            {
                                                 viewModel.addFriend(user.id)
                                                 searchQuery = ""
                                                 isSearchActive = false
                                             }
                                         } else null,
                                         onConfirm = if (user.status == "Pending") {
-                                            { 
+                                            {
                                                 viewModel.confirmFriendRequest(user.id)
                                                 searchQuery = ""
                                                 isSearchActive = false
                                             }
                                         } else null,
                                         onCancel = if (user.status == "Pending") {
-                                            { 
+                                            {
                                                 viewModel.cancelFriendRequest(user.id)
                                                 searchQuery = ""
                                                 isSearchActive = false
                                             }
                                         } else null,
                                         onRemove = if (user.status == "PendingSent") {
-                                            { 
+                                            {
                                                 viewModel.cancelFriendRequest(user.id)
                                                 searchQuery = ""
                                                 isSearchActive = false
@@ -188,8 +188,8 @@ fun FriendsScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface) // Set the background color here
                     .padding(paddingValues)
-                    .background(Color(0xFFF5F5F5))
             ) {
                 // Friend Requests Section
                 item {

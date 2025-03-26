@@ -10,11 +10,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemCard
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -49,8 +51,7 @@ fun MarketplaceScreen(
                 title = {
                     Text(
                         text = "Marketplace",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White
+                        fontFamily = fontFamily, color = Color.White, fontSize = 30.sp
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
