@@ -74,6 +74,7 @@ fun UserProfileScreen(
     val postImages by newsFeedViewModel.postImages.collectAsState()
     val userReposts by newsFeedViewModel.userReposts.collectAsState()
     val originalPosts by newsFeedViewModel.originalPosts.collectAsState()
+    val profileOriginalPosts by newsFeedViewModel.profileOriginalPosts.collectAsState() // Updated to use profileOriginalPosts
 
     // State for delete and dropdown
     var postToDelete by remember { mutableStateOf<NewsFeedDataClassItem?>(null) }
@@ -443,14 +444,16 @@ fun UserProfileScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 items(userReposts.size) { index ->
-                                    val repost = userReposts[index]
-                                    val originalPost = originalPosts[repost.postId]
+                                    // Reverse the index: newest (last in list) to oldest (first in list)
+                                    val reversedIndex = userReposts.size - 1 - index
+                                    val repost = userReposts[reversedIndex]
+                                    val originalPost = profileOriginalPosts[repost.postId]
 
                                     LaunchedEffect(repost.id, repost.postId) {
                                         newsFeedViewModel.getPostImages(repost.id)
                                         newsFeedViewModel.getPostImages(repost.postId)
                                         if (originalPost == null) {
-                                            newsFeedViewModel.fetchOriginalPost(repost.postId)
+                                            newsFeedViewModel.fetchProfileOriginalPost(repost.postId)
                                         }
                                     }
 

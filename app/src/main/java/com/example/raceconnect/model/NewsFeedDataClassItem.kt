@@ -31,6 +31,36 @@ data class NewsFeedDataClassItem(
     val isAnnouncement: Boolean = false // New field to flag announcements
 )
 
+
+data class ProfileRepostsDataClass(
+    val id: Int = 0,
+    val user_id: Int,
+    val username: String? = null,
+    val title: String?,
+    val content: String,
+    @SerializedName("img_url") val imgUrl: String? = null,
+    val like_count: Int = 0,
+    val comment_count: Int = 0,
+    val repost_count: Int = 0,
+    val category: String = "Formula 1",
+    val privacy: String = "Public",
+    val type: String = "text",
+    @SerializedName("post_type") val postType: String = "normal",
+    val status: String? = null, // Added
+    val created_at: String = "",
+    val updated_at: String = "",
+    val report: String? = null, // Added
+    val archived_at: String? = null, // Added
+    val profile_picture: String? = null, // Added
+    val images: List<PostImage>? = null,
+    val isLiked: Boolean = false,
+    val isRepost: Boolean? = false,
+    val original_post_id: Int? = null,
+    val quote: String? = null,
+    val isAnnouncement: Boolean = false // New field to flag announcements
+)
+
+
 data class PostByIdResponse(
     @SerializedName("original_post_id") val originalPostId: Int? = null,
     val id: Int,

@@ -18,6 +18,7 @@ import com.example.raceconnect.model.AnnouncementDataClass
 import com.example.raceconnect.model.CreateRepostRequest
 import com.example.raceconnect.model.LikeRequest
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.model.ProfileRepostsDataClass
 import com.example.raceconnect.model.ReportRequest
 import com.example.raceconnect.model.Repost
 import com.example.raceconnect.model.UpdatePostRequest
@@ -591,4 +592,24 @@ class NewsFeedViewModel(
             }
         }
     }
-}
+    // New flow for UserProfileScreen
+    private val _profileOriginalPosts = MutableStateFlow<Map<Int, ProfileRepostsDataClass>>(emptyMap())
+    val profileOriginalPosts: StateFlow<Map<Int, ProfileRepostsDataClass>> = _profileOriginalPosts.asStateFlow()
+    // New fetchProfileOriginalPost
+    fun fetchProfileOriginalPost(postId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.getProfilePostById(postId) // New method
+                if (response.isSuccessful) {
+                    response.body()?.let { post ->
+                        _profileOriginalPosts.value = _profileOriginalPosts.value + (postId to post)
+                    }
+                } else {
+                    Log.e("NewsFeedViewModel", "Failed to fetch profile post: ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e("NewsFeedViewModel", "Error fetching profile post", e)
+            }
+        }
+    }
+    }

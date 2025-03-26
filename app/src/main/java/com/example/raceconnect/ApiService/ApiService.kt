@@ -113,6 +113,9 @@ interface ApiService {
         @Part images: List<MultipartBody.Part>?
     ): Response<PostResponse>
 
+    @GET("posts/{postId}")
+    suspend fun getProfilePostById(@Path("postId") postId: Int): Response<ProfileRepostsDataClass>
+
     @GET("posts/{id}/images")
     suspend fun GetPostImg(@Path("id") id: Int): Response<List<PostImage>>
 
