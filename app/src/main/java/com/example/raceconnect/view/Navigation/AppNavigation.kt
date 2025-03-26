@@ -267,7 +267,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     postId = postId,
                                     repostId = null,
                                     userPreferences = userPreferences,
-                                    viewModel = viewModel(factory = NotificationClickedViewModelFactory())
+                                    viewModel = viewModel(factory = NotificationClickedViewModelFactory(userPreferences = userPreferences))
                                 )
                             } else {
                                 Box(
@@ -309,7 +309,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     postId = postId,
                                     repostId = repostId,
                                     userPreferences = userPreferences,
-                                    viewModel = viewModel(factory = NotificationClickedViewModelFactory())
+                                    viewModel = viewModel(factory = NotificationClickedViewModelFactory(userPreferences = userPreferences))
                                 )
                             } else {
                                 Box(

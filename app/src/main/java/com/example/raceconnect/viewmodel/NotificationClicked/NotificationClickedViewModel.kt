@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 
 class NotificationClickedViewModel(
     private val apiService: ApiService = RetrofitInstance.api,
-    private val userPreferences: UserPreferences? = null // Optional dependency injection
+    private val userPreferences: UserPreferences // No longer optional
 ) : ViewModel() {
 
     private val _repost = MutableStateFlow<PostByIdResponse?>(null)
@@ -26,7 +26,7 @@ class NotificationClickedViewModel(
     private val _originalPost = MutableStateFlow<PostByIdResponse?>(null)
     val originalPost: StateFlow<PostByIdResponse?> = _originalPost.asStateFlow()
 
-    private val _repostData = MutableStateFlow<Repost?>(null) // New StateFlow for Repost data
+    private val _repostData = MutableStateFlow<Repost?>(null)
     val repostData: StateFlow<Repost?> = _repostData.asStateFlow()
 
     private val _comments = MutableStateFlow<List<PostComment>>(emptyList())
@@ -50,34 +50,63 @@ class NotificationClickedViewModel(
     internal val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _userId = MutableStateFlow<Int?>(null)
+    val userId: StateFlow<Int?> = _userId.asStateFlow()
+
     private var authToken: String? = null
     private var lastFetchedPostId: Int? = null
     private var lastFetchedRepostId: Int? = null
 
+    init {
+        // Initialize user data when ViewModel is created
+        viewModelScope.launch {
+            initializeUserData()
+        }
+    }
+
+    private suspend fun initializeUserData() {
+        val token = userPreferences.getToken()
+        val userId = userPreferences.getUserId()
+        if (token != null && userId != null) {
+            authToken = "Bearer $token"
+            _userId.value = userId
+            Log.d("NotificationClickedViewModel", "User initialized with ID: $userId")
+        } else {
+            _error.value = "User not logged in or data unavailable. Please log in again."
+            Log.w("NotificationClickedViewModel", "Failed to initialize user data: token=$token, userId=$userId")
+        }
+    }
+
     fun setAuthToken(token: String) {
         authToken = "Bearer $token"
+        viewModelScope.launch {
+            val fetchedUserId = userPreferences.getUserId()
+            _userId.value = fetchedUserId
+            if (fetchedUserId == null) {
+                _error.value = "Failed to fetch user ID. Please log in again."
+            }
+        }
     }
 
     fun fetchPost(postId: Int, repostId: Int?) {
         viewModelScope.launch {
+            if (authToken == null || _userId.value == null) {
+                _error.value = "User not authenticated. Please log in."
+                return@launch
+            }
             _isLoading.value = true
             _error.value = null
             try {
                 if (repostId != null) {
-                    // Fetch repost details first
                     val repostResponse = apiService.getRepostByRepostId(repostId)
                     if (repostResponse.isSuccessful) {
                         val repostData = repostResponse.body()
                         if (repostData != null) {
-                            _repostData.value = repostData // Store the Repost data
-
-                            // Fetch the repost post details
+                            _repostData.value = repostData
                             val repostPostResponse = apiService.getPostDetailById(repostData.id)
                             if (repostPostResponse.isSuccessful) {
                                 _repost.value = repostPostResponse.body()
                             }
-
-                            // Fetch the original post using the postId from repost
                             val originalPostResponse = apiService.getPostDetailById(repostData.postId)
                             if (originalPostResponse.isSuccessful) {
                                 _originalPost.value = originalPostResponse.body()
@@ -91,12 +120,11 @@ class NotificationClickedViewModel(
                         _error.value = "Failed to fetch repost: ${repostResponse.errorBody()?.string()}"
                     }
                 } else {
-                    // Fetch regular post
                     val response = apiService.getPostDetailById(postId)
                     if (response.isSuccessful) {
                         _repost.value = response.body()
                         _originalPost.value = null
-                        _repostData.value = null // Clear repost data for non-reposts
+                        _repostData.value = null
                     } else {
                         _error.value = "Failed to fetch post: ${response.errorBody()?.string()}"
                     }
@@ -111,11 +139,11 @@ class NotificationClickedViewModel(
 
     fun fetchComments(postId: Int) {
         viewModelScope.launch {
+            val token = authToken ?: run {
+                _error.value = "Authentication token is missing"
+                return@launch
+            }
             try {
-                val token = authToken ?: run {
-                    _error.value = "Authentication token is missing"
-                    return@launch
-                }
                 val response = apiService.getCommentsByPostId(token, postId)
                 if (response.isSuccessful) {
                     _comments.value = response.body() ?: emptyList()
@@ -136,7 +164,10 @@ class NotificationClickedViewModel(
                 val response = apiService.getPostLikes(postId)
                 if (response.isSuccessful) {
                     val likes = response.body() ?: emptyList()
-                    val currentUserId = getUserId() ?: 1 // Fallback to 1 if userId not available
+                    val currentUserId = _userId.value ?: run {
+                        _error.value = "User ID is missing. Please log in again."
+                        return@launch
+                    }
                     _isLiked.value = likes.any { it.userId == currentUserId }
                     _likeCount.value = likes.size
                     _error.value = null
@@ -152,16 +183,15 @@ class NotificationClickedViewModel(
 
     fun toggleLike(postId: Int, ownerId: Int) {
         viewModelScope.launch {
+            val token = authToken ?: run {
+                _error.value = "Authentication token is missing"
+                return@launch
+            }
+            val currentUserId = _userId.value ?: run {
+                _error.value = "User ID is missing. Please log in again."
+                return@launch
+            }
             try {
-                val token = authToken ?: run {
-                    _error.value = "Authentication token is missing"
-                    return@launch
-                }
-                val currentUserId = getUserId() ?: run {
-                    _error.value = "User ID is missing"
-                    return@launch
-                }
-
                 if (_isLiked.value) {
                     val like = apiService.getPostLikes(postId).body()?.find { it.userId == currentUserId }
                     like?.id?.let { likeId ->
@@ -200,19 +230,19 @@ class NotificationClickedViewModel(
 
     fun addComment(postId: Int, content: String) {
         viewModelScope.launch {
+            val token = authToken ?: run {
+                _error.value = "Authentication token is missing"
+                return@launch
+            }
+            val currentUserId = _userId.value ?: run {
+                _error.value = "User ID is missing. Please log in again."
+                return@launch
+            }
             try {
-                val token = authToken ?: run {
-                    _error.value = "Authentication token is missing"
-                    return@launch
-                }
-                val currentUserId = getUserId() ?: run {
-                    _error.value = "User ID is missing"
-                    return@launch
-                }
                 val comment = PostComment(postId = postId, comment = content, userId = currentUserId)
                 val response = apiService.addComment(token, comment)
                 if (response.isSuccessful) {
-                    fetchComments(postId) // Refresh comments
+                    fetchComments(postId)
                     _error.value = null
                 } else {
                     _error.value = "Failed to add comment: ${response.code()} - ${response.errorBody()?.string()}"
@@ -227,7 +257,7 @@ class NotificationClickedViewModel(
     fun clearPost() {
         _repost.value = null
         _originalPost.value = null
-        _repostData.value = null // Clear repost data
+        _repostData.value = null
         _comments.value = emptyList()
         _isLiked.value = false
         _likeCount.value = 0
@@ -238,10 +268,13 @@ class NotificationClickedViewModel(
         lastFetchedRepostId = null
     }
 
-    private suspend fun getUserId(): Int? {
-        return userPreferences?.getUserId() ?: run {
-            Log.w("NotificationClickedViewModel", "UserPreferences not provided, using default userId")
-            1 // Fallback to 1 if UserPreferences is null
+    fun logout() {
+        viewModelScope.launch {
+            userPreferences.logout()
+            authToken = null
+            _userId.value = null
+            clearPost()
+            _error.value = "User logged out"
         }
     }
 }

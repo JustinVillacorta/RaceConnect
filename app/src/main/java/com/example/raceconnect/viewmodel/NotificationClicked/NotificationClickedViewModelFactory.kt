@@ -8,7 +8,7 @@ import com.example.raceconnect.network.RetrofitInstance
 
 class NotificationClickedViewModelFactory(
     private val apiService: ApiService = RetrofitInstance.api,
-    private val userPreferences: UserPreferences? = null
+    private val userPreferences: UserPreferences // No longer optional
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

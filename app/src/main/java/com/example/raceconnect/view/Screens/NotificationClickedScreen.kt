@@ -39,6 +39,8 @@ import androidx.compose.foundation.BorderStroke
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.raceconnect.model.Repost
+import com.example.raceconnect.network.RetrofitInstance
+import com.example.raceconnect.viewmodel.NotificationClickedViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,24 +49,25 @@ fun PostDetailScreen(
     postId: Int,
     repostId: Int? = null,
     userPreferences: UserPreferences,
-    viewModel: NotificationClickedViewModel = viewModel(),
+    viewModel: NotificationClickedViewModel = viewModel(
+        factory = NotificationClickedViewModelFactory(
+            apiService = RetrofitInstance.api,
+            userPreferences = userPreferences
+        )
+    ),
     onClose: () -> Unit = {}
 ) {
     val repost by viewModel.repost.collectAsState()
     val originalPost by viewModel.originalPost.collectAsState()
-    val repostData by viewModel.repostData.collectAsState() // Collect repostData
+    val repostData by viewModel.repostData.collectAsState()
     val comments by viewModel.comments.collectAsState()
     val isLiked by viewModel.isLiked.collectAsState()
     val likeCount by viewModel.likeCount.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val userId by viewModel.userId.collectAsState() // Use userId from ViewModel
 
     val tokenState by userPreferences.token.collectAsState(initial = null)
-
-    // Log the received postId and repostId to debug navigation
-    LaunchedEffect(Unit) {
-        Log.d("PostDetailScreen", "Received postId: $postId, repostId: $repostId")
-    }
 
     LaunchedEffect(key1 = postId, key2 = repostId, key3 = tokenState) {
         if (tokenState != null) {
@@ -78,7 +81,6 @@ fun PostDetailScreen(
         }
     }
 
-    // Dynamic title based on whether this is a repost or a regular post
     val topBarTitle = if (repostId != null && originalPost != null) "Repost Detail" else "Post Detail"
 
     Scaffold(
@@ -130,6 +132,16 @@ fun PostDetailScreen(
                     Text(text = "Post not found", color = Color.Red)
                 }
             }
+            userId == null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "User ID not available. Please log in again.", color = Color.Red)
+                }
+            }
             else -> {
                 LazyColumn(
                     modifier = Modifier
@@ -139,16 +151,20 @@ fun PostDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
-                        // Log the state to debug why RepostLayout isn't triggered
                         Log.d("PostDetailScreen", "repostId: $repostId, originalPost: $originalPost, repost: $repost, repostData: $repostData")
                         if (repostId != null && originalPost != null && repostData != null) {
                             RepostLayout(
-                                repostData = repostData!!, // Pass repostData
+                                repostData = repostData!!,
                                 originalPost = originalPost!!,
                                 isLiked = isLiked,
                                 likeCount = likeCount,
                                 commentsCount = comments.size,
-                                onLikeClick = { viewModel.toggleLike(postId, originalPost!!.userId) }
+                                onLikeClick = { viewModel.toggleLike(postId, originalPost!!.userId) },
+                                userId = userId!!,
+                                onReportClick = { postIdToReport ->
+                                    Log.d("PostDetailScreen", "Reporting post $postIdToReport by user $userId")
+                                    // Implement report functionality here
+                                }
                             )
                         } else {
                             PostLayout(
@@ -156,7 +172,12 @@ fun PostDetailScreen(
                                 isLiked = isLiked,
                                 likeCount = likeCount,
                                 commentsCount = comments.size,
-                                onLikeClick = { viewModel.toggleLike(postId, repost!!.userId) }
+                                onLikeClick = { viewModel.toggleLike(postId, repost!!.userId) },
+                                userId = userId!!,
+                                onReportClick = { postIdToReport ->
+                                    Log.d("PostDetailScreen", "Reporting post $postIdToReport by user $userId")
+                                    // Implement report functionality here
+                                }
                             )
                         }
 
@@ -219,12 +240,14 @@ fun PostDetailScreen(
 
 @Composable
 fun RepostLayout(
-    repostData: Repost, // Use Repost instead of PostByIdResponse for repost user info
+    repostData: Repost,
     originalPost: PostByIdResponse,
     isLiked: Boolean,
     likeCount: Int,
     commentsCount: Int,
-    onLikeClick: () -> Unit
+    onLikeClick: () -> Unit,
+    userId: Int, // Accept userId parameter
+    onReportClick: (Int) -> Unit // Callback for report action
 ) {
     Card(
         shape = RoundedCornerShape(8.dp),
@@ -234,12 +257,10 @@ fun RepostLayout(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Repost user info (profile picture, username, "reposted", timestamp)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Profile picture
                 repostData.profilePicture?.let { url ->
                     Image(
                         painter = rememberAsyncImagePainter(model = imageRequest(url)),
@@ -263,7 +284,6 @@ fun RepostLayout(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                // Username, "reposted", and timestamp
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically
@@ -297,7 +317,6 @@ fun RepostLayout(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Display the repost quote (if it exists)
             repostData.quote?.takeIf { it.isNotEmpty() }?.let { quote ->
                 Text(
                     text = quote,
@@ -308,7 +327,6 @@ fun RepostLayout(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Nested card for original post content
             Card(
                 shape = RoundedCornerShape(4.dp),
                 border = BorderStroke(1.dp, Color.Gray),
@@ -317,7 +335,6 @@ fun RepostLayout(
             ) {
                 Box {
                     Column(modifier = Modifier.padding(8.dp)) {
-                        // Original post user info
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -364,7 +381,6 @@ fun RepostLayout(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Original post content (text)
                         if (originalPost.content.isNotEmpty()) {
                             Text(
                                 text = originalPost.content,
@@ -374,7 +390,6 @@ fun RepostLayout(
                             Spacer(modifier = Modifier.height(8.dp))
                         }
 
-                        // Original post image (if available)
                         originalPost.images.firstOrNull()?.image_url?.let { imageUrl ->
                             Image(
                                 painter = rememberAsyncImagePainter(model = imageRequest(imageUrl)),
@@ -388,9 +403,8 @@ fun RepostLayout(
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
-                    // Report button (Info icon) at the top-right corner
                     IconButton(
-                        onClick = { /* Handle report action */ },
+                        onClick = { onReportClick(originalPost.id) },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(8.dp)
@@ -407,7 +421,6 @@ fun RepostLayout(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Action buttons (Like, Comment, Repost) - Icons only
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -448,7 +461,9 @@ fun PostLayout(
     isLiked: Boolean,
     likeCount: Int,
     commentsCount: Int,
-    onLikeClick: () -> Unit
+    onLikeClick: () -> Unit,
+    userId: Int, // Accept userId parameter
+    onReportClick: (Int) -> Unit // Callback for report action
 ) {
     Card(
         shape = RoundedCornerShape(8.dp),
@@ -458,7 +473,6 @@ fun PostLayout(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // User info (profile picture, username, timestamp)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -486,8 +500,9 @@ fun PostLayout(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Column(
-                    modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = post.username,
@@ -495,47 +510,62 @@ fun PostLayout(
                         color = Color.Black,
                         fontSize = 16.sp
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = post.createdAt.let { formatTimestamp(it) },
+                        text = "·",
+                        color = Color.Gray,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = formatTimestamp(post.createdAt),
                         color = Color.Gray,
                         fontSize = 12.sp
                     )
                 }
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Info",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(20.dp)
-                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Post content (text)
-            if (post.content.isNotEmpty()) {
-                Text(
-                    text = post.content,
-                    color = Color.Black,
-                    fontSize = 14.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+            Box {
+                Column {
+                    if (post.content.isNotEmpty()) {
+                        Text(
+                            text = post.content,
+                            color = Color.Black,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
 
-            // Post image (if available)
-            post.images.firstOrNull()?.image_url?.let { imageUrl ->
-                Image(
-                    painter = rememberAsyncImagePainter(model = imageRequest(imageUrl)),
-                    contentDescription = "Post Image",
+                    post.images.firstOrNull()?.image_url?.let { imageUrl ->
+                        Image(
+                            painter = rememberAsyncImagePainter(model = imageRequest(imageUrl)),
+                            contentDescription = "Post Image",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+                IconButton(
+                    onClick = { onReportClick(post.id) },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Report",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
-            // Action buttons (Like, Comment, Repost)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
