@@ -27,6 +27,7 @@ import com.example.raceconnect.view.Screens.Authentication.AppealDialog
 import com.example.raceconnect.view.Screens.Authentication.ForgotPasswordDialog
 import com.example.raceconnect.view.Screens.Authentication.OtpVerificationDialog
 import com.example.raceconnect.view.Screens.Authentication.ResetPasswordDialog
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import kotlinx.coroutines.delay
 
@@ -74,7 +75,7 @@ fun LoginScreen(
             ) {
                 Text(
                     text = "Log In",
-                    style = MaterialTheme.typography.headlineMedium.copy(color = Color.White),
+                    fontFamily = fontFamily, color = Color.White, fontSize = 30.sp,
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .padding(16.dp)

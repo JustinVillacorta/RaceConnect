@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.R
+import com.example.raceconnect.view.ui.theme.fontFamily
 
 
 @Composable
@@ -271,7 +272,7 @@ fun SignupScreen(
             }
             Text(
                 text = "Sign Up",
-                style = MaterialTheme.typography.headlineMedium.copy(color = Color.White),
+                fontFamily = fontFamily, color = Color.White, fontSize = 30.sp,
                 modifier = Modifier.align(Alignment.Center)
             )
         }

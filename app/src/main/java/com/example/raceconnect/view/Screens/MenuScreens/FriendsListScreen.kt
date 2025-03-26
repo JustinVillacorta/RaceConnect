@@ -29,6 +29,9 @@ import com.example.raceconnect.model.Friend
 import com.example.raceconnect.viewmodel.FriendsViewModel
 import com.example.raceconnect.viewmodel.FriendsViewModelFactory
 import android.util.Log
+import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.White
+import com.example.raceconnect.view.ui.theme.fontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,21 +73,20 @@ fun FriendsListScreenContent(
                     title = {
                         Text(
                             text = "Friends",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                             fontFamily = fontFamily, color = Color.White, fontSize = 24.sp
                         )
+
                     },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
-                                tint = Color.Black
+                                tint = White
                             )
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                    colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Red)
                 )
                 Box(
                     modifier = Modifier

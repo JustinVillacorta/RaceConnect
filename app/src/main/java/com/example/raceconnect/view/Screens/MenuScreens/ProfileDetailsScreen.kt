@@ -42,6 +42,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModel
 import java.io.File
 import java.text.SimpleDateFormat
@@ -157,7 +158,7 @@ fun MyProfileScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Personal Details", color = Color.White, fontSize = 20.sp) },
+                title = { Text("Personal Details", fontFamily = fontFamily, color = Color.White, fontSize = 24.sp) },
                 navigationIcon = {
                     IconButton(onClick = onCloseWithReset) {
                         Icon(
@@ -167,7 +168,7 @@ fun MyProfileScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = BrandRed)
+                colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Red)
             )
         }
     ) { padding ->

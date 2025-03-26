@@ -45,7 +45,9 @@ import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.sp
 import com.example.raceconnect.model.AnnouncementDataClass
+import com.example.raceconnect.view.ui.theme.fontFamily
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,7 +122,7 @@ fun NewsFeedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("RaceConnect", style = MaterialTheme.typography.headlineMedium, color = Color.White) },
+                title = { Text("RaceConnect", fontFamily = fontFamily, color = Color.White, fontSize = 30.sp) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Red)
             )
         },

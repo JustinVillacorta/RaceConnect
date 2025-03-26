@@ -32,6 +32,7 @@ import com.example.raceconnect.model.Notification
 import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.NotificationClickedViewModel
 import com.example.raceconnect.viewmodel.NotificationViewModel
 import com.example.raceconnect.viewmodel.NotificationViewModelFactory
@@ -90,8 +91,7 @@ fun NotificationsScreen(context: Context, navController: NavController) {
                 title = {
                     Text(
                         "Notifications",
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineMedium
+                        fontFamily = fontFamily, color = Color.White, fontSize = 30.sp
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

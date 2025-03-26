@@ -1,5 +1,6 @@
 package com.example.raceconnect.ui
 
+import android.R.attr.tint
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,11 +22,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.view.Navigation.NavRoutes
+import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.White
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
@@ -67,7 +73,7 @@ fun MenuScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .background(BrandRed)
+                .background(Red)
         ) {
             Row(
                 modifier = Modifier
@@ -78,8 +84,7 @@ fun MenuScreen(
             ) {
                 Text(
                     text = "Menu",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White
+                    fontFamily = fontFamily, color = Color.White, fontSize = 30.sp
                 )
 
                 Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
@@ -118,6 +123,7 @@ fun MenuScreen(
 
         Card(
             shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 80.dp)
@@ -126,6 +132,7 @@ fun MenuScreen(
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(4.dp),
+                    colors = CardDefaults.cardColors(containerColor = White),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
@@ -194,13 +201,15 @@ fun MenuScreen(
                     ) {
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_account_circle_24,
+                            color = Red,
                             text = "Profile Details",
                             onClick = { navController.navigate(NavRoutes.ProfileDetails.route) }
                         )
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_favorite_24,
                             text = "Favorite Items",
-                            onClick = onShowFavoriteItems
+                            onClick = onShowFavoriteItems,
+                            color = Red
                         )
                     }
 
@@ -213,12 +222,14 @@ fun MenuScreen(
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_home_24,
                             text = "Preferences",
-                            onClick = onShowNewsFeedPreferences
+                            onClick = onShowNewsFeedPreferences,
+                            color = Red
                         )
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_sell_24,
                             text = "Listed Items",
-                            onClick = onShowListedItems
+                            onClick = onShowListedItems,
+                            color = Red
                         )
                     }
 
@@ -231,13 +242,15 @@ fun MenuScreen(
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_people_24,
                             text = "Friends",
-                            onClick = onShowFriendListScreen
+                            onClick = onShowFriendListScreen,
+                            color = Red
                         )
                         // Updated Conversations option
                         MenuOptionCard(
                             iconResId = R.drawable.baseline_chat_24,
                             text = "Conversations",
-                            onClick = { navController.navigate(NavRoutes.Conversations.route) }
+                            onClick = { navController.navigate(NavRoutes.Conversations.route) },
+                            color = Red
                         )
                     }
                 }
@@ -305,11 +318,13 @@ fun MenuScreen(
 fun MenuOptionCard(
     iconResId: Int,
     text: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    color: Color // Renamed to lowercase for convention
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         modifier = Modifier
             .size(width = 150.dp, height = 100.dp)
             .clickable { onClick() }
@@ -322,7 +337,7 @@ fun MenuOptionCard(
             Icon(
                 painter = painterResource(id = iconResId),
                 contentDescription = text,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = color, // Use the passed Color parameter instead of hardcoded Red
                 modifier = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.height(8.dp))

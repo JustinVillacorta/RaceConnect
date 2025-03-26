@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.raceconnect.R
+import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModelFactory
 
@@ -63,7 +65,7 @@ fun NewsFeedPreferencesScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("News Feed Preferences", color = white) },
+                title = { Text("News Feed Preferences", fontFamily = fontFamily, color = Color.White, fontSize = 24.sp) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(
@@ -90,7 +92,7 @@ fun NewsFeedPreferencesScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
-                colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = brandRed)
+                colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Red)
             )
         }
     ) { padding ->

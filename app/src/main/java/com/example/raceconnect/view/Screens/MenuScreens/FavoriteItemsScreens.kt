@@ -19,12 +19,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import kotlinx.coroutines.launch
 
@@ -61,7 +63,7 @@ fun FavoriteItemsScreen(
     Scaffold(
         topBar = {
             SmallTopAppBar(
-                title = { Text("Favorite Items", color = Color.White) },
+                title = { Text("Favorite Items",  fontFamily = fontFamily, color = Color.White, fontSize = 24.sp) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(
@@ -72,7 +74,7 @@ fun FavoriteItemsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.smallTopAppBarColors(
-                    containerColor = Color(0xFFC62828),
+                    containerColor = Red,
                     titleContentColor = Color.White
                 )
             )
