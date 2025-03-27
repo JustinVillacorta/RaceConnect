@@ -41,6 +41,7 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.MarketplaceDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.White
 import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
@@ -517,8 +518,11 @@ fun MarketplaceItemDetailScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = { showConfirmationDialog = true }) {
-                                Text("See Item")
+                            Button(
+                                onClick = { showConfirmationDialog = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = Red)
+                            ) {
+                                Text("See Item", color = White)
                             }
                         }
                     }

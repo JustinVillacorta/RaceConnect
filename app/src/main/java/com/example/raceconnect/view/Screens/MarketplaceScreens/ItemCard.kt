@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.raceconnect.model.MarketplaceDataClassItem
+import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.White
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 
 @Composable
@@ -117,8 +119,11 @@ fun MarketplaceItemCard(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { showConfirmationDialog = true }) {
-                            Text("See Item")
+                        Button(
+                            onClick = { showConfirmationDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Red)
+                        ) {
+                            Text("See Item", color = White)
                         }
                     }
                 }
