@@ -59,7 +59,7 @@ fun NewsFeedScreen(
     userPreferences: UserPreferences,
     onShowCreatePost: () -> Unit,
     onShowFullScreenImage: (List<String>, Int, Int) -> Unit,
-    onShowProfileView: () -> Unit,
+    onShowProfileView: (Int) -> Unit, // Updated to accept userId
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
     val authViewModel: AuthenticationViewModel = viewModel()
@@ -72,6 +72,7 @@ fun NewsFeedScreen(
     val likeCounts by viewModel.likeCounts.collectAsState()
     val newPostTriggerState by viewModel.newPostTrigger.collectAsState()
     val user by userPreferences.user.collectAsState(initial = null)
+    val loggedInUserId = user?.id ?: 0 // Added for AddPostSection
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
@@ -118,13 +119,13 @@ fun NewsFeedScreen(
             onDismissRequest = { showBottomSheet = false },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(sheetHeight) // Set the height to 3/4 of the screen
+                .height(sheetHeight)
         ) {
             CommentSectionScreen(
                 postId = selectedPostId ?: -1,
                 navController = navController,
                 userPreferences = userPreferences,
-                onShowProfileView = { onShowProfileView(); showBottomSheet = false }
+                onShowProfileView = { userId -> onShowProfileView(userId); showBottomSheet = false } // Pass userId
             )
         }
     }
@@ -157,7 +158,7 @@ fun NewsFeedScreen(
                     AddPostSection(
                         navController,
                         onAddPostClick = onShowCreatePost,
-                        onShowProfileView = onShowProfileView
+                        onShowProfileView = { onShowProfileView(loggedInUserId) }
                     )
                 }
 

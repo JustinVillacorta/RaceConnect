@@ -139,9 +139,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 onShowCreatePost = { navController.navigate(NavRoutes.CreatePost.route) },
                                 onShowFullScreenImage = { imageUrls, initialIndex, postId ->
                                     navController.navigate(NavRoutes.FullScreenImage.createRoute(postId, imageUrls, initialIndex))
-                                }, // Fixed with correct parameters
-                                onShowProfileView = {
-                                    navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId))
+                                },
+                                onShowProfileView = { userId ->
+                                    navController.navigate(NavRoutes.ProfileView.createRoute(userId))
                                 },
                                 onShowRepostScreen = { post ->
                                     val postJson = Gson().toJson(post)
@@ -162,7 +162,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 postId = postId,
                                 navController = navController,
                                 userPreferences = userPreferences,
-                                onShowProfileView = { navController.navigate(NavRoutes.ProfileView.createRoute(loggedInUserId)) }
+                                onShowProfileView = { userId ->  // Updated to accept userId
+                                    navController.navigate(NavRoutes.ProfileView.createRoute(userId))
+                                }
                             )
                         }
                         composable(

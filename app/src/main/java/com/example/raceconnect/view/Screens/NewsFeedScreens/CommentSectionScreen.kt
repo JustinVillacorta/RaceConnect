@@ -40,7 +40,7 @@ fun CommentSectionScreen(
     postId: Int,
     navController: NavController,
     userPreferences: UserPreferences,
-    onShowProfileView: () -> Unit
+    onShowProfileView: (Int) -> Unit // Already accepts Int
 ) {
     val viewModel: CommentViewModel = viewModel(factory = CommentViewModelFactory(userPreferences))
     var commentText by remember { mutableStateOf("") }
@@ -153,7 +153,7 @@ fun CommentSectionScreen(
                                     onDeleteComment = { commentId -> viewModel.deleteComment(commentId) },
                                     onUpdateComment = { commentId, newText -> viewModel.updateComment(commentId, newText) },
                                     navController = navController,
-                                    onShowProfileView = onShowProfileView
+                                    onShowProfileView = onShowProfileView  // Pass the updated callback
                                 )
                                 Divider(
                                     modifier = Modifier.padding(horizontal = 8.dp),
@@ -223,7 +223,7 @@ fun CommentItem(
     onDeleteComment: (Int) -> Unit,
     onUpdateComment: (Int, String) -> Unit,
     navController: NavController,
-    onShowProfileView: () -> Unit
+    onShowProfileView: (Int) -> Unit  // Changed from () -> Unit to (Int) -> Unit
 ) {
     val timestamp = comment.createdAt?.let {
         val formatter = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
@@ -253,7 +253,7 @@ fun CommentItem(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(Color.Gray)
-                .clickable { onShowProfileView() },
+                .clickable { onShowProfileView(comment.userId) }, // Passes comment.userId
             contentAlignment = Alignment.Center
         ) {
             Text(
