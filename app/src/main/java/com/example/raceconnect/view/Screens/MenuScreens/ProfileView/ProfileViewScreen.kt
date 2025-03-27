@@ -184,6 +184,7 @@ fun UserProfileScreen(
                         userReposts = userReposts,
                         postImages = postImages,
                         profileOriginalPosts = profileOriginalPosts,
+                        profileUserId = profileData?.id ?: 0,
                         profileUsername = profileData?.username,
                         onFetchPostImages = { postId -> newsFeedViewModel.getPostImages(postId) },
                         onFetchOriginalPost = { postId ->

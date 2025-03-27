@@ -40,10 +40,14 @@ fun RepostsSection(
     postImages: Map<Int, List<String>>,
     profileOriginalPosts: Map<Int, ProfileRepostsDataClass>,
     profileUsername: String?,
+    profileUserId: Int, // Changed from String to Int
     onFetchPostImages: (Int) -> Unit,
     onFetchOriginalPost: (Int) -> Unit
 ) {
-    if (userReposts.isEmpty()) {
+    // Filter reposts to only include those made by the profile user
+    val myReposts = userReposts.filter { it.userId == profileUserId }
+
+    if (myReposts.isEmpty()) {
         Text(
             text = "No reposts yet",
             modifier = Modifier.fillMaxWidth(),
@@ -58,9 +62,9 @@ fun RepostsSection(
                 .fillMaxWidth()
                 .padding(vertical = 2.dp)
         ) {
-            items(userReposts.size) { index ->
-                val reversedIndex = userReposts.size - 1 - index
-                val repost = userReposts[reversedIndex]
+            items(myReposts.size) { index ->
+                val reversedIndex = myReposts.size - 1 - index
+                val repost = myReposts[reversedIndex]
                 val originalPost = profileOriginalPosts[repost.postId]
 
                 LaunchedEffect(repost.id, repost.postId) {
@@ -141,7 +145,7 @@ fun RepostsSection(
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
 
-                            // Repost Images (if any) - Keeping LazyRow as per your instruction
+                            // Repost Images (if any)
                             if (postImages[repost.id]?.isNotEmpty() == true) {
                                 LazyRow(
                                     modifier = Modifier

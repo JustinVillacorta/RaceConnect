@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.compose.LazyPagingItems
@@ -192,10 +193,9 @@ fun PostsSection(
                                     Spacer(modifier = Modifier.height(8.dp))
 
                                     if (post.status?.lowercase() == "hidden" && !showHiddenPost) {
-                                        Text(
+                                        ExpandableText(
                                             text = post.content ?: "",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = Color.Black,
+                                            enabled = false,
                                             modifier = Modifier.blur(10.dp)
                                         )
                                         Spacer(modifier = Modifier.height(12.dp))
@@ -285,10 +285,10 @@ fun PostsSection(
                                             }
                                         }
                                     } else {
-                                        Text(
+                                        ExpandableText(
                                             text = post.content ?: "",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = Color.Black
+                                            enabled = true,
+                                            modifier = Modifier
                                         )
                                         Spacer(modifier = Modifier.height(12.dp))
                                         if (postImages[post.id]?.isNotEmpty() == true) {
@@ -430,6 +430,45 @@ fun PostsSection(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ExpandableText(
+    text: String,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var isTruncated by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        Text(
+            text = text,
+            maxLines = if (expanded) Int.MAX_VALUE else 3,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+            onTextLayout = { textLayoutResult ->
+                if (!expanded && textLayoutResult.hasVisualOverflow) {
+                    isTruncated = true
+                }
+            }
+        )
+        if (isTruncated) {
+            val toggleText = if (expanded) "See Less" else "See More"
+            Text(
+                text = toggleText,
+                color = MaterialTheme.colorScheme.outline,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .clickable(enabled = enabled) {
+                        if (enabled) {
+                            expanded = !expanded
+                        }
+                    }
+                    .padding(top = 2.dp)
+            )
         }
     }
 }
