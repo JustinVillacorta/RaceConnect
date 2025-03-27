@@ -58,6 +58,8 @@ import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.sp
+import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.White
 
 // Utility function to format time relative to now
 fun formatTime(createdAt: String?): String {
@@ -550,7 +552,13 @@ fun PostCard(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { showConfirmationDialog = true }) {
+                        Button(
+                            onClick = { showConfirmationDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Red,
+                                contentColor = White
+                            )
+                        ) {
                             Text("See Post")
                         }
                     }
