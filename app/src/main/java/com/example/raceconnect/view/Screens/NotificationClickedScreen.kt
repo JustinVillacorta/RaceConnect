@@ -13,14 +13,16 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Report
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -32,15 +34,20 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.PostByIdResponse
-import com.example.raceconnect.view.ui.theme.Red
-import com.example.raceconnect.viewmodel.NotificationClickedViewModel
-import android.util.Log
-import androidx.compose.foundation.BorderStroke
-import java.text.SimpleDateFormat
-import java.util.*
 import com.example.raceconnect.model.Repost
 import com.example.raceconnect.network.RetrofitInstance
+import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.viewmodel.NotificationClickedViewModel
 import com.example.raceconnect.viewmodel.NotificationClickedViewModelFactory
+import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.pager.HorizontalPager
+import com.google.accompanist.pager.rememberPagerState
+import android.util.Log
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +72,7 @@ fun PostDetailScreen(
     val likeCount by viewModel.likeCount.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
-    val userId by viewModel.userId.collectAsState() // Use userId from ViewModel
+    val userId by viewModel.userId.collectAsState()
 
     val tokenState by userPreferences.token.collectAsState(initial = null)
 
@@ -161,8 +168,8 @@ fun PostDetailScreen(
                                 commentsCount = comments.size,
                                 onLikeClick = { viewModel.toggleLike(postId, originalPost!!.userId) },
                                 userId = userId!!,
-                                onReportClick = { postIdToReport ->
-                                    Log.d("PostDetailScreen", "Reporting post $postIdToReport by user $userId")
+                                onReportClick = { postIdToReport, reason, otherText ->
+                                    Log.d("PostDetailScreen", "Reporting post $postIdToReport with reason $reason and other text $otherText by user $userId")
                                     // Implement report functionality here
                                 }
                             )
@@ -174,8 +181,8 @@ fun PostDetailScreen(
                                 commentsCount = comments.size,
                                 onLikeClick = { viewModel.toggleLike(postId, repost!!.userId) },
                                 userId = userId!!,
-                                onReportClick = { postIdToReport ->
-                                    Log.d("PostDetailScreen", "Reporting post $postIdToReport by user $userId")
+                                onReportClick = { postIdToReport, reason, otherText ->
+                                    Log.d("PostDetailScreen", "Reporting post $postIdToReport with reason $reason and other text $otherText by user $userId")
                                     // Implement report functionality here
                                 }
                             )
@@ -246,215 +253,182 @@ fun RepostLayout(
     likeCount: Int,
     commentsCount: Int,
     onLikeClick: () -> Unit,
-    userId: Int, // Accept userId parameter
-    onReportClick: (Int) -> Unit // Callback for report action
+    userId: Int,
+    onReportClick: (Int, String, String?) -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    var showReportDialog by remember { mutableStateOf(false) }
+    var selectedReason by remember { mutableStateOf("") }
+    var otherText by remember { mutableStateOf("") }
+
     Card(
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape = RectangleShape,
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = modifier.fillMaxWidth().padding(vertical = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repostData.profilePicture?.let { url ->
-                    Image(
-                        painter = rememberAsyncImagePainter(model = imageRequest(url)),
-                        contentDescription = "Repost User Profile",
+        Box(modifier = Modifier.padding(8.dp)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Repost Header
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } ?: Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.Gray)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "Repost User Profile",
-                        modifier = Modifier.fillMaxSize(),
-                        tint = Color.Black
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = repostData.username,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "reposted",
-                        color = Color.Gray,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "·",
-                        color = Color.Gray,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = formatTimestamp(repostData.createdAt),
-                        color = Color.Gray,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            repostData.quote?.takeIf { it.isNotEmpty() }?.let { quote ->
-                Text(
-                    text = quote,
-                    color = Color.Black,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            Card(
-                shape = RoundedCornerShape(4.dp),
-                border = BorderStroke(1.dp, Color.Gray),
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Box {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            originalPost.profilePicture?.let { url ->
-                                Image(
-                                    painter = rememberAsyncImagePainter(model = imageRequest(url)),
-                                    contentDescription = "Original User Profile",
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } ?: Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Gray)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AccountCircle,
-                                    contentDescription = "Original User Profile",
-                                    modifier = Modifier.fillMaxSize(),
-                                    tint = Color.Black
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column(
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    text = originalPost.username,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Black,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = formatTimestamp(originalPost.createdAt),
-                                    color = Color.Gray,
-                                    fontSize = 10.sp
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        if (originalPost.content.isNotEmpty()) {
-                            Text(
-                                text = originalPost.content,
-                                color = Color.Black,
-                                fontSize = 14.sp
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-
-                        originalPost.images.firstOrNull()?.image_url?.let { imageUrl ->
+                            .clip(CircleShape)
+                            .background(Color.Gray)
+                    ) {
+                        repostData.profilePicture?.let { url ->
                             Image(
-                                painter = rememberAsyncImagePainter(model = imageRequest(imageUrl)),
-                                contentDescription = "Repost Image",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(150.dp)
-                                    .clip(RoundedCornerShape(4.dp)),
+                                painter = rememberAsyncImagePainter(model = url),
+                                contentDescription = "Repost User Profile",
+                                modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
+                        } ?: Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Repost User Profile",
+                            modifier = Modifier.fillMaxSize(),
+                            tint = Color.White
+                        )
                     }
-                    IconButton(
-                        onClick = { onReportClick(originalPost.id) },
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "Report",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(20.dp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Repeat,
+                                contentDescription = "Repost Icon",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${repostData.username} reposted",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text(
+                            text = formatTimestamp(repostData.createdAt),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
                         )
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start
-            ) {
-                IconButton(onClick = onLikeClick) {
-                    Icon(
-                        imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Like",
-                        tint = if (isLiked) Color.Red else Color.Gray,
-                        modifier = Modifier.size(20.dp)
+                // Repost Quote (if any)
+                repostData.quote?.takeIf { it.isNotEmpty() }?.let { quote ->
+                    Text(
+                        text = quote,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Black,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // Original Post
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                ) {
+                    PostLayout(
+                        post = originalPost,
+                        isLiked = isLiked,
+                        likeCount = likeCount,
+                        commentsCount = commentsCount,
+                        onLikeClick = onLikeClick,
+                        userId = userId,
+                        onReportClick = onReportClick,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // Report Icon for Repost
+            Box(modifier = Modifier.align(Alignment.TopEnd)) {
                 Icon(
-                    imageVector = Icons.Default.Comment,
-                    contentDescription = "Comment",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Icon(
-                    imageVector = Icons.Default.Repeat,
-                    contentDescription = "Repost",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(20.dp)
+                    imageVector = Icons.Default.Report,
+                    contentDescription = "Report repost",
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clickable { showReportDialog = true }
+                        .padding(8.dp),
+                    tint = Color.Gray
                 )
             }
         }
     }
+
+    // Report Dialog for Repost
+    if (showReportDialog) {
+        AlertDialog(
+            onDismissRequest = { showReportDialog = false },
+            title = { Text("Report Repost") },
+            text = {
+                Column {
+                    Text("Please select a reason:")
+                    val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
+                    reportOptions.forEach { reason ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedReason = reason },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedReason == reason,
+                                onClick = { selectedReason = reason }
+                            )
+                            Text(
+                                text = reason,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                    if (selectedReason == "Others") {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextField(
+                            value = otherText,
+                            onValueChange = { otherText = it },
+                            label = { Text("Specify reason") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (selectedReason.isNotEmpty() && (selectedReason != "Others" || otherText.isNotEmpty())) {
+                            onReportClick(repostData.id, selectedReason, if (selectedReason == "Others") otherText else null)
+                            showReportDialog = false
+                        }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReportDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
+@OptIn(ExperimentalPagerApi::class)
 @Composable
 fun PostLayout(
     post: PostByIdResponse,
@@ -462,118 +436,193 @@ fun PostLayout(
     likeCount: Int,
     commentsCount: Int,
     onLikeClick: () -> Unit,
-    userId: Int, // Accept userId parameter
-    onReportClick: (Int) -> Unit // Callback for report action
+    userId: Int,
+    onReportClick: (Int, String, String?) -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    var showHiddenPost by remember(post.id, post.status) { mutableStateOf(false) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    var selectedReason by remember { mutableStateOf("") }
+    var otherText by remember { mutableStateOf("") }
+
+    val imageUrls = post.images.map { it.image_url }
+
     Card(
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape = RectangleShape,
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                post.profilePicture?.let { url ->
-                    Image(
-                        painter = rememberAsyncImagePainter(model = imageRequest(url)),
-                        contentDescription = "Profile Picture",
+        Box(modifier = Modifier.padding(16.dp)) {
+            Column {
+                // Header
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } ?: Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.Gray)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier.fillMaxSize(),
-                        tint = Color.Black
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = post.username,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "·",
-                        color = Color.Gray,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = formatTimestamp(post.createdAt),
-                        color = Color.Gray,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Box {
-                Column {
-                    if (post.content.isNotEmpty()) {
-                        Text(
-                            text = post.content,
-                            color = Color.Black,
-                            fontSize = 14.sp
+                            .clip(CircleShape)
+                            .background(Color.Gray)
+                    ) {
+                        post.profilePicture?.let { url ->
+                            Image(
+                                painter = rememberAsyncImagePainter(model = url),
+                                contentDescription = "Profile Picture",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } ?: Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier.fillMaxSize(),
+                            tint = Color.White
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = post.username,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = formatTimestamp(post.createdAt),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
 
-                    post.images.firstOrNull()?.image_url?.let { imageUrl ->
-                        Image(
-                            painter = rememberAsyncImagePainter(model = imageRequest(imageUrl)),
-                            contentDescription = "Post Image",
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Content based on hidden status
+                if (post.status?.lowercase() == "hidden" && !showHiddenPost) {
+                    // Blurred content
+                    Text(
+                        text = post.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Black,
+                        modifier = Modifier.blur(10.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    if (imageUrls.isNotEmpty()) {
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                                .padding(top = 8.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        ) {
+                            Image(
+                                painter = rememberAsyncImagePainter(model = imageUrls.first()),
+                                contentDescription = "Post image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1.91f)
+                                    .blur(10.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                } else {
+                    // Normal content
+                    Text(
+                        text = post.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    if (imageUrls.size == 1) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        ) {
+                            Image(
+                                painter = rememberAsyncImagePainter(model = imageUrls.first()),
+                                contentDescription = "Post image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1.91f),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(340.dp)
+                                .padding(top = 8.dp)
+                        ) {
+                            // Use the Accompanist Pager API for rememberPagerState
+                            val pagerState = rememberPagerState() // No parameters needed initially
+                            // Update HorizontalPager to include the count parameter
+                            HorizontalPager(
+                                count = imageUrls.size, // Add the count parameter
+                                state = pagerState,
+                                modifier = Modifier.fillMaxSize()
+                            ) { page ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(8.dp))
+                                ) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(model = imageUrls[page]),
+                                        contentDescription = "Post image $page",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .background(Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "${pagerState.currentPage + 1}/${imageUrls.size}",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                imageUrls.forEachIndexed { index, _ ->
+                                    val isSelected = index == pagerState.currentPage
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isSelected) Color.White else Color.Transparent)
+                                            .then(
+                                                if (!isSelected) Modifier.border(1.dp, Color.White, CircleShape)
+                                                else Modifier
+                                            )
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-                IconButton(
-                    onClick = { onReportClick(post.id) },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Report",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Interaction Row
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onLikeClick) {
@@ -586,64 +635,193 @@ fun PostLayout(
                     }
                     Text(
                         text = "$likeCount",
-                        color = Color.Black,
-                        fontSize = 14.sp
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(start = 4.dp, end = 12.dp)
                     )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
                     Icon(
                         imageVector = Icons.Default.Comment,
                         contentDescription = "Comment",
                         tint = Color.Gray,
                         modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "$commentsCount",
-                        color = Color.Black,
-                        fontSize = 14.sp
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(start = 4.dp, end = 12.dp)
                     )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
                     Icon(
                         imageVector = Icons.Default.Repeat,
                         contentDescription = "Repost",
                         tint = Color.Gray,
                         modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "${post.repostCount}",
-                        color = Color.Black,
-                        fontSize = 14.sp
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(start = 4.dp)
                     )
                 }
+
+                // Hide Post Button for hidden posts
+                if (post.status?.lowercase() == "hidden" && showHiddenPost) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { showHiddenPost = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
+                    ) {
+                        Text("Hide Post", color = Color.Black)
+                    }
+                }
+            }
+
+            // Hidden Post Overlay
+            if (post.status?.lowercase() == "hidden" && !showHiddenPost) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "This post is hidden",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { showConfirmationDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White)
+                        ) {
+                            Text("See Post")
+                        }
+                    }
+                }
+            }
+
+            // Report Icon
+            Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                Icon(
+                    imageVector = Icons.Default.Report,
+                    contentDescription = "Report post",
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clickable { showReportDialog = true }
+                        .padding(8.dp),
+                    tint = Color.Gray
+                )
             }
         }
     }
+
+    // Report Dialog
+    if (showReportDialog) {
+        AlertDialog(
+            onDismissRequest = { showReportDialog = false },
+            title = { Text("Report Post") },
+            text = {
+                Column {
+                    Text("Please select a reason:")
+                    val reportOptions = listOf("Not related", "Nudity", "Inappropriate", "Others")
+                    reportOptions.forEach { reason ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedReason = reason },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedReason == reason,
+                                onClick = { selectedReason = reason }
+                            )
+                            Text(
+                                text = reason,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                    if (selectedReason == "Others") {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextField(
+                            value = otherText,
+                            onValueChange = { otherText = it },
+                            label = { Text("Specify reason") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (selectedReason.isNotEmpty() && (selectedReason != "Others" || otherText.isNotEmpty())) {
+                            onReportClick(post.id, selectedReason, if (selectedReason == "Others") otherText else null)
+                            showReportDialog = false
+                        }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReportDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Confirmation Dialog for Hidden Post
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmationDialog = false },
+            title = { Text("View Hidden Post") },
+            text = { Text("Are you sure you want to view this hidden post?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showHiddenPost = true
+                    showConfirmationDialog = false
+                }) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmationDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
 }
 
-@Composable
-private fun imageRequest(url: String): ImageRequest {
-    val context = LocalContext.current
-    return ImageRequest.Builder(context)
-        .data(url)
-        .crossfade(true)
-        .build()
-}
+private fun formatTimestamp(timestamp: String?): String {
+    if (timestamp.isNullOrEmpty()) return "Just now"
 
-private fun formatTimestamp(dateStr: String): String {
     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-    val date = sdf.parse(dateStr) ?: return dateStr
-    val diff = Date().time - date.time
+    sdf.timeZone = TimeZone.getTimeZone("UTC") // Set timezone to UTC
+    val date = try {
+        sdf.parse(timestamp) ?: return "Just now"
+    } catch (e: Exception) {
+        Log.e("PostDetailScreen", "Error parsing date $timestamp: ${e.message}")
+        return "Just now"
+    }
+
+    val now = Date()
+    val diff = now.time - date.time
+    val seconds = diff / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+    val days = hours / 24
+
     return when {
-        diff < 60_000 -> "Just now"
-        diff < 3_600_000 -> "${diff / 60_000}m ago"
-        diff < 86_400_000 -> "${diff / 3_600_000}h ago"
-        else -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(date)
+        days > 0 -> "$days days ago"
+        hours > 0 -> "$hours hours ago"
+        minutes > 0 -> "$minutes minutes ago"
+        else -> "Just now"
     }
 }
