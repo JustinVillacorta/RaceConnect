@@ -37,6 +37,7 @@ import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import java.text.SimpleDateFormat
@@ -58,7 +59,7 @@ fun RepostScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Repost", color = Color.White) },
+                title = { Text("Repost",fontFamily = fontFamily, color = Color.White, fontSize = 24.sp) },
                 navigationIcon = {
                     IconButton(onClick = { onClose() }) {
                         Icon(
