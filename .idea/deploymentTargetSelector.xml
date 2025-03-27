@@ -4,7 +4,7 @@
     <selectionStates>
       <SelectionState runConfigName="RaceConnect">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-03-26T10:58:54.360466600Z">
+        <DropdownSelection timestamp="2025-03-27T02:51:14.656341800Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="PhysicalDevice" identifier="serial=10944373AK101625" />

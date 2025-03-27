@@ -43,7 +43,7 @@ import com.example.raceconnect.view.Screens.MenuScreens.FriendsListScreen
 import com.example.raceconnect.view.Screens.MenuScreens.ListedItemsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.NewsFeedPreferencesScreen
 import com.example.raceconnect.view.Screens.MenuScreens.PostUserProfileViewScreen
-import com.example.raceconnect.view.Screens.MenuScreens.UserProfileScreen
+import com.example.raceconnect.view.Screens.MenuScreens.ProfileView.UserProfileScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CommentSectionScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.CreatePostScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.FullScreenImageViewer
@@ -56,7 +56,6 @@ import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedPreference.NewsFeedPreferenceViewModelFactory
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
-import com.example.raceconnect.viewmodel.NotificationClickedViewModel
 import com.example.raceconnect.viewmodel.NotificationClickedViewModelFactory
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModel
 import com.example.raceconnect.viewmodel.ProfileDetails.MenuViewModel.MenuViewModelFactory
@@ -70,7 +69,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.navigation.NavBackStackEntry
 import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
-import com.example.raceconnect.view.Screens.MenuScreens.EditPostScreen
+import com.example.raceconnect.view.Screens.MenuScreens.ProfileView.EditPostScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -580,7 +579,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         composable(
                             route = "fullScreenImage/{postId}/{imageUrls}/{initialIndex}",
                             arguments = listOf(
-                                navArgument("postId") { type = NavType.IntType },
+                                navArgument("postId") { type = NavType.IntType  },
                                 navArgument("imageUrls") { type = NavType.StringType },
                                 navArgument("initialIndex") { type = NavType.IntType }
                             ),
