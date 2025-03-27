@@ -156,6 +156,7 @@ fun PostCard(
     val repostCount = repostCounts[post.id] ?: post.repost_count
     val postImagesMap by viewModel.postImages.collectAsState()
     val imageUrls = postImagesMap[post.id] ?: post.images ?: emptyList()
+    val userReposts by viewModel.userReposts.collectAsState() // Assuming this exists in NewsFeedViewModel
     var showReportDialog by remember { mutableStateOf(false) }
     var selectedReason by remember { mutableStateOf("") }
     var otherText by remember { mutableStateOf("") }
@@ -164,6 +165,11 @@ fun PostCard(
 
     var showHiddenPost by remember(post.id, post.status) { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
+    var showSelfRepostDialog by remember { mutableStateOf(false) }
+    var showAlreadyRepostedDialog by remember { mutableStateOf(false) } // New state for already reposted dialog
+
+    // Check if the logged-in user has already reposted this post
+    val hasReposted = userReposts.any { it.userId == loggedInUserId && it.postId == post.id }
 
     LaunchedEffect(post.id, post.status) {
         viewModel.getPostImages(post.id)
@@ -549,8 +555,20 @@ fun PostCard(
                         )
                         ReactionIcon(
                             icon = Icons.Default.Repeat,
-                            onClick = { onShowRepostScreen(post) },
-                            enabled = true
+                            onClick = {
+                                when {
+                                    loggedInUserId == post.user_id -> {
+                                        showSelfRepostDialog = true // User is the poster
+                                    }
+                                    hasReposted -> {
+                                        showAlreadyRepostedDialog = true // User has already reposted
+                                    }
+                                    else -> {
+                                        onShowRepostScreen(post) // Proceed with repost
+                                    }
+                                }
+                            },
+                            enabled = loggedInUserId != post.user_id && !hasReposted // Disable if self-post or already reposted
                         )
                         Text(
                             text = "$repostCount",
@@ -693,6 +711,33 @@ fun PostCard(
             dismissButton = {
                 TextButton(onClick = { showConfirmationDialog = false }) {
                     Text("No")
+                }
+            }
+        )
+    }
+
+    if (showSelfRepostDialog) {
+        AlertDialog(
+            onDismissRequest = { showSelfRepostDialog = false },
+            title = { Text("Repost Error") },
+            text = { Text("You can't repost your own post.") },
+            confirmButton = {
+                TextButton(onClick = { showSelfRepostDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    // New Alert Dialog for already reposted attempt
+    if (showAlreadyRepostedDialog) {
+        AlertDialog(
+            onDismissRequest = { showAlreadyRepostedDialog = false },
+            title = { Text("Repost Error") },
+            text = { Text("You have already reposted this post.") },
+            confirmButton = {
+                TextButton(onClick = { showAlreadyRepostedDialog = false }) {
+                    Text("OK")
                 }
             }
         )

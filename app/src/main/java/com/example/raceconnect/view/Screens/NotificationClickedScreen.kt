@@ -47,6 +47,7 @@ import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import com.example.raceconnect.view.ui.theme.fontFamily
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -95,7 +96,7 @@ fun PostDetailScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(topBarTitle, color = Color.White) },
+                title = { Text(topBarTitle,  fontFamily = fontFamily, color = Color.White, fontSize = 24.sp) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(

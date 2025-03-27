@@ -186,11 +186,13 @@ fun RepostCard(
     val context = LocalContext.current
     var showReportDialog by remember { mutableStateOf(false) }
     var showUserDialog by remember { mutableStateOf(false) }
-    var menuExpanded by remember { mutableStateOf(false) }
+    var showAlreadyRepostedDialog by remember { mutableStateOf(false) } // State for already reposted dialog
 
     // State to hold the dynamically fetched original post
     var fetchedOriginalPost by remember { mutableStateOf<NewsFeedDataClassItem?>(originalPost) }
     val originalPosts by viewModel.originalPosts.collectAsState()
+    val userReposts by viewModel.userReposts.collectAsState() // Assuming this exists in NewsFeedViewModel
+    val loggedInUserId = user?.id
 
     // Fetch the original post if not provided and original_post_id is available
     LaunchedEffect(repost.original_post_id) {
@@ -297,6 +299,9 @@ fun RepostCard(
 
                 // Original Post
                 fetchedOriginalPost?.let { original ->
+                    // Check if the user has already reposted the original post
+                    val hasRepostedOriginal = userReposts.any { it.userId == loggedInUserId && it.postId == original.id }
+
                     Card(
                         shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
@@ -313,7 +318,13 @@ fun RepostCard(
                             onShowFullScreenImage = onShowFullScreenImage,
                             userPreferences = userPreferences,
                             onReportClick = onReportClick,
-                            onShowRepostScreen = onShowRepostScreen,
+                            onShowRepostScreen = { post ->
+                                if (hasRepostedOriginal) {
+                                    showAlreadyRepostedDialog = true // Show dialog if already reposted
+                                } else {
+                                    onShowRepostScreen(post) // Proceed with repost
+                                }
+                            },
                             onUserActionClick = onUserActionClick,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -334,13 +345,13 @@ fun RepostCard(
         }
     }
 
-    // Report Dialog (unchanged)
+    // Report Dialog (fixed onDismissRequest)
     if (showReportDialog) {
         var selectedOption by remember { mutableStateOf("") }
         var otherText by remember { mutableStateOf("") }
 
         AlertDialog(
-            onDismissRequest = { showUserDialog = false },
+            onDismissRequest = { showReportDialog = false }, // Fixed from showUserDialog
             title = { Text(text = "User Actions") },
             text = {
                 Column {
@@ -400,7 +411,7 @@ fun RepostCard(
                                         Toast.LENGTH_SHORT).show()
                                     onUserActionClick(repost.user_id, selectedOption,
                                         if (selectedOption == "Others") otherText else null)
-                                    showUserDialog = false
+                                    showReportDialog = false
                                 }
                             }
                         }
@@ -413,11 +424,25 @@ fun RepostCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
-                        .clickable { showUserDialog = false }
+                        .clickable { showReportDialog = false }
                         .padding(8.dp)
                 )
             },
             shape = RoundedCornerShape(12.dp)
+        )
+    }
+
+    // Alert Dialog for already reposted original post
+    if (showAlreadyRepostedDialog) {
+        AlertDialog(
+            onDismissRequest = { showAlreadyRepostedDialog = false },
+            title = { Text("Repost Error") },
+            text = { Text("You have already reposted this post.") },
+            confirmButton = {
+                TextButton(onClick = { showAlreadyRepostedDialog = false }) {
+                    Text("OK")
+                }
+            }
         )
     }
 }

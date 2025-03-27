@@ -1,39 +1,17 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
 import android.util.Log
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,17 +22,16 @@ import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.raceconnect.R
 import com.example.raceconnect.datastore.UserPreferences
+import com.example.raceconnect.model.AnnouncementDataClass
 import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
-import androidx.compose.ui.platform.LocalContext
-import com.example.raceconnect.model.AnnouncementDataClass
-import com.example.raceconnect.view.ui.theme.fontFamily
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,24 +55,29 @@ fun NewsFeedScreen(
     val newPostTriggerState by viewModel.newPostTrigger.collectAsState()
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id ?: 0
+    val userReposts by viewModel.userReposts.collectAsState() // Add this to check reposts
+    var showAlreadyRepostedDialog by remember { mutableStateOf(false) } // Dialog state
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
-
-    // State to control the visibility of the error dialog
     var showErrorDialog by remember { mutableStateOf(false) }
 
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val sheetHeight = screenHeight * 0.85f
 
-    // Log received items for debugging
+    // Fetch user reposts on initialization
+    LaunchedEffect(loggedInUserId) {
+        if (loggedInUserId != 0) {
+            viewModel.fetchUserReposts(loggedInUserId)
+        }
+    }
+
     LaunchedEffect(posts.itemCount) {
         Log.d("NewsFeedScreen", "Received ${posts.itemCount} items in posts")
     }
 
-    // Handle ban navigation
     LaunchedEffect(errorMessage) {
         if (errorMessage?.contains("banned", ignoreCase = true) == true) {
             navController.navigate("login") {
@@ -106,7 +88,6 @@ fun NewsFeedScreen(
         }
     }
 
-    // Single refresh trigger
     LaunchedEffect(Unit, newPostTriggerState) {
         if (!viewModel.isInitialRefreshDone || newPostTriggerState) {
             isRefreshing = true
@@ -120,7 +101,6 @@ fun NewsFeedScreen(
         }
     }
 
-    // Show the error dialog when an error occurs
     LaunchedEffect(posts.loadState.refresh, posts.loadState.append) {
         showErrorDialog = posts.loadState.refresh is LoadState.Error || posts.loadState.append is LoadState.Error
     }
@@ -142,7 +122,6 @@ fun NewsFeedScreen(
         }
     }
 
-    // Error AlertDialog
     if (showErrorDialog) {
         AlertDialog(
             onDismissRequest = { showErrorDialog = false },
@@ -188,6 +167,20 @@ fun NewsFeedScreen(
             dismissButton = {
                 TextButton(onClick = { showErrorDialog = false }) {
                     Text("Cancel", color = Color.Gray)
+                }
+            }
+        )
+    }
+
+    // Alert Dialog for already reposted post
+    if (showAlreadyRepostedDialog) {
+        AlertDialog(
+            onDismissRequest = { showAlreadyRepostedDialog = false },
+            title = { Text("Repost Error") },
+            text = { Text("You have already reposted this post.") },
+            confirmButton = {
+                TextButton(onClick = { showAlreadyRepostedDialog = false }) {
+                    Text("OK")
                 }
             }
         )
@@ -239,6 +232,9 @@ fun NewsFeedScreen(
                         val isLiked = postLikes[feedItem.id] ?: false
                         val likeCount = likeCounts[feedItem.id] ?: feedItem.like_count
 
+                        // Check if the post has been reposted by the logged-in user
+                        val hasReposted = userReposts.any { it.userId == loggedInUserId && it.postId == feedItem.id }
+
                         when {
                             feedItem.isAnnouncement -> {
                                 AnnouncementCard(
@@ -289,7 +285,14 @@ fun NewsFeedScreen(
                                             Log.e("NewsFeedScreen", "Failed to report post: $error")
                                         })
                                     },
-                                    onShowRepostScreen = onShowRepostScreen,
+                                    onShowRepostScreen = { post ->
+                                        val hasRepostedInner = userReposts.any { it.userId == loggedInUserId && it.postId == post.id }
+                                        if (hasRepostedInner) {
+                                            showAlreadyRepostedDialog = true
+                                        } else {
+                                            onShowRepostScreen(post)
+                                        }
+                                    },
                                     onUserActionClick = { userId, action, otherText ->
                                         if (action == "Report User") viewModel.reportUser(userId, action, otherText)
                                     }
@@ -313,7 +316,13 @@ fun NewsFeedScreen(
                                             Log.e("NewsFeedScreen", "Failed to report post: $error")
                                         })
                                     },
-                                    onShowRepostScreen = onShowRepostScreen,
+                                    onShowRepostScreen = { post ->
+                                        if (hasReposted) {
+                                            showAlreadyRepostedDialog = true
+                                        } else {
+                                            onShowRepostScreen(post)
+                                        }
+                                    },
                                     onUserActionClick = { userId, action, otherText ->
                                         if (action == "Report User") viewModel.reportUser(userId, action, otherText)
                                     }
@@ -333,7 +342,6 @@ fun NewsFeedScreen(
                             Log.d("NewsFeedScreen", "Refresh state: Loading")
                         }
                         is LoadState.Error -> item {
-                            // Show "No Posts yet" message when there's an error
                             Text(
                                 "No Posts yet\nLooks like you haven't posted anything yet",
                                 color = Color.Gray,
@@ -362,7 +370,6 @@ fun NewsFeedScreen(
                             Log.d("NewsFeedScreen", "Append state: Loading")
                         }
                         is LoadState.Error -> {
-                            // No need to add "No Posts yet" here since it's already handled by refresh state
                             Log.e("NewsFeedScreen", "Append state: Error - AlertDialog already shown")
                         }
                         else -> {}
