@@ -85,6 +85,12 @@ fun CreateMarketplaceItemScreen(
 
     // Get the profile picture URL from UserPreferences (assuming it's stored there)
     val profilePictureUrl = user?.profilePicture ?: "https://via.placeholder.com/150" // Fallback if null
+    val isFormComplete = title.isNotEmpty() &&
+            price.isNotEmpty() &&
+            description.isNotEmpty() && // Added description check
+            category.isNotEmpty() &&
+            !selectedImageUris.isNullOrEmpty() &&
+            currentUserId != null
 
     Scaffold(
         topBar = {
@@ -98,19 +104,18 @@ fun CreateMarketplaceItemScreen(
                 actions = {
                     Button(
                         onClick = {
-                            if (title.isNotEmpty() && price.isNotEmpty() && currentUserId != null) {
-                                viewModel.addMarketplaceItemWithImages(
-                                    context = context,
-                                    title = title,
-                                    price = price,
-                                    description = description,
-                                    category = category,
-                                    imageUris = selectedImageUris
-                                )
-                                onClose()
-                            }
+                            viewModel.addMarketplaceItemWithImages(
+                                context = context,
+                                title = title,
+                                price = price,
+                                description = description,
+                                category = category,
+                                imageUris = selectedImageUris
+                            )
+                            onClose()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                        enabled = isFormComplete // Enable only when all fields are complete
                     ) {
                         Text("Publish", color = Color.White)
                     }
