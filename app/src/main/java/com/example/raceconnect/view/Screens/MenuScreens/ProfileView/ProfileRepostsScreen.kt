@@ -34,17 +34,17 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 
+
 @Composable
 fun RepostsSection(
     userReposts: List<Repost>,
     postImages: Map<Int, List<String>>,
     profileOriginalPosts: Map<Int, ProfileRepostsDataClass>,
     profileUsername: String?,
-    profileUserId: Int, // Changed from String to Int
+    profileUserId: Int,
     onFetchPostImages: (Int) -> Unit,
     onFetchOriginalPost: (Int) -> Unit
 ) {
-    // Filter reposts to only include those made by the profile user
     val myReposts = userReposts.filter { it.userId == profileUserId }
 
     if (myReposts.isEmpty()) {
@@ -218,12 +218,11 @@ fun RepostsSection(
                                         }
                                         Spacer(modifier = Modifier.height(8.dp))
 
-                                        // Original Post Content
+                                        // Original Post Content with ExpandableText
                                         if (!originalPost.content.isNullOrEmpty()) {
-                                            Text(
+                                            ExpandableText(
                                                 text = originalPost.content,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = Color.Black
+                                                modifier = Modifier.fillMaxWidth()
                                             )
                                             Spacer(modifier = Modifier.height(12.dp))
                                         }
