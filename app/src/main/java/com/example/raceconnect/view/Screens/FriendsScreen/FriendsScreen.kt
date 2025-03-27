@@ -283,8 +283,8 @@ fun FriendItem(
             Image(
                 painter = rememberAsyncImagePainter(
                     model = friend.profileImageUrl ?: "",
-                    placeholder = painterResource(id = R.drawable.ic_launcher_background),
-                    error = painterResource(id = R.drawable.ic_launcher_background)
+                    placeholder = painterResource(id = R.drawable.baseline_account_circle_24),
+                    error = painterResource(id = R.drawable.baseline_account_circle_24)
                 ),
                 contentDescription = "Profile Picture",
                 modifier = Modifier

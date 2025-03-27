@@ -351,7 +351,11 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             FriendsListScreen(
                                 navController = navController,
                                 onClose = { navController.popBackStack() },
-                                userPreferences = userPreferences
+                                userPreferences = userPreferences,
+                                onNavigateToProfile = { userId ->
+                                    val userIdInt = userId.toIntOrNull() ?: return@FriendsListScreen // Convert to Int safely
+                                    navController.navigate(NavRoutes.ProfileView.createRoute(userIdInt))
+                                }
                             )
                         }
                         composable(

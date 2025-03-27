@@ -38,7 +38,8 @@ import com.example.raceconnect.view.ui.theme.fontFamily
 fun FriendsListScreen(
     navController: NavController,
     onClose: () -> Unit,
-    userPreferences: UserPreferences
+    userPreferences: UserPreferences,
+    onNavigateToProfile: (String) -> Unit // Added navigation callback
 ) {
     val viewModel: FriendsViewModel = viewModel(factory = FriendsViewModelFactory(userPreferences))
     val acceptedFriends by viewModel.acceptedFriends.collectAsState()
@@ -53,7 +54,8 @@ fun FriendsListScreen(
         onBackClick = onClose,
         acceptedFriends = acceptedFriends,
         isLoading = isLoading,
-        onRemove = viewModel::removeFriend
+        onRemove = viewModel::removeFriend,
+        onNavigateToProfile = onNavigateToProfile // Pass the navigation callback
     )
 }
 
@@ -63,7 +65,8 @@ fun FriendsListScreenContent(
     onBackClick: () -> Unit,
     acceptedFriends: List<Friend>,
     isLoading: Boolean,
-    onRemove: (String) -> Unit
+    onRemove: (String) -> Unit,
+    onNavigateToProfile: (String) -> Unit // Added navigation callback
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -73,9 +76,10 @@ fun FriendsListScreenContent(
                     title = {
                         Text(
                             text = "Friends",
-                             fontFamily = fontFamily, color = Color.White, fontSize = 24.sp
+                            fontFamily = fontFamily,
+                            color = Color.White,
+                            fontSize = 24.sp
                         )
-
                     },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
@@ -128,7 +132,8 @@ fun FriendsListScreenContent(
                             Log.d("FriendsListScreen", "Rendering friend: ${friend.name}")
                             FriendItem(
                                 friend = friend,
-                                onRemove = onRemove
+                                onRemove = onRemove,
+                                onProfileClick = onNavigateToProfile // Pass the navigation callback
                             )
                         }
                     }
@@ -165,7 +170,8 @@ private fun EmptyState(message: String) {
 @Composable
 fun FriendItem(
     friend: Friend,
-    onRemove: ((String) -> Unit)? = null
+    onRemove: ((String) -> Unit)? = null,
+    onProfileClick: (String) -> Unit // Added navigation callback
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
@@ -177,12 +183,15 @@ fun FriendItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.clickable { onProfileClick(friend.id.toString()) }, // Make the row clickable
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Image(
                 painter = rememberAsyncImagePainter(
                     model = friend.profileImageUrl ?: "",
-                    placeholder = painterResource(id = R.drawable.ic_launcher_background),
-                    error = painterResource(id = R.drawable.ic_launcher_background)
+                    placeholder = painterResource(id = R.drawable.baseline_account_circle_24),
+                    error = painterResource(id = R.drawable.baseline_account_circle_24)
                 ),
                 contentDescription = "Profile Picture",
                 modifier = Modifier
