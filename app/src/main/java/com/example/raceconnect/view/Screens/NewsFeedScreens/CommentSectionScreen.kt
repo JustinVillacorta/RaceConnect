@@ -1,6 +1,7 @@
 package com.example.raceconnect.view.Screens.NewsFeedScreens
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,7 +42,7 @@ fun CommentSectionScreen(
     postId: Int,
     navController: NavController,
     userPreferences: UserPreferences,
-    onShowProfileView: (Int) -> Unit // Already accepts Int
+    onShowProfileView: (Int) -> Unit
 ) {
     val viewModel: CommentViewModel = viewModel(factory = CommentViewModelFactory(userPreferences))
     var commentText by remember { mutableStateOf("") }
@@ -48,7 +50,7 @@ fun CommentSectionScreen(
 
     var userId by remember { mutableStateOf(0) }
     var username by remember { mutableStateOf("Unknown") }
-    var selectedCommentId by remember { mutableStateOf<Int?>(null) } // Tracks the comment showing options
+    var selectedCommentId by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(Unit) {
         val user = userPreferences.user.first()
@@ -81,7 +83,7 @@ fun CommentSectionScreen(
                             userId = userId,
                             postId = postId,
                             comment = commentText,
-                            createdAt = Date(),
+                            createdAt = Date(), // This is a Date object
                             username = username
                         )
                         viewModel.addComment(newComment)
@@ -95,7 +97,6 @@ fun CommentSectionScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            // Header Text "Comments" centered at the top
             Text(
                 text = "Comments",
                 fontSize = 16.sp,
@@ -111,9 +112,9 @@ fun CommentSectionScreen(
                     .fillMaxWidth()
                     .weight(1f)
                     .clickable(
-                        indication = null, // No ripple effect
+                        indication = null,
                         interactionSource = remember { MutableInteractionSource() }
-                    ) { selectedCommentId = null }, // Hide options when clicking outside
+                    ) { selectedCommentId = null },
                 contentAlignment = Alignment.Center
             ) {
                 when {
@@ -153,7 +154,7 @@ fun CommentSectionScreen(
                                     onDeleteComment = { commentId -> viewModel.deleteComment(commentId) },
                                     onUpdateComment = { commentId, newText -> viewModel.updateComment(commentId, newText) },
                                     navController = navController,
-                                    onShowProfileView = onShowProfileView  // Pass the updated callback
+                                    onShowProfileView = onShowProfileView
                                 )
                                 Divider(
                                     modifier = Modifier.padding(horizontal = 8.dp),
@@ -223,16 +224,15 @@ fun CommentItem(
     onDeleteComment: (Int) -> Unit,
     onUpdateComment: (Int, String) -> Unit,
     navController: NavController,
-    onShowProfileView: (Int) -> Unit  // Changed from () -> Unit to (Int) -> Unit
+    onShowProfileView: (Int) -> Unit
 ) {
     val timestamp = comment.createdAt?.let {
-        val formatter = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
-        formatter.format(it)
+        formatTime(SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(it))
     } ?: "Just now"
 
     val isEditing = remember { mutableStateOf(false) }
     val editedText = remember { mutableStateOf(comment.comment ?: "") }
-    val isSelected = selectedCommentId == comment.id // Check if this comment is selected
+    val isSelected = selectedCommentId == comment.id
 
     Row(
         modifier = Modifier
@@ -242,7 +242,7 @@ fun CommentItem(
                 onClick = {},
                 onLongClick = {
                     if (comment.userId == currentUserId) {
-                        onCommentSelected(if (isSelected) null else comment.id) // Toggle selection
+                        onCommentSelected(if (isSelected) null else comment.id)
                     }
                 }
             ),
@@ -253,7 +253,7 @@ fun CommentItem(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(Color.Gray)
-                .clickable { onShowProfileView(comment.userId) }, // Passes comment.userId
+                .clickable { onShowProfileView(comment.userId) },
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -312,16 +312,17 @@ fun CommentItem(
                     TextButton(onClick = {
                         comment.id?.let { onUpdateComment(it, editedText.value) }
                         isEditing.value = false
-                        onCommentSelected(null) // Hide options after saving
+                        onCommentSelected(null)
                     }) {
                         Text("Save")
                     }
                 }
             } else {
-                Text(
+                ExpandableText(
                     text = comment.comment ?: comment.text ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
                 )
                 if (isSelected && comment.userId == currentUserId) {
                     Row(
@@ -335,7 +336,7 @@ fun CommentItem(
                         }
                         TextButton(onClick = {
                             comment.id?.let { onDeleteComment(it) }
-                            onCommentSelected(null) // Hide options after deleting
+                            onCommentSelected(null)
                         }) {
                             Text("Delete")
                         }

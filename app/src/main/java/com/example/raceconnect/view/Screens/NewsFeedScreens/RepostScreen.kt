@@ -207,7 +207,7 @@ fun RepostCard(
     }
 
     Card(
-        shape = RectangleShape,
+        shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         modifier = Modifier
@@ -284,13 +284,13 @@ fun RepostCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Repost Comment (if any)
+                // Repost Comment (if any) with ExpandableText
                 if (!repost.content.isNullOrEmpty()) {
-                    Text(
+                    ExpandableText(
                         text = repost.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Black,
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -299,7 +299,7 @@ fun RepostCard(
                 fetchedOriginalPost?.let { original ->
                     Card(
                         shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)), // Light gray background to distinguish
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 8.dp)
@@ -317,7 +317,7 @@ fun RepostCard(
                             onUserActionClick = onUserActionClick,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .wrapContentHeight() // Let PostCard take the height it needs
+                                .wrapContentHeight()
                         )
                     }
                 } ?: run {
@@ -421,6 +421,7 @@ fun RepostCard(
         )
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable

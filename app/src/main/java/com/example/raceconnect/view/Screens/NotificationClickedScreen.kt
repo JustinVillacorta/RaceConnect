@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -246,6 +247,46 @@ fun PostDetailScreen(
 }
 
 @Composable
+fun ExpandableText(
+    text: String,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var isTruncated by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        Text(
+            text = text,
+            maxLines = if (expanded) Int.MAX_VALUE else 3,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Black,
+            onTextLayout = { textLayoutResult ->
+                if (!expanded && textLayoutResult.hasVisualOverflow) {
+                    isTruncated = true
+                }
+            }
+        )
+        if (isTruncated) {
+            val toggleText = if (expanded) "See Less" else "See More"
+            Text(
+                text = toggleText,
+                color = MaterialTheme.colorScheme.outline,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .clickable(enabled = enabled) {
+                        if (enabled) {
+                            expanded = !expanded
+                        }
+                    }
+                    .padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+@Composable
 fun RepostLayout(
     repostData: Repost,
     originalPost: PostByIdResponse,
@@ -320,13 +361,13 @@ fun RepostLayout(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Repost Quote (if any)
+                // Repost Quote (if any) with ExpandableText
                 repostData.quote?.takeIf { it.isNotEmpty() }?.let { quote ->
-                    Text(
+                    ExpandableText(
                         text = quote,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Black,
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -527,11 +568,10 @@ fun PostLayout(
                         }
                     }
                 } else {
-                    // Normal content
-                    Text(
+                    // Normal content with ExpandableText
+                    ExpandableText(
                         text = post.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Black
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     if (imageUrls.size == 1) {
@@ -550,18 +590,16 @@ fun PostLayout(
                                 contentScale = ContentScale.Crop
                             )
                         }
-                    } else {
+                    } else if (imageUrls.isNotEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(340.dp)
                                 .padding(top = 8.dp)
                         ) {
-                            // Use the Accompanist Pager API for rememberPagerState
-                            val pagerState = rememberPagerState() // No parameters needed initially
-                            // Update HorizontalPager to include the count parameter
+                            val pagerState = rememberPagerState()
                             HorizontalPager(
-                                count = imageUrls.size, // Add the count parameter
+                                count = imageUrls.size,
                                 state = pagerState,
                                 modifier = Modifier.fillMaxSize()
                             ) { page ->
@@ -803,7 +841,7 @@ private fun formatTimestamp(timestamp: String?): String {
     if (timestamp.isNullOrEmpty()) return "Just now"
 
     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-    sdf.timeZone = TimeZone.getTimeZone("UTC") // Set timezone to UTC
+    sdf.timeZone = TimeZone.getTimeZone("UTC")
     val date = try {
         sdf.parse(timestamp) ?: return "Just now"
     } catch (e: Exception) {

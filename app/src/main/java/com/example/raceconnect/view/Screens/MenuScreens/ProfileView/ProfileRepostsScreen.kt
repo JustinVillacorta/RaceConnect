@@ -134,13 +134,13 @@ fun RepostsSection(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Repost Comment (if any)
+                            // Repost Comment (if any) with ExpandableText
                             if (!repost.quote.isNullOrEmpty()) {
-                                Text(
+                                ExpandableText(
                                     text = repost.quote,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Black,
-                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp)
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
