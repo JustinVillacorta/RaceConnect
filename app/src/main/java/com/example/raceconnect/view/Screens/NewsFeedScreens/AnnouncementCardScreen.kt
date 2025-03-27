@@ -68,10 +68,9 @@ fun AnnouncementCard(
                     color = Color.Black
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
+                ExpandableText(
                     text = announcement.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Black
+                    modifier = Modifier.fillMaxWidth()
                 )
                 if (!announcement.image_url.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(12.dp))
