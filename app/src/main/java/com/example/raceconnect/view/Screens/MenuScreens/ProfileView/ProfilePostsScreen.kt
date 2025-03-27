@@ -66,7 +66,8 @@ fun PostsSection(
     postImages: Map<Int, List<String>>,
     onEditPost: (NewsFeedDataClassItem) -> Unit,
     onDeletePost: (NewsFeedDataClassItem) -> Unit,
-    onFetchPostImages: (Int) -> Unit
+    onFetchPostImages: (Int) -> Unit,
+    showDropdown: Boolean = true // New parameter to control dropdown visibility
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -81,7 +82,7 @@ fun PostsSection(
                         }
                         var showHiddenPost by remember(post.id, post.status) { mutableStateOf(false) }
                         var showConfirmationDialog by remember { mutableStateOf(false) }
-                        var showDropdown by remember { mutableStateOf(false) }
+                        var showDropdownState by remember { mutableStateOf(false) }
 
                         if (post.status?.lowercase() == "archived") {
                             Log.w("PostsSection", "Archived post ID: ${post.id} reached UI")
@@ -107,7 +108,7 @@ fun PostsSection(
                                                 .background(Color.Gray)
                                         ) {
                                             if (post.profile_picture != null) {
-                                                AsyncImage(
+                                                coil.compose.AsyncImage(
                                                     model = post.profile_picture,
                                                     contentDescription = "User Profile",
                                                     contentScale = ContentScale.Crop,
@@ -161,32 +162,34 @@ fun PostsSection(
                                                 }
                                             )
                                         }
-                                        Box {
-                                            IconButton(onClick = { showDropdown = true }) {
-                                                Icon(
-                                                    imageVector = Icons.Default.MoreVert,
-                                                    contentDescription = "More Options",
-                                                    tint = MaterialTheme.colorScheme.onBackground
-                                                )
-                                            }
-                                            DropdownMenu(
-                                                expanded = showDropdown,
-                                                onDismissRequest = { showDropdown = false }
-                                            ) {
-                                                DropdownMenuItem(
-                                                    text = { Text("Edit") },
-                                                    onClick = {
-                                                        onEditPost(post)
-                                                        showDropdown = false
-                                                    }
-                                                )
-                                                DropdownMenuItem(
-                                                    text = { Text("Delete") },
-                                                    onClick = {
-                                                        onDeletePost(post)
-                                                        showDropdown = false
-                                                    }
-                                                )
+                                        if (showDropdown) { // Conditionally show the dropdown
+                                            Box {
+                                                IconButton(onClick = { showDropdownState = true }) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.MoreVert,
+                                                        contentDescription = "More Options",
+                                                        tint = MaterialTheme.colorScheme.onBackground
+                                                    )
+                                                }
+                                                DropdownMenu(
+                                                    expanded = showDropdownState,
+                                                    onDismissRequest = { showDropdownState = false }
+                                                ) {
+                                                    DropdownMenuItem(
+                                                        text = { Text("Edit") },
+                                                        onClick = {
+                                                            onEditPost(post)
+                                                            showDropdownState = false
+                                                        }
+                                                    )
+                                                    DropdownMenuItem(
+                                                        text = { Text("Delete") },
+                                                        onClick = {
+                                                            onDeletePost(post)
+                                                            showDropdownState = false
+                                                        }
+                                                    )
+                                                }
                                             }
                                         }
                                     }
