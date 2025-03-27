@@ -43,41 +43,7 @@ class NotificationViewModel(private val apiService: ApiService = RetrofitInstanc
         }
     }
 
-    fun getNotificationById(id: Int) {
-        viewModelScope.launch {
-            try {
-                val response = apiService.getNotificationById(id)
-                if (response.isSuccessful) {
-                    response.body()?.let { notification ->
-                        _notifications.value = _notifications.value.map {
-                            if (it.id == id) notification else it
-                        }
-                    }
-                    _error.value = null
-                } else {
-                    _error.value = "Failed to fetch notification: ${response.errorBody()?.string()}"
-                }
-            } catch (e: Exception) {
-                _error.value = "Error: ${e.message}"
-            }
-        }
-    }
 
-    fun createNotification(request: NotificationRequest) {
-        viewModelScope.launch {
-            try {
-                val response = apiService.createNotification(request)
-                if (response.isSuccessful) {
-                    fetchNotifications(request.userId)
-                    _error.value = null
-                } else {
-                    _error.value = "Failed to create notification: ${response.errorBody()?.string()}"
-                }
-            } catch (e: Exception) {
-                _error.value = "Error: ${e.message}"
-            }
-        }
-    }
 
     fun markAsRead(notificationId: Int) {
         viewModelScope.launch {
@@ -113,22 +79,4 @@ class NotificationViewModel(private val apiService: ApiService = RetrofitInstanc
         }
     }
 
-    fun fetchPost(postId: Int) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val response = apiService.getPostById(postId)
-                if (response.isSuccessful) {
-                    _selectedPost.value = response.body() as PostByIdResponse?
-                    _error.value = null
-                } else {
-                    _error.value = "Failed to fetch post: ${response.code()} - ${response.errorBody()?.string()}"
-                }
-            } catch (e: Exception) {
-                _error.value = "Error fetching post: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
 }

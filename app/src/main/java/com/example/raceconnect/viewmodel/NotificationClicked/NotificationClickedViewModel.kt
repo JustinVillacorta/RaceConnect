@@ -170,9 +170,17 @@ class NotificationClickedViewModel(
                     }
                     _isLiked.value = likes.any { it.userId == currentUserId }
                     _likeCount.value = likes.size
-                    _error.value = null
+                    _error.value = null // Clear any previous error
                 } else {
-                    _error.value = "Failed to fetch likes: ${response.code()} - ${response.errorBody()?.string()}"
+                    // Handle "no likes" case (e.g., 404) gracefully
+                    if (response.code() == 404) {
+                        _isLiked.value = false
+                        _likeCount.value = 0
+                        _error.value = null // No error for no likes
+                    } else {
+                        // Only set error for unexpected failures
+                        _error.value = "Failed to fetch likes: ${response.code()} - ${response.errorBody()?.string()}"
+                    }
                 }
             } catch (e: Exception) {
                 _error.value = "Error fetching likes: ${e.message}"
