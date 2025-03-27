@@ -3,19 +3,23 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -31,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,7 +64,7 @@ fun NewsFeedScreen(
     userPreferences: UserPreferences,
     onShowCreatePost: () -> Unit,
     onShowFullScreenImage: (List<String>, Int, Int) -> Unit,
-    onShowProfileView: (Int) -> Unit, // Updated to accept userId
+    onShowProfileView: (Int) -> Unit,
     onShowRepostScreen: (NewsFeedDataClassItem) -> Unit
 ) {
     val authViewModel: AuthenticationViewModel = viewModel()
@@ -72,12 +77,14 @@ fun NewsFeedScreen(
     val likeCounts by viewModel.likeCounts.collectAsState()
     val newPostTriggerState by viewModel.newPostTrigger.collectAsState()
     val user by userPreferences.user.collectAsState(initial = null)
-    val loggedInUserId = user?.id ?: 0 // Added for AddPostSection
+    val loggedInUserId = user?.id ?: 0
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPostId by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
+    // State to control the visibility of the error dialog
+    var showErrorDialog by remember { mutableStateOf(false) }
 
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
@@ -113,6 +120,11 @@ fun NewsFeedScreen(
         }
     }
 
+    // Show the error dialog when an error occurs
+    LaunchedEffect(posts.loadState.refresh, posts.loadState.append) {
+        showErrorDialog = posts.loadState.refresh is LoadState.Error || posts.loadState.append is LoadState.Error
+    }
+
     if (showBottomSheet) {
         ModalBottomSheet(
             sheetState = sheetState,
@@ -125,9 +137,60 @@ fun NewsFeedScreen(
                 postId = selectedPostId ?: -1,
                 navController = navController,
                 userPreferences = userPreferences,
-                onShowProfileView = { userId -> onShowProfileView(userId); showBottomSheet = false } // Pass userId
+                onShowProfileView = { userId -> onShowProfileView(userId); showBottomSheet = false }
             )
         }
+    }
+
+    // Error AlertDialog
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = {
+                Text(
+                    text = "Connection Error",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.Black
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.WifiOff,
+                        contentDescription = "No Internet Icon",
+                        tint = Color.Red,
+                        modifier = Modifier
+                            .padding(bottom = 16.dp)
+                            .height(48.dp)
+                    )
+                    Text(
+                        text = "No internet connection, please check",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Black
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showErrorDialog = false
+                    isRefreshing = true
+                    NewsFeedPagingSourceAllPosts.clearCaches()
+                    viewModel.refreshPosts()
+                    posts.refresh()
+                    Log.d("NewsFeedScreen", "Retry clicked - Refresh triggered")
+                }) {
+                    Text("Retry", color = Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showErrorDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -270,18 +333,25 @@ fun NewsFeedScreen(
                             Log.d("NewsFeedScreen", "Refresh state: Loading")
                         }
                         is LoadState.Error -> item {
+                            // Show "No Posts yet" message when there's an error
                             Text(
-                                "Error: ${(loadState.refresh as LoadState.Error).error.message}",
-                                color = Color.Red,
-                                modifier = Modifier.padding(16.dp)
+                                "No Posts yet\nLooks like you haven't posted anything yet",
+                                color = Color.Gray,
+                                modifier = Modifier.padding(16.dp),
+                                textAlign = TextAlign.Center
                             )
                             isRefreshing = false
-                            Log.e("NewsFeedScreen", "Refresh state: Error")
+                            Log.e("NewsFeedScreen", "Refresh state: Error - Showing 'No Posts yet' message")
                         }
                         is LoadState.NotLoading -> {
                             isRefreshing = false
                             if (posts.itemCount == 0) item {
-                                Text("No items available", color = Color.Gray, modifier = Modifier.padding(16.dp))
+                                Text(
+                                    "No Posts yet\nLooks like you haven't posted anything yet",
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(16.dp),
+                                    textAlign = TextAlign.Center
+                                )
                                 Log.d("NewsFeedScreen", "Refresh state: NotLoading, no items available")
                             }
                         }
@@ -291,9 +361,9 @@ fun NewsFeedScreen(
                             CircularProgressIndicator(modifier = Modifier.fillMaxWidth().padding(16.dp))
                             Log.d("NewsFeedScreen", "Append state: Loading")
                         }
-                        is LoadState.Error -> item {
-                            Text("Error loading more items", color = Color.Red, modifier = Modifier.padding(16.dp))
-                            Log.e("NewsFeedScreen", "Append state: Error")
+                        is LoadState.Error -> {
+                            // No need to add "No Posts yet" here since it's already handled by refresh state
+                            Log.e("NewsFeedScreen", "Append state: Error - AlertDialog already shown")
                         }
                         else -> {}
                     }

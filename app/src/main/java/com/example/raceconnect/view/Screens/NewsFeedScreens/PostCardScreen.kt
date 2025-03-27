@@ -57,6 +57,7 @@ import java.util.*
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.view.ui.theme.White
@@ -91,6 +92,46 @@ fun formatTime(createdAt: String?): String {
 }
 
 @Composable
+fun ExpandableText(
+    text: String,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var isTruncated by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        Text(
+            text = text,
+            maxLines = if (expanded) Int.MAX_VALUE else 3,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+            onTextLayout = { textLayoutResult ->
+                if (!expanded && textLayoutResult.hasVisualOverflow) {
+                    isTruncated = true
+                }
+            }
+        )
+        if (isTruncated) {
+            val toggleText = if (expanded) "See Less" else "See More"
+            Text(
+                text = toggleText,
+                color = MaterialTheme.colorScheme.outline,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .clickable(enabled = enabled) {
+                        if (enabled) {
+                            expanded = !expanded
+                        }
+                    }
+                    .padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+// PostCard Composable
+@Composable
 fun PostCard(
     post: NewsFeedDataClassItem,
     navController: NavController,
@@ -121,7 +162,6 @@ fun PostCard(
     val user by userPreferences.user.collectAsState(initial = null)
     val loggedInUserId = user?.id
 
-    // Use remember with a key to reset showHiddenPost when post changes (e.g., on refresh)
     var showHiddenPost by remember(post.id, post.status) { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
 
@@ -239,10 +279,9 @@ fun PostCard(
 
                 if (post.status?.lowercase() == "hidden" && !showHiddenPost) {
                     // Blurred content
-                    Text(
+                    ExpandableText(
                         text = post.content ?: "No content available.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Black,
+                        enabled = false,
                         modifier = Modifier.blur(10.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -254,7 +293,7 @@ fun PostCard(
                                     .padding(top = 8.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .clickable(
-                                        enabled = false, // Disable clicking while blurred
+                                        enabled = false,
                                         onClick = {}
                                     )
                             ) {
@@ -285,7 +324,7 @@ fun PostCard(
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .clickable(
-                                                enabled = false, // Disable clicking while blurred
+                                                enabled = false,
                                                 onClick = {}
                                             )
                                     ) {
@@ -349,7 +388,7 @@ fun PostCard(
                             icon = Icons.Default.Favorite,
                             isLiked = isLiked,
                             onClick = {},
-                            enabled = false // Disable while blurred
+                            enabled = false
                         )
                         Text(
                             text = "$likeCount",
@@ -362,7 +401,7 @@ fun PostCard(
                         ReactionIcon(
                             icon = Icons.Default.ChatBubble,
                             onClick = {},
-                            enabled = false // Disable while blurred
+                            enabled = false
                         )
                         Text(
                             text = "$commentCount",
@@ -375,7 +414,7 @@ fun PostCard(
                         ReactionIcon(
                             icon = Icons.Default.Repeat,
                             onClick = {},
-                            enabled = false // Disable while blurred
+                            enabled = false
                         )
                         Text(
                             text = "$repostCount",
@@ -388,10 +427,9 @@ fun PostCard(
                     }
                 } else {
                     // Normal content (not blurred)
-                    Text(
+                    ExpandableText(
                         text = post.content ?: "No content available.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Black
+                        modifier = Modifier
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     if (imageUrls.isNotEmpty()) {
@@ -521,7 +559,6 @@ fun PostCard(
                             modifier = Modifier.padding(start = 4.dp)
                         )
                     }
-                    // Add "Hide Post" button for hidden posts when shown
                     if (post.status?.lowercase() == "hidden" && showHiddenPost) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
@@ -534,7 +571,6 @@ fun PostCard(
                 }
             }
 
-            // Overlay for hidden posts
             if (post.status?.lowercase() == "hidden" && !showHiddenPost) {
                 Box(
                     modifier = Modifier
@@ -555,8 +591,8 @@ fun PostCard(
                         Button(
                             onClick = { showConfirmationDialog = true },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Red,
-                                contentColor = White
+                                containerColor = Color.Red,
+                                contentColor = Color.White
                             )
                         ) {
                             Text("See Post")
