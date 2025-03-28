@@ -2,11 +2,15 @@ package com.example.raceconnect.view.Screens.MarketplaceScreens
 
 import android.util.Log
 import androidx.compose.foundation.background
-import com.example.raceconnect.R
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -30,6 +34,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
+import com.example.raceconnect.R
 import com.example.raceconnect.view.Navigation.NavRoutes
 import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.view.ui.theme.fontFamily
@@ -107,7 +112,9 @@ fun SellerViewMarketplaceItemDetailScreen(
                 title = {
                     Text(
                         text = "${item?.title ?: "Loading..."} details",
-                        fontFamily = fontFamily, color = Color.White, fontSize = 24.sp
+                        fontFamily = fontFamily,
+                        color = Color.White,
+                        fontSize = 24.sp
                     )
                 },
                 navigationIcon = {
@@ -146,43 +153,107 @@ fun SellerViewMarketplaceItemDetailScreen(
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
                 item != null -> {
-                    Column {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()) // Added vertical scrolling here
+                    ) {
                         val images = imagesMap[itemId]
                         when {
                             images?.isNotEmpty() == true -> {
-                                LazyRow(
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(if (isWideScreen) 400.dp else 300.dp)
+                                        .padding(bottom = 8.dp)
                                 ) {
-                                    items(images) { imageUrl ->
+                                    val pagerState = rememberPagerState(pageCount = { images.size })
+                                    HorizontalPager(
+                                        state = pagerState,
+                                        pageSpacing = 0.dp,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clickable {
+                                                navController.navigate(
+                                                    NavRoutes.MarketplaceFullScreenImage.createRoute(
+                                                        marketplaceItemId = itemId,
+                                                        imageUrls = images,
+                                                        initialIndex = pagerState.currentPage
+                                                    )
+                                                )
+                                            }
+                                    ) { page ->
                                         AsyncImage(
-                                            model = imageUrl,
-                                            contentDescription = "Item Image",
+                                            model = images[page],
+                                            contentDescription = "Item Image $page",
                                             modifier = Modifier
-                                                .width(if (isWideScreen) 400.dp else 300.dp)
-                                                .fillMaxHeight()
-                                                .padding(end = 8.dp)
+                                                .fillMaxSize()
                                                 .clip(RoundedCornerShape(8.dp)),
                                             contentScale = ContentScale.Crop,
                                             placeholder = painterResource(id = R.drawable.baseline_image_24),
                                             error = painterResource(id = R.drawable.baseline_error_24)
                                         )
                                     }
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(8.dp)
+                                            .background(Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(4.dp))
+                                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "${pagerState.currentPage + 1}/${images.size}",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .padding(bottom = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        images.forEachIndexed { index, _ ->
+                                            val isSelected = index == pagerState.currentPage
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .clip(CircleShape)
+                                                    .background(if (isSelected) Color.White else Color.Transparent)
+                                                    .then(
+                                                        if (!isSelected) Modifier.border(1.dp, Color.White, CircleShape)
+                                                        else Modifier
+                                                    )
+                                            )
+                                        }
+                                    }
                                 }
                             }
                             !item.image_url.isNullOrEmpty() -> {
-                                AsyncImage(
-                                    model = item.image_url,
-                                    contentDescription = "Item Image",
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(if (isWideScreen) 400.dp else 300.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop,
-                                    placeholder = painterResource(id = R.drawable.baseline_image_24),
-                                    error = painterResource(id = R.drawable.baseline_error_24)
-                                )
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            navController.navigate(
+                                                NavRoutes.MarketplaceFullScreenImage.createRoute(
+                                                    marketplaceItemId = itemId,
+                                                    imageUrls = listOf(item.image_url!!),
+                                                    initialIndex = 0
+                                                )
+                                            )
+                                        }
+                                ) {
+                                    AsyncImage(
+                                        model = item.image_url,
+                                        contentDescription = "Item Image",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop,
+                                        placeholder = painterResource(id = R.drawable.baseline_image_24),
+                                        error = painterResource(id = R.drawable.baseline_error_24)
+                                    )
+                                }
                             }
                             else -> {
                                 Box(
@@ -223,14 +294,11 @@ fun SellerViewMarketplaceItemDetailScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Text(
+                        ExpandableText(
                             text = item.description,
-                            style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 4.dp),
-                            maxLines = if (isWideScreen) 10 else 5,
-                            overflow = TextOverflow.Ellipsis
+                                .padding(horizontal = 4.dp)
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -289,6 +357,9 @@ fun SellerViewMarketplaceItemDetailScreen(
                                 }
                             }
                         }
+
+                        // Add extra spacer at the bottom to ensure scrolling space
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
@@ -335,6 +406,40 @@ fun SellerViewMarketplaceItemDetailScreen(
                         .padding(top = 8.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun ExpandableText(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var isTruncated by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        Text(
+            text = text,
+            maxLines = if (expanded) Int.MAX_VALUE else 3,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+            onTextLayout = { textLayoutResult ->
+                if (!expanded && textLayoutResult.hasVisualOverflow) {
+                    isTruncated = true
+                }
+            }
+        )
+        if (isTruncated) {
+            val toggleText = if (expanded) "See Less" else "See More"
+            Text(
+                text = toggleText,
+                color = MaterialTheme.colorScheme.outline,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .clickable { expanded = !expanded }
+                    .padding(top = 2.dp)
+            )
         }
     }
 }
