@@ -49,20 +49,29 @@ sealed class NavRoutes(val route: String) {
     object Conversations : NavRoutes("conversations")
     object CreateMarketplaceItem : NavRoutes("createMarketplaceItem")
 
-
     object FullScreenImage {
         fun createRoute(postId: Int, imageUrls: List<String>, initialIndex: Int): String {
             require(postId >= 0) { "postId must be non-negative" }
             require(imageUrls.isNotEmpty()) { "imageUrls must not be empty" }
             require(initialIndex in 0 until imageUrls.size) { "initialIndex must be within the range of imageUrls" }
 
-            // URL-encode each image URL to handle special characters
             val encodedImageUrls = imageUrls.joinToString(",") { Uri.encode(it) }
             return "fullScreenImage/$postId/$encodedImageUrls/$initialIndex"
         }
     }
 
-    // New EditPost route
+    // Add Marketplace Fullscreen Image Route
+    object MarketplaceFullScreenImage {
+        fun createRoute(marketplaceItemId: Int, imageUrls: List<String>, initialIndex: Int): String {
+            require(marketplaceItemId >= 0) { "marketplaceItemId must be non-negative" }
+            require(imageUrls.isNotEmpty()) { "imageUrls must not be empty" }
+            require(initialIndex in 0 until imageUrls.size) { "initialIndex must be within the range of imageUrls" }
+
+            val encodedImageUrls = imageUrls.joinToString(",") { Uri.encode(it) }
+            return "marketplaceFullScreenImage/$marketplaceItemId/$encodedImageUrls/$initialIndex"
+        }
+    }
+
     object EditPost : NavRoutes("editPost/{postJson}") {
         fun createRoute(postJson: String) = "editPost/${Uri.encode(postJson)}"
     }

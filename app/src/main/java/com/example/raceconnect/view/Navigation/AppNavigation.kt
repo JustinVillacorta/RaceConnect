@@ -35,8 +35,10 @@ import com.example.raceconnect.view.NotificationsScreen
 import com.example.raceconnect.view.PostDetailScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.CreateMarketplaceItemScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.EditMarketplaceItemScreen
+import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceFullScreenImageViewer // Add this import
 import com.example.raceconnect.view.Screens.MarketplaceScreens.MarketplaceItemDetailScreen
 import com.example.raceconnect.view.Screens.MarketplaceScreens.SellerViewMarketplaceItemDetailScreen
+import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
 import com.example.raceconnect.view.Screens.MenuScreens.ConversationsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.FavoriteItemsScreen
 import com.example.raceconnect.view.Screens.MenuScreens.FriendsListScreen
@@ -50,6 +52,7 @@ import com.example.raceconnect.view.Screens.NewsFeedScreens.FullScreenImageViewe
 import com.example.raceconnect.view.Screens.NewsFeedScreens.NewsFeedScreen
 import com.example.raceconnect.view.Screens.NewsFeedScreens.RepostScreen
 import com.example.raceconnect.view.Screens.ProfileScreens.MyProfileScreen
+import com.example.raceconnect.view.Screens.MenuScreens.ProfileView.EditPostScreen
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModel
 import com.example.raceconnect.viewmodel.Marketplace.MarketplaceViewModelFactory
@@ -68,8 +71,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.navigation.NavBackStackEntry
-import com.example.raceconnect.view.Screens.MarketplaceScreens.ChatSellerScreen
-import com.example.raceconnect.view.Screens.MenuScreens.ProfileView.EditPostScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -162,7 +163,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 postId = postId,
                                 navController = navController,
                                 userPreferences = userPreferences,
-                                onShowProfileView = { userId ->  // Updated to accept userId
+                                onShowProfileView = { userId ->
                                     navController.navigate(NavRoutes.ProfileView.createRoute(userId))
                                 }
                             )
@@ -355,7 +356,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 onClose = { navController.popBackStack() },
                                 userPreferences = userPreferences,
                                 onNavigateToProfile = { userId ->
-                                    val userIdInt = userId.toIntOrNull() ?: return@FriendsListScreen // Convert to Int safely
+                                    val userIdInt = userId.toIntOrNull() ?: return@FriendsListScreen
                                     navController.navigate(NavRoutes.ProfileView.createRoute(userIdInt))
                                 }
                             )
@@ -585,7 +586,7 @@ fun AppNavigation(userPreferences: UserPreferences) {
                         composable(
                             route = "fullScreenImage/{postId}/{imageUrls}/{initialIndex}",
                             arguments = listOf(
-                                navArgument("postId") { type = NavType.IntType  },
+                                navArgument("postId") { type = NavType.IntType },
                                 navArgument("imageUrls") { type = NavType.StringType },
                                 navArgument("initialIndex") { type = NavType.IntType }
                             ),
@@ -627,7 +628,42 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                 onCommentClick = { navController.navigate(NavRoutes.Comments.createRoute(postId)) }
                             )
                         }
+                        // Add Marketplace Fullscreen Image Viewer
+                        composable(
+                            route = "marketplaceFullScreenImage/{marketplaceItemId}/{imageUrls}/{initialIndex}",
+                            arguments = listOf(
+                                navArgument("marketplaceItemId") { type = NavType.IntType },
+                                navArgument("imageUrls") { type = NavType.StringType },
+                                navArgument("initialIndex") { type = NavType.IntType }
+                            ),
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                        ) { backStackEntry ->
+                            val marketplaceItemId = backStackEntry.arguments?.getInt("marketplaceItemId") ?: 0
+                            val imageUrlsString = backStackEntry.arguments?.getString("imageUrls") ?: ""
+                            val initialIndex = backStackEntry.arguments?.getInt("initialIndex") ?: 0
+                            val imageUrls = imageUrlsString.split(",").map { Uri.decode(it) }.filter { it.isNotEmpty() }
 
+                            if (imageUrls.isEmpty()) {
+                                Log.e("MarketplaceFullScreenImage", "No valid image URLs found, navigating back")
+                                navController.popBackStack()
+                                return@composable
+                            }
+
+                            val safeInitialIndex = initialIndex.coerceIn(0, imageUrls.size - 1)
+                            if (safeInitialIndex != initialIndex) {
+                                Log.w("MarketplaceFullScreenImage", "Adjusted initialIndex from $initialIndex to $safeInitialIndex due to bounds")
+                            }
+
+                            MarketplaceFullScreenImageViewer(
+                                imageUrls = imageUrls,
+                                initialIndex = safeInitialIndex,
+                                marketplaceItemId = marketplaceItemId,
+                                onDismiss = { navController.popBackStack() }
+                            )
+                        }
                         composable(
                             route = NavRoutes.EditPost.route,
                             arguments = listOf(navArgument("postJson") { type = NavType.StringType }),
@@ -690,15 +726,15 @@ fun AppNavigation(userPreferences: UserPreferences) {
     }
 }
 
+// Reusable animation functions and tabOrder remain unchanged
 val tabOrder = mapOf(
-    NavRoutes.NewsFeed.route to 0,    // "newsfeed"
-    NavRoutes.Friends.route to 1,     // "friends"
-    NavRoutes.Marketplace.route to 2, // "marketplace"
-    "notifications" to 3,             // "notifications"
-    NavRoutes.Profile.route to 4      // "profile"
+    NavRoutes.NewsFeed.route to 0,
+    NavRoutes.Friends.route to 1,
+    NavRoutes.Marketplace.route to 2,
+    "notifications" to 3,
+    NavRoutes.Profile.route to 4
 )
 
-// Reusable animation functions for main screens
 fun mainScreenEnterTransition(): @JvmSuppressWildcards() (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = {
     val initialRoute = initialState.destination.route
     val targetRoute = targetState.destination.route
@@ -706,12 +742,12 @@ fun mainScreenEnterTransition(): @JvmSuppressWildcards() (AnimatedContentTransit
     val targetIndex = tabOrder[targetRoute] ?: -1
     if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
         if (targetIndex > initialIndex) {
-            slideInHorizontally(initialOffsetX = { it }) // From right
+            slideInHorizontally(initialOffsetX = { it })
         } else {
-            slideInHorizontally(initialOffsetX = { -it }) // From left
+            slideInHorizontally(initialOffsetX = { -it })
         }
     } else {
-        slideInHorizontally(initialOffsetX = { it }) // Default: from right
+        slideInHorizontally(initialOffsetX = { it })
     }
 }
 
@@ -722,12 +758,12 @@ fun mainScreenExitTransition(): @JvmSuppressWildcards() (AnimatedContentTransiti
     val targetIndex = tabOrder[targetRoute] ?: -1
     if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
         if (targetIndex > initialIndex) {
-            slideOutHorizontally(targetOffsetX = { -it }) // To left
+            slideOutHorizontally(targetOffsetX = { -it })
         } else {
-            slideOutHorizontally(targetOffsetX = { it }) // To right
+            slideOutHorizontally(targetOffsetX = { it })
         }
     } else {
-        slideOutHorizontally(targetOffsetX = { -it }) // Default: to left
+        slideOutHorizontally(targetOffsetX = { -it })
     }
 }
 
@@ -738,12 +774,12 @@ fun mainScreenPopEnterTransition(): @JvmSuppressWildcards() (AnimatedContentTran
     val targetIndex = tabOrder[targetRoute] ?: -1
     if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
         if (targetIndex < initialIndex) {
-            slideInHorizontally(initialOffsetX = { -it }) // From left
+            slideInHorizontally(initialOffsetX = { -it })
         } else {
-            slideInHorizontally(initialOffsetX = { it }) // From right
+            slideInHorizontally(initialOffsetX = { it })
         }
     } else {
-        slideInHorizontally(initialOffsetX = { -it }) // Default: from left
+        slideInHorizontally(initialOffsetX = { -it })
     }
 }
 
@@ -754,11 +790,11 @@ fun mainScreenPopExitTransition(): @JvmSuppressWildcards() (AnimatedContentTrans
     val targetIndex = tabOrder[targetRoute] ?: -1
     if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
         if (targetIndex < initialIndex) {
-            slideOutHorizontally(targetOffsetX = { it }) // To right
+            slideOutHorizontally(targetOffsetX = { it })
         } else {
-            slideOutHorizontally(targetOffsetX = { -it }) // To left
+            slideOutHorizontally(targetOffsetX = { -it })
         }
     } else {
-        slideOutHorizontally(targetOffsetX = { it }) // Default: to right
+        slideOutHorizontally(targetOffsetX = { it })
     }
 }

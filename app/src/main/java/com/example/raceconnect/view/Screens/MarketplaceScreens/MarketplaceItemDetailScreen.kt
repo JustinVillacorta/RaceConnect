@@ -177,7 +177,7 @@ fun MarketplaceItemDetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState()) // Added scrollable column
+                        .verticalScroll(rememberScrollState())
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -191,6 +191,15 @@ fun MarketplaceItemDetailScreen(
                                     .then(
                                         if (isHidden && !showHiddenItem) Modifier.blur(10.dp) else Modifier
                                     )
+                                    .clickable(enabled = !isHidden || showHiddenItem) {
+                                        navController.navigate(
+                                            NavRoutes.MarketplaceFullScreenImage.createRoute(
+                                                marketplaceItemId = itemId,
+                                                imageUrls = imagesForItem,
+                                                initialIndex = 0
+                                            )
+                                        )
+                                    }
                             ) {
                                 AsyncImage(
                                     model = imagesForItem.first(),
@@ -215,7 +224,17 @@ fun MarketplaceItemDetailScreen(
                                 HorizontalPager(
                                     state = pagerState,
                                     pageSpacing = 0.dp,
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clickable(enabled = !isHidden || showHiddenItem) {
+                                            navController.navigate(
+                                                NavRoutes.MarketplaceFullScreenImage.createRoute(
+                                                    marketplaceItemId = itemId,
+                                                    imageUrls = imagesForItem,
+                                                    initialIndex = pagerState.currentPage
+                                                )
+                                            )
+                                        }
                                 ) { page ->
                                     Box(
                                         modifier = Modifier
@@ -324,7 +343,6 @@ fun MarketplaceItemDetailScreen(
                             )
                     )
 
-                    // Replaced description Text with ExpandableText
                     ExpandableText(
                         text = item.value!!.description,
                         enabled = !isHidden || showHiddenItem,
@@ -496,7 +514,6 @@ fun MarketplaceItemDetailScreen(
                         }
                     }
 
-                    // Add extra spacer at the bottom to ensure scrollable content isn't cut off
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
@@ -528,7 +545,6 @@ fun MarketplaceItemDetailScreen(
         }
     }
 
-    // Report Dialog and Confirmation Dialog remain unchanged
     if (showReportDialog) {
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
@@ -742,3 +758,5 @@ fun MessageInputArea(defaultMessage: String, onSendMessage: (String) -> Unit) {
         }
     }
 }
+
+
