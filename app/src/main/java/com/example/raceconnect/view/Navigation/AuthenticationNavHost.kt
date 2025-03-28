@@ -23,21 +23,15 @@ fun AuthenticationNavHost(viewModel: AuthenticationViewModel = viewModel()) {
         composable(NavRoutes.Login.route) {
             LoginScreen(
                 viewModel = viewModel,
-                onLoginClick = { username, password ->
-                    viewModel.validateLogin(username, password)
+                onLoginClick = { username, password, rememberMe ->
+                    viewModel.validateLogin(username, password, rememberMe)
                 },
                 onSignupNavigate = { navController.navigate(NavRoutes.Signup.route) }
             )
         }
-
         composable(NavRoutes.Signup.route) {
             SignupScreen(
                 navController = navController,
-                onSignupClick = { context, username, email, password, onSuccess ->
-                    // Simulate signup logic (e.g., API call)
-                    // On success:
-                    onSuccess()
-                },
                 onBackNavigate = { navController.popBackStack() }
             )
         }

@@ -39,10 +39,12 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.R
 import com.example.raceconnect.view.ui.theme.fontFamily
+import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 
 
 @Composable
@@ -209,7 +211,7 @@ fun TermsOfServiceDialog(
 @Composable
 fun SignupScreen(
     navController: NavController,
-    onSignupClick: (Context, String, String, String, () -> Unit) -> Unit,
+    viewModel: AuthenticationViewModel = viewModel(), // Inject ViewModel here
     onBackNavigate: () -> Unit
 ) {
     val context = LocalContext.current
@@ -249,6 +251,10 @@ fun SignupScreen(
 
     var showTosDialog by remember { mutableStateOf(false) }
     var tosAccepted by remember { mutableStateOf(false) }
+
+    // Observe ViewModel states
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.ErrorMessage.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Red header
@@ -328,7 +334,7 @@ fun SignupScreen(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = !isEmailValid, // Red border if invalid
+                    isError = !isEmailValid,
                     supportingText = {
                         if (!isEmailValid && email.isNotEmpty()) {
                             Text(
@@ -456,28 +462,37 @@ fun SignupScreen(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Sign Up button with email validation added to enabled condition
+                // Sign Up button
                 Button(
                     onClick = {
                         if (!tosAccepted) {
                             showTosDialog = true
                         } else {
-                            onSignupClick(context, username, email, password) {
-                                // Clear fields and pop the signup screen
-                                username = ""
-                                email = ""
-                                password = ""
-                                confirmPassword = ""
-                                Toast.makeText(context, "Account created successfully, please log in", Toast.LENGTH_SHORT).show()
-                                navController.popBackStack()
-                            }
+                            viewModel.signUp(
+                                context = context,
+                                username = username,
+                                email = email,
+                                password = password,
+                                onToast = { message ->
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    if (message == "Account Created Successfully!") {
+                                        // Clear fields and navigate back
+                                        username = ""
+                                        email = ""
+                                        password = ""
+                                        confirmPassword = ""
+                                        navController.popBackStack()
+                                    }
+                                }
+                            )
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    enabled = username.isNotEmpty() &&
-                            email.isNotEmpty() && isEmailValid && // Added email validation
+                    enabled = !isLoading && // Disable button while loading
+                            username.isNotEmpty() &&
+                            email.isNotEmpty() && isEmailValid &&
                             password.isNotEmpty() &&
                             confirmPassword.isNotEmpty() &&
                             passwordsMatch &&
@@ -486,8 +501,26 @@ fun SignupScreen(
                             hasNumber &&
                             hasMinLength
                 ) {
-                    Text("Sign Up")
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.White
+                        )
+                    } else {
+                        Text("Sign Up")
+                    }
                 }
+
+                // Show error message if present
+                errorMessage?.let { error ->
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 8.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
             }
         }
@@ -500,26 +533,25 @@ fun SignupScreen(
             onAccept = {
                 tosAccepted = true
                 showTosDialog = false
-                onSignupClick(context, username, email, password) {
-                    // Clear fields and pop the signup screen
-                    username = ""
-                    email = ""
-                    password = ""
-                    confirmPassword = ""
-                    Toast.makeText(context, "Account created successfully, please log in", Toast.LENGTH_SHORT).show()
-                    navController.popBackStack()
-                }
+                viewModel.signUp(
+                    context = context,
+                    username = username,
+                    email = email,
+                    password = password,
+                    onToast = { message ->
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        if (message == "Account Created Successfully!") {
+                            // Clear fields and navigate back
+                            username = ""
+                            email = ""
+                            password = ""
+                            confirmPassword = ""
+                            navController.popBackStack()
+                        }
+                    }
+                )
             }
         )
     }
 }
 
-@Preview(showBackground = true, widthDp = 360, heightDp = 800)
-@Composable
-fun PreviewSignupScreen() {
-    SignupScreen(
-        navController = rememberNavController(), // For preview purposes
-        onSignupClick = { _, _, _, _, _ -> },
-        onBackNavigate = {}
-    )
-}
