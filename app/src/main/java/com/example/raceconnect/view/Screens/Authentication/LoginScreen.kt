@@ -30,13 +30,14 @@ import com.example.raceconnect.view.Screens.Authentication.ResetPasswordDialog
 import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     viewModel: AuthenticationViewModel,
-    onLoginClick: (String, String) -> Unit = { username: String, password: String ->
-        viewModel.validateLogin(username, password)
+    onLoginClick: (String, String, Boolean) -> Unit = { username: String, password: String, rememberMe: Boolean ->
+        viewModel.validateLogin(username, password, rememberMe)
     },
     onSignupNavigate: () -> Unit
 ) {
@@ -44,6 +45,20 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
     var isPasswordVisible by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
+
+    // Load remembered credentials when the screen initializes
+    LaunchedEffect(Unit) {
+        scope.launch {
+            val (savedUsername, savedPassword) = viewModel.loadRememberedCredentials()
+            if (!savedUsername.isNullOrEmpty() && !savedPassword.isNullOrEmpty()) {
+                username = savedUsername
+                password = savedPassword
+                rememberMe = true
+            }
+        }
+    }
 
     val errorMessage by viewModel.ErrorMessage.collectAsState()
 
@@ -97,12 +112,11 @@ fun LoginScreen(
                 ) {
                     Text(
                         text = "Ready, Set, Connect!",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.headlineSmall,
                         color = Color(0xFFC62828),
                         modifier = Modifier.padding(16.dp)
                     )
 
-                    // Username TextField with conditional red border for 401
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it },
@@ -116,7 +130,7 @@ fun LoginScreen(
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        isError = isAuthError || isBadRequestError, // Red border for 401 or 400
+                        isError = isAuthError || isBadRequestError,
                         colors = TextFieldDefaults.outlinedTextFieldColors(
                             errorBorderColor = Color.Red
                         )
@@ -124,7 +138,6 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Password TextField with conditional red border for 401
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
@@ -148,7 +161,7 @@ fun LoginScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        isError = isAuthError || isBadRequestError, // Red border for 401 or 400
+                        isError = isAuthError || isBadRequestError,
                         colors = TextFieldDefaults.outlinedTextFieldColors(
                             errorBorderColor = Color.Red
                         )
@@ -156,7 +169,6 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Remember me and Forgot Password row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -179,7 +191,6 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Display error message, overriding for 401 and 400
                     errorMessage?.let {
                         Text(
                             text = when {
@@ -192,9 +203,8 @@ fun LoginScreen(
                         )
                     }
 
-                    // Log in button
                     Button(
-                        onClick = { onLoginClick(username, password) },
+                        onClick = { onLoginClick(username, password, rememberMe) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFFC62828),
@@ -206,7 +216,6 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Sign up link
                     Row {
                         Text(text = "Don't have an account? ", color = Color.Black)
                         Text(
@@ -225,7 +234,6 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // Footer
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

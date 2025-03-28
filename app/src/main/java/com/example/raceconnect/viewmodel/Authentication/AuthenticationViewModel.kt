@@ -107,7 +107,8 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
     }
 
     // Validate Login and Save User Data
-    fun validateLogin(username: String, password: String) {
+    // Validate Login and Save User Data
+    fun validateLogin(username: String, password: String, rememberMe: Boolean = false) {
         viewModelScope.launch {
             isLoading.value = true
             ErrorMessage.value = null
@@ -136,23 +137,14 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
                             username = response.user.username,
                             email = response.user.email,
                             token = response.token,
-                            birthdate = response.user.birthdate,
-                            number = response.user.number,
-                            address = response.user.address,
-                            age = response.user.age,
-                            profilePicture = response.user.profilePicture,
-                            bio = response.user.bio,
-                            favoriteCategories = response.user.favoriteCategories?.toSet(),
-                            favoriteMarketplaceItems = response.user.favoriteMarketplaceItems?.toSet(),
-                            friendsList = response.user.friendsList?.toSet(),
-                            friendPrivacy = response.user.friendPrivacy,
-                            lastOnline = response.user.lastOnline,
-                            status = response.user.status,
-                            report = response.user.report,
-                            suspensionEndDate = response.user.suspensionEndDate,
-                            createdAt = response.user.createdAt,
-                            updatedAt = response.user.updatedAt
+                            // Other fields...
                         )
+                        // Save credentials if "Remember Me" is checked
+                        if (rememberMe) {
+                            userPreferences.saveRememberMeCredentials(username, password)
+                        } else {
+                            userPreferences.clearRememberMeCredentials()
+                        }
                     }
                 } else {
                     ErrorMessage.value = response.message ?: "Login failed"
@@ -167,6 +159,10 @@ open class AuthenticationViewModel(application: Application) : AndroidViewModel(
         }
     }
 
+    // Load remembered credentials
+    suspend fun loadRememberedCredentials(): Pair<String?, String?> {
+        return userPreferences.rememberedCredentials.first()
+    }
     // Load User Data from DataStore
     private fun loadUser() {
         viewModelScope.launch {

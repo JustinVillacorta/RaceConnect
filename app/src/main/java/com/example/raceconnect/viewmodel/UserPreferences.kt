@@ -36,6 +36,33 @@ class UserPreferences(private val context: Context) {
         private val SUSPENSION_END_DATE = stringPreferencesKey("suspension_end_date")
         private val CREATED_AT = stringPreferencesKey("created_at")
         private val UPDATED_AT = stringPreferencesKey("updated_at")
+        private val REMEMBERED_USERNAME = stringPreferencesKey("remembered_username")
+        private val REMEMBERED_PASSWORD = stringPreferencesKey("remembered_password")
+    }
+
+    // Save "Remember Me" credentials
+    suspend fun saveRememberMeCredentials(username: String, password: String) {
+        context.dataStore.edit { preferences ->
+            preferences[REMEMBERED_USERNAME] = username
+            preferences[REMEMBERED_PASSWORD] = password
+            Log.d("UserPreferences", "Saved Remember Me credentials: username=$username")
+        }
+    }
+
+    // Clear "Remember Me" credentials
+    suspend fun clearRememberMeCredentials() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(REMEMBERED_USERNAME)
+            preferences.remove(REMEMBERED_PASSWORD)
+            Log.d("UserPreferences", "Cleared Remember Me credentials")
+        }
+    }
+
+    // Retrieve "Remember Me" credentials
+    val rememberedCredentials: Flow<Pair<String?, String?>> = context.dataStore.data.map { preferences ->
+        val username = preferences[REMEMBERED_USERNAME]
+        val password = preferences[REMEMBERED_PASSWORD]
+        Pair(username, password)
     }
 
     suspend fun cleanupInvalidCategories() {
@@ -191,8 +218,29 @@ class UserPreferences(private val context: Context) {
 
     suspend fun logout() {
         context.dataStore.edit { preferences ->
-            preferences.clear()
-            Log.d("UserPreferences", "Cleared all preferences, including favorites")
+            // Remove user-specific session data
+            preferences.remove(USER_ID)
+            preferences.remove(USERNAME)
+            preferences.remove(EMAIL)
+            preferences.remove(TOKEN)
+            preferences.remove(BIRTHDATE)
+            preferences.remove(NUMBER)
+            preferences.remove(ADDRESS)
+            preferences.remove(AGE)
+            preferences.remove(PROFILE_PICTURE)
+            preferences.remove(BIO)
+            preferences.remove(FAVORITE_CATEGORIES)
+            preferences.remove(FAVORITE_MARKETPLACE_ITEMS)
+            preferences.remove(FRIENDS_LIST)
+            preferences.remove(FRIEND_PRIVACY)
+            preferences.remove(LAST_ONLINE)
+            preferences.remove(STATUS)
+            preferences.remove(REPORT)
+            preferences.remove(SUSPENSION_END_DATE)
+            preferences.remove(CREATED_AT)
+            preferences.remove(UPDATED_AT)
+            // Keep REMEMBERED_USERNAME and REMEMBERED_PASSWORD
+            Log.d("UserPreferences", "Cleared user data, but kept remembered credentials")
         }
     }
 }
