@@ -67,8 +67,8 @@ fun RepostsSection(
                 val repost = myReposts[reversedIndex]
                 val originalPost = profileOriginalPosts[repost.postId]
 
-                LaunchedEffect(repost.id, repost.postId) {
-                    onFetchPostImages(repost.id)
+                // Fetch data only for the original post
+                LaunchedEffect(repost.postId) {
                     onFetchPostImages(repost.postId)
                     if (originalPost == null) {
                         onFetchOriginalPost(repost.postId)
@@ -85,10 +85,8 @@ fun RepostsSection(
                         .padding(vertical = 2.dp)
                 ) {
                     Box(modifier = Modifier.padding(8.dp)) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            // Repost Header (User who reposted)
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            // Repost Header
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
@@ -134,7 +132,7 @@ fun RepostsSection(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Repost Comment (if any) with ExpandableText
+                            // Repost Quote (only display this for the repost)
                             if (!repost.quote.isNullOrEmpty()) {
                                 ExpandableText(
                                     text = repost.quote,
@@ -145,35 +143,7 @@ fun RepostsSection(
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
 
-                            // Repost Images (if any)
-                            if (postImages[repost.id]?.isNotEmpty() == true) {
-                                LazyRow(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    items(postImages[repost.id]!!.size) { index ->
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxHeight()
-                                                .width(200.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                        ) {
-                                            val painter = rememberAsyncImagePainter(model = postImages[repost.id]!![index])
-                                            Image(
-                                                painter = painter,
-                                                contentDescription = "Repost image $index",
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        }
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(12.dp))
-                            }
-
-                            // Original Post
+                            // Original Post (unchanged)
                             if (originalPost != null) {
                                 Card(
                                     shape = RoundedCornerShape(8.dp),
@@ -183,7 +153,6 @@ fun RepostsSection(
                                         .padding(horizontal = 8.dp)
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
-                                        // Original Post Header
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
                                             modifier = Modifier.fillMaxWidth()
@@ -218,7 +187,6 @@ fun RepostsSection(
                                         }
                                         Spacer(modifier = Modifier.height(8.dp))
 
-                                        // Original Post Content with ExpandableText
                                         if (!originalPost.content.isNullOrEmpty()) {
                                             ExpandableText(
                                                 text = originalPost.content,
@@ -227,7 +195,6 @@ fun RepostsSection(
                                             Spacer(modifier = Modifier.height(12.dp))
                                         }
 
-                                        // Original Post Images (with HorizontalPager)
                                         if (postImages[repost.postId]?.isNotEmpty() == true) {
                                             Box(
                                                 modifier = Modifier
@@ -254,7 +221,6 @@ fun RepostsSection(
                                                         )
                                                     }
                                                 }
-                                                // Top-right indicator
                                                 Box(
                                                     modifier = Modifier
                                                         .align(Alignment.TopEnd)
@@ -268,7 +234,6 @@ fun RepostsSection(
                                                         style = MaterialTheme.typography.bodySmall
                                                     )
                                                 }
-                                                // Bottom indicators
                                                 Row(
                                                     modifier = Modifier
                                                         .align(Alignment.BottomCenter)
