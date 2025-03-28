@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.raceconnect.R
+import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 
@@ -208,6 +209,7 @@ fun TermsOfServiceDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignupScreen(
     navController: NavController,
@@ -262,7 +264,7 @@ fun SignupScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp)
-                .background(color = Color(0xFFC62828))
+                .background(color = Red )
         ) {
             IconButton(
                 onClick = onBackNavigate,
@@ -316,7 +318,14 @@ fun SignupScreen(
                             tint = Color(0xFFC62828)
                         )
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        focusedBorderColor = Color.Gray,    // Same as unfocused to disable border highlight
+                        unfocusedBorderColor = Color.Gray,
+                        focusedLabelColor = Color.Black,    // Same as unfocused to disable label highlight
+                        unfocusedLabelColor = Color.Black
+                    )
+
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -334,6 +343,12 @@ fun SignupScreen(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        focusedBorderColor = Color.Gray,    // Same as unfocused to disable border highlight
+                        unfocusedBorderColor = Color.Gray,
+                        focusedLabelColor = Color.Black,    // Same as unfocused to disable label highlight
+                        unfocusedLabelColor = Color.Black
+                    ),
                     isError = !isEmailValid,
                     supportingText = {
                         if (!isEmailValid && email.isNotEmpty()) {
@@ -373,6 +388,12 @@ fun SignupScreen(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        focusedBorderColor = Color.Gray,    // Same as unfocused to disable border highlight
+                        unfocusedBorderColor = Color.Gray,
+                        focusedLabelColor = Color.Black,    // Same as unfocused to disable label highlight
+                        unfocusedLabelColor = Color.Black
+                    ),
                     singleLine = true
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -404,6 +425,12 @@ fun SignupScreen(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        focusedBorderColor = Color.Gray,    // Same as unfocused to disable border highlight
+                        unfocusedBorderColor = Color.Gray,
+                        focusedLabelColor = Color.Black,    // Same as unfocused to disable label highlight
+                        unfocusedLabelColor = Color.Black
+                    ),
                     singleLine = true,
                     isError = !passwordsMatch
                 )
@@ -499,7 +526,10 @@ fun SignupScreen(
                             hasLowerCase &&
                             hasUpperCase &&
                             hasNumber &&
-                            hasMinLength
+                            hasMinLength,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Red) // Red when enabled
+
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(

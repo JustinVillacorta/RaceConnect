@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 
 object WebSocketManager {
     // Replace with your server IP and port from .env (e.g., ws://your-server-ip:8080)
-    private const val BASE_URL = "ws://192.168.0.30:8080" // Replace with your server's IP
+    private const val BASE_URL = "ws://192.168.100.63:8080" // Replace with your server's IP
     private const val TAG = "WebSocketManager"
 
     private val client = OkHttpClient.Builder()

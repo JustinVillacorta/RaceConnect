@@ -27,6 +27,8 @@ import com.example.raceconnect.view.Screens.Authentication.AppealDialog
 import com.example.raceconnect.view.Screens.Authentication.ForgotPasswordDialog
 import com.example.raceconnect.view.Screens.Authentication.OtpVerificationDialog
 import com.example.raceconnect.view.Screens.Authentication.ResetPasswordDialog
+import com.example.raceconnect.view.ui.theme.Red
+import com.example.raceconnect.view.ui.theme.White
 import com.example.raceconnect.view.ui.theme.fontFamily
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 import kotlinx.coroutines.delay
@@ -86,7 +88,7 @@ fun LoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .background(color = Color(0xFFC62828))
+                    .background(color = Red)
             ) {
                 Text(
                     text = "Log In",
@@ -113,7 +115,7 @@ fun LoginScreen(
                     Text(
                         text = "Ready, Set, Connect!",
                         style = MaterialTheme.typography.headlineSmall,
-                        color = Color(0xFFC62828),
+                        color = Red,
                         modifier = Modifier.padding(16.dp)
                     )
 
@@ -132,7 +134,11 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth(),
                         isError = isAuthError || isBadRequestError,
                         colors = TextFieldDefaults.outlinedTextFieldColors(
-                            errorBorderColor = Color.Red
+                            errorBorderColor = Color.Red,
+                            focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                            unfocusedBorderColor = Color.Gray, // Default border color
+                            focusedLabelColor = Color.Black,    // Label color when focused
+                            unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
                         )
                     )
 
@@ -163,7 +169,11 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth(),
                         isError = isAuthError || isBadRequestError,
                         colors = TextFieldDefaults.outlinedTextFieldColors(
-                            errorBorderColor = Color.Red
+                            errorBorderColor = Color.Red,
+                            focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                            unfocusedBorderColor = Color.Gray, // Default border color
+                            focusedLabelColor = Color.Black,    // Label color when focused
+                            unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
                         )
                     )
 
@@ -177,7 +187,12 @@ fun LoginScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(
                                 checked = rememberMe,
-                                onCheckedChange = { rememberMe = it }
+                                onCheckedChange = { rememberMe = it },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = Red,    // Color when checked
+                                    uncheckedColor = Red,  // Color when unchecked
+                                    checkmarkColor = White // Color of the checkmark
+                                )
                             )
                             Text(text = "Remember me", color = Color.Black)
                         }
@@ -185,7 +200,7 @@ fun LoginScreen(
                             onClick = { showForgotPasswordDialog = true },
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text("Forgot Password?", color = Color(0xFFC62828))
+                            Text("Forgot Password?", color = Red)
                         }
                     }
 
@@ -198,7 +213,7 @@ fun LoginScreen(
                                 isBadRequestError -> "Enter your username and password"
                                 else -> it
                             },
-                            color = Color.Red,
+                            color = Red,
                             modifier = Modifier.padding(16.dp)
                         )
                     }
@@ -220,7 +235,7 @@ fun LoginScreen(
                         Text(text = "Don't have an account? ", color = Color.Black)
                         Text(
                             text = "Sign Up",
-                            color = Color(0xFFC62828),
+                            color = Red,
                             modifier = Modifier.clickable { onSignupNavigate() }
                         )
                     }

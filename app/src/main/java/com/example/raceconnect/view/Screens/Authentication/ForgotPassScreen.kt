@@ -19,12 +19,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.raceconnect.viewmodel.Authentication.AuthenticationViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ForgotPasswordDialog(
     viewModel: AuthenticationViewModel,
@@ -62,7 +65,15 @@ fun ForgotPasswordDialog(
                     onValueChange = { email = it },
                     label = { Text("Enter your email") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        errorBorderColor = Color.Red,
+                        focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                        unfocusedBorderColor = Color.Gray, // Default border color
+                        focusedLabelColor = Color.Black,    // Label color when focused
+                        unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                    )
+
                 )
 
                 if (message.isNotEmpty()) {
@@ -108,6 +119,7 @@ fun ForgotPasswordDialog(
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OtpVerificationDialog(
     viewModel: AuthenticationViewModel,
@@ -131,7 +143,14 @@ fun OtpVerificationDialog(
                     onValueChange = { otp = it },
                     label = { Text("Enter OTP") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        errorBorderColor = Color.Red,
+                        focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                        unfocusedBorderColor = Color.Gray, // Default border color
+                        focusedLabelColor = Color.Black,    // Label color when focused
+                        unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                    )
                 )
 
                 if (message.isNotEmpty()) {
@@ -173,6 +192,7 @@ fun OtpVerificationDialog(
 
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResetPasswordDialog(
     viewModel: AuthenticationViewModel,
@@ -233,6 +253,13 @@ fun ResetPasswordDialog(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        errorBorderColor = Color.Red,
+                        focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                        unfocusedBorderColor = Color.Gray, // Default border color
+                        focusedLabelColor = Color.Black,    // Label color when focused
+                        unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                    ),
                     singleLine = true
                 )
 
@@ -260,6 +287,13 @@ fun ResetPasswordDialog(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        errorBorderColor = Color.Red,
+                        focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                        unfocusedBorderColor = Color.Gray, // Default border color
+                        focusedLabelColor = Color.Black,    // Label color when focused
+                        unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                    ),
                     singleLine = true,
                     isError = !passwordsMatch
                 )
