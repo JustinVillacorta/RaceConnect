@@ -20,6 +20,7 @@ fun AppealDialog(
     onDismiss: () -> Unit,
     onSubmit: (AppealRequest) -> Unit
 ) {
+    // State variables for form inputs
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var selectedConcern by remember { mutableStateOf<ConcernType?>(null) }
@@ -28,6 +29,23 @@ fun AppealDialog(
     var description by remember { mutableStateOf("") }
 
     val dateFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+
+    // Validation checks
+    val isUsernameValid = username.isNotBlank()
+    val isEmailValid = email.isNotBlank()
+    val isDescriptionValid = description.isNotBlank()
+    val isPostIdValid = if (selectedConcern == ConcernType.POST_PENALTY) {
+        postId.isNotBlank() && postId.toIntOrNull() != null
+    } else {
+        true
+    }
+    val isItemIdValid = if (selectedConcern == ConcernType.ITEM_POST_PENALTY) {
+        itemId.isNotBlank() && itemId.toIntOrNull() != null
+    } else {
+        true
+    }
+    val isFormValid = isUsernameValid && isEmailValid && selectedConcern != null &&
+            isDescriptionValid && isPostIdValid && isItemIdValid
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -42,22 +60,38 @@ fun AppealDialog(
             ) {
                 // Section 1: Account Information
                 Text("Section 1: Account Information", style = MaterialTheme.typography.titleMedium)
-                
+
                 OutlinedTextField(
                     value = username,
                     singleLine = true,
                     onValueChange = { username = it },
                     label = { Text("Username") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = !isUsernameValid
                 )
+                if (!isUsernameValid) {
+                    Text(
+                        "Username is required",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
 
                 OutlinedTextField(
                     value = email,
                     singleLine = true,
                     onValueChange = { email = it },
                     label = { Text("Email Address") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = !isEmailValid
                 )
+                if (!isEmailValid) {
+                    Text(
+                        "Email is required",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
 
                 // Concern Type Selection
                 Text("What is your concern?", style = MaterialTheme.typography.bodyMedium)
@@ -82,7 +116,7 @@ fun AppealDialog(
                     }
                 }
 
-                // Section 2: Dynamic based on selection
+                // Section 2: Dynamic Fields Based on Concern Type
                 when (selectedConcern) {
                     ConcernType.ACCOUNT_PENALTY -> {
                         Text("Section 2: Account Suspension Details", style = MaterialTheme.typography.titleMedium)
@@ -94,8 +128,16 @@ fun AppealDialog(
                             onValueChange = { postId = it },
                             label = { Text("Post ID") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = !isPostIdValid
                         )
+                        if (!isPostIdValid) {
+                            Text(
+                                "Valid Post ID is required",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                     ConcernType.ITEM_POST_PENALTY -> {
                         Text("Section 2: Item Details", style = MaterialTheme.typography.titleMedium)
@@ -104,26 +146,42 @@ fun AppealDialog(
                             onValueChange = { itemId = it },
                             label = { Text("Item ID") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = !isItemIdValid
                         )
+                        if (!isItemIdValid) {
+                            Text(
+                                "Valid Item ID is required",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                     null -> {}
                 }
 
-                // Description field (common for all types)
+                // Description Field (Required for All Types)
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("Description of Appeal") },
                     modifier = Modifier.fillMaxWidth(),
-                    minLines = 3
+                    minLines = 3,
+                    isError = !isDescriptionValid
                 )
+                if (!isDescriptionValid) {
+                    Text(
+                        "Description is required",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (username.isNotBlank() && email.isNotBlank() && selectedConcern != null && description.isNotBlank()) {
+                    if (isFormValid) {
                         onSubmit(
                             AppealRequest(
                                 username = username,
@@ -137,7 +195,7 @@ fun AppealDialog(
                         onDismiss()
                     }
                 },
-                enabled = username.isNotBlank() && email.isNotBlank() && selectedConcern != null && description.isNotBlank()
+                enabled = isFormValid
             ) {
                 Text("Submit Appeal")
             }
