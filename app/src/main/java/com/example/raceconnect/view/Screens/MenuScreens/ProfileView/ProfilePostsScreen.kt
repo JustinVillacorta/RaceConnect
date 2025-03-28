@@ -401,7 +401,13 @@ fun PostsSection(
                                                 fontWeight = FontWeight.Bold
                                             )
                                             Spacer(modifier = Modifier.height(8.dp))
-                                            Button(onClick = { showConfirmationDialog = true }) {
+                                            Button(
+                                                onClick = { showConfirmationDialog = true },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color.Red,
+                                                    contentColor = Color.White
+                                                )
+                                            ) {
                                                 Text("See Post")
                                             }
                                         }

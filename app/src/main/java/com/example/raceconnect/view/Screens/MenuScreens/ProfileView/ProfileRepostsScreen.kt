@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -67,7 +68,6 @@ fun RepostsSection(
                 val repost = myReposts[reversedIndex]
                 val originalPost = profileOriginalPosts[repost.postId]
 
-                // Fetch data only for the original post
                 LaunchedEffect(repost.postId) {
                     onFetchPostImages(repost.postId)
                     if (originalPost == null) {
@@ -81,12 +81,12 @@ fun RepostsSection(
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .wrapContentHeight()
+                            .wrapContentHeight()
                         .padding(vertical = 2.dp)
                 ) {
                     Box(modifier = Modifier.padding(8.dp)) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            // Repost Header
+                            // Repost Header (unchanged)
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
@@ -132,7 +132,7 @@ fun RepostsSection(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Repost Quote (only display this for the repost)
+                            // Repost Quote (unchanged)
                             if (!repost.quote.isNullOrEmpty()) {
                                 ExpandableText(
                                     text = repost.quote,
@@ -143,8 +143,17 @@ fun RepostsSection(
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
 
-                            // Original Post (unchanged)
+                            // Original Post with Hide Functionality
                             if (originalPost != null) {
+                                // Skip archived posts
+                                if (originalPost.status?.lowercase() == "archived") {
+                                    Log.w("RepostsSection", "Archived original post ID: ${repost.postId} skipped")
+
+                                }
+
+                                var showHiddenPost by remember(originalPost.id, originalPost.status) { mutableStateOf(false) }
+                                var showConfirmationDialog by remember { mutableStateOf(false) }
+
                                 Card(
                                     shape = RoundedCornerShape(8.dp),
                                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
@@ -152,111 +161,269 @@ fun RepostsSection(
                                         .fillMaxWidth()
                                         .padding(horizontal = 8.dp)
                                 ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(40.dp)
-                                                    .clip(CircleShape)
-                                                    .background(Color.Gray)
-                                            ) {
-                                                Image(
-                                                    painter = painterResource(id = R.drawable.baseline_account_circle_24),
-                                                    contentDescription = "Original Post User Profile",
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize()
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = originalPost.username ?: "Unknown",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color.Black
-                                                )
-                                                Text(
-                                                    text = formatTime(originalPost.created_at),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = Color.Gray
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                        if (!originalPost.content.isNullOrEmpty()) {
-                                            ExpandableText(
-                                                text = originalPost.content,
+                                    Box(modifier = Modifier.padding(12.dp)) {
+                                        Column {
+                                            // Original Post Header
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.fillMaxWidth()
-                                            )
-                                            Spacer(modifier = Modifier.height(12.dp))
-                                        }
-
-                                        if (postImages[repost.postId]?.isNotEmpty() == true) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .height(200.dp)
-                                                    .padding(top = 8.dp)
                                             ) {
-                                                val pagerState = rememberPagerState(pageCount = { postImages[repost.postId]!!.size })
-                                                HorizontalPager(
-                                                    state = pagerState,
-                                                    modifier = Modifier.fillMaxSize()
-                                                ) { page ->
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .fillMaxSize()
-                                                            .clip(RoundedCornerShape(8.dp))
-                                                    ) {
-                                                        val painter = rememberAsyncImagePainter(model = postImages[repost.postId]!![page])
-                                                        Image(
-                                                            painter = painter,
-                                                            contentDescription = "Original post image $page",
-                                                            modifier = Modifier.fillMaxSize(),
-                                                            contentScale = ContentScale.Crop
-                                                        )
-                                                    }
-                                                }
                                                 Box(
                                                     modifier = Modifier
-                                                        .align(Alignment.TopEnd)
-                                                        .padding(8.dp)
-                                                        .background(Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(4.dp))
-                                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                                        .size(40.dp)
+                                                        .clip(CircleShape)
+                                                        .background(Color.Gray)
                                                 ) {
-                                                    Text(
-                                                        text = "${pagerState.currentPage + 1}/${postImages[repost.postId]!!.size}",
-                                                        color = Color.White,
-                                                        style = MaterialTheme.typography.bodySmall
+                                                    Image(
+                                                        painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                                                        contentDescription = "Original Post User Profile",
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .then(
+                                                                if (originalPost.status?.lowercase() == "hidden" && !showHiddenPost) {
+                                                                    Modifier.blur(10.dp)
+                                                                } else {
+                                                                    Modifier
+                                                                }
+                                                            )
                                                     )
                                                 }
-                                                Row(
-                                                    modifier = Modifier
-                                                        .align(Alignment.BottomCenter)
-                                                        .padding(bottom = 8.dp),
-                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                                ) {
-                                                    postImages[repost.postId]!!.forEachIndexed { index, _ ->
-                                                        val isSelected = index == pagerState.currentPage
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = originalPost.username ?: "Unknown",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color.Black,
+                                                        modifier = if (originalPost.status?.lowercase() == "hidden" && !showHiddenPost) {
+                                                            Modifier.blur(10.dp)
+                                                        } else {
+                                                            Modifier
+                                                        }
+                                                    )
+                                                    Text(
+                                                        text = formatTime(originalPost.created_at),
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = Color.Gray,
+                                                        modifier = if (originalPost.status?.lowercase() == "hidden" && !showHiddenPost) {
+                                                            Modifier.blur(10.dp)
+                                                        } else {
+                                                            Modifier
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            // Original Post Content and Images
+                                            if (originalPost.status?.lowercase() == "hidden" && !showHiddenPost) {
+                                                // Hidden state
+                                                ExpandableText(
+                                                    text = originalPost.content ?: "",
+                                                    enabled = false,
+                                                    modifier = Modifier.blur(10.dp)
+                                                )
+                                                Spacer(modifier = Modifier.height(12.dp))
+                                                if (postImages[repost.postId]?.isNotEmpty() == true) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .height(200.dp)
+                                                            .padding(top = 8.dp)
+                                                    ) {
+                                                        val pagerState = rememberPagerState(pageCount = { postImages[repost.postId]!!.size })
+                                                        HorizontalPager(
+                                                            state = pagerState,
+                                                            modifier = Modifier.fillMaxSize()
+                                                        ) { page ->
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .fillMaxSize()
+                                                                    .clip(RoundedCornerShape(8.dp))
+                                                            ) {
+                                                                val painter = rememberAsyncImagePainter(model = postImages[repost.postId]!![page])
+                                                                Image(
+                                                                    painter = painter,
+                                                                    contentDescription = "Original post image $page",
+                                                                    modifier = Modifier
+                                                                        .fillMaxSize()
+                                                                        .blur(10.dp),
+                                                                    contentScale = ContentScale.Crop
+                                                                )
+                                                            }
+                                                        }
                                                         Box(
                                                             modifier = Modifier
-                                                                .size(8.dp)
-                                                                .clip(CircleShape)
-                                                                .background(if (isSelected) Color.White else Color.Transparent)
-                                                                .then(
-                                                                    if (!isSelected) Modifier.border(1.dp, Color.White, CircleShape)
-                                                                    else Modifier
+                                                                .align(Alignment.TopEnd)
+                                                                .padding(8.dp)
+                                                                .background(Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(4.dp))
+                                                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = "${pagerState.currentPage + 1}/${postImages[repost.postId]!!.size}",
+                                                                color = Color.White,
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                modifier = Modifier.blur(10.dp)
+                                                            )
+                                                        }
+                                                        Row(
+                                                            modifier = Modifier
+                                                                .align(Alignment.BottomCenter)
+                                                                .padding(bottom = 8.dp),
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                            postImages[repost.postId]!!.forEachIndexed { index, _ ->
+                                                                val isSelected = index == pagerState.currentPage
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .size(8.dp)
+                                                                        .clip(CircleShape)
+                                                                        .background(if (isSelected) Color.White else Color.Transparent)
+                                                                        .then(
+                                                                            if (!isSelected) Modifier.border(1.dp, Color.White, CircleShape)
+                                                                            else Modifier
+                                                                        )
+                                                                        .blur(10.dp)
                                                                 )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                // Visible state
+                                                if (!originalPost.content.isNullOrEmpty()) {
+                                                    ExpandableText(
+                                                        text = originalPost.content,
+                                                        enabled = true,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                    Spacer(modifier = Modifier.height(12.dp))
+                                                }
+                                                if (postImages[repost.postId]?.isNotEmpty() == true) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .height(200.dp)
+                                                            .padding(top = 8.dp)
+                                                    ) {
+                                                        val pagerState = rememberPagerState(pageCount = { postImages[repost.postId]!!.size })
+                                                        HorizontalPager(
+                                                            state = pagerState,
+                                                            modifier = Modifier.fillMaxSize()
+                                                        ) { page ->
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .fillMaxSize()
+                                                                    .clip(RoundedCornerShape(8.dp))
+                                                            ) {
+                                                                val painter = rememberAsyncImagePainter(model = postImages[repost.postId]!![page])
+                                                                Image(
+                                                                    painter = painter,
+                                                                    contentDescription = "Original post image $page",
+                                                                    modifier = Modifier.fillMaxSize(),
+                                                                    contentScale = ContentScale.Crop
+                                                                )
+                                                            }
+                                                        }
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .align(Alignment.TopEnd)
+                                                                .padding(8.dp)
+                                                                .background(Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(4.dp))
+                                                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = "${pagerState.currentPage + 1}/${postImages[repost.postId]!!.size}",
+                                                                color = Color.White,
+                                                                style = MaterialTheme.typography.bodySmall
+                                                            )
+                                                        }
+                                                        Row(
+                                                            modifier = Modifier
+                                                                .align(Alignment.BottomCenter)
+                                                                .padding(bottom = 8.dp),
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                            postImages[repost.postId]!!.forEachIndexed { index, _ ->
+                                                                val isSelected = index == pagerState.currentPage
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .size(8.dp)
+                                                                        .clip(CircleShape)
+                                                                        .background(if (isSelected) Color.White else Color.Transparent)
+                                                                        .then(
+                                                                            if (!isSelected) Modifier.border(1.dp, Color.White, CircleShape)
+                                                                            else Modifier
+                                                                        )
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                if (originalPost.status?.lowercase() == "hidden") {
+                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                    Button(
+                                                        onClick = { showHiddenPost = false },
+                                                        colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
+                                                    ) {
+                                                        Text("Hide Post", color = Color.Black)
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // Overlay for hidden state
+                                        if (originalPost.status?.lowercase() == "hidden" && !showHiddenPost) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(Color.Black.copy(alpha = 0.3f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Text(
+                                                        text = "This post is hidden",
+                                                        color = Color.White,
+                                                        fontSize = 18.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                    Button(
+                                                        onClick = { showConfirmationDialog = true },
+                                                        colors = ButtonDefaults.buttonColors(
+                                                            containerColor = Color.Red,
+                                                            contentColor = Color.White
                                                         )
+                                                    ) {
+                                                        Text("See Post")
                                                     }
                                                 }
                                             }
                                         }
                                     }
+                                }
+
+                                // Confirmation Dialog
+                                if (showConfirmationDialog) {
+                                    AlertDialog(
+                                        onDismissRequest = { showConfirmationDialog = false },
+                                        title = { Text("View Hidden Post") },
+                                        text = { Text("Are you sure you want to view this hidden post?") },
+                                        confirmButton = {
+                                            TextButton(onClick = {
+                                                showHiddenPost = true
+                                                showConfirmationDialog = false
+                                            }) {
+                                                Text("Yes")
+                                            }
+                                        },
+                                        dismissButton = {
+                                            TextButton(onClick = { showConfirmationDialog = false }) {
+                                                Text("No")
+                                            }
+                                        }
+                                    )
                                 }
                             } else {
                                 Text(
