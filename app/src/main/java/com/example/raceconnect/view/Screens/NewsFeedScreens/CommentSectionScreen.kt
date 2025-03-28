@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.PostComment
+import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.CommentViewModel
 import com.example.raceconnect.viewmodel.CommentViewModelFactory
 import kotlinx.coroutines.flow.first
@@ -170,6 +171,7 @@ fun CommentSectionScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentInput(
     commentText: String,
@@ -197,6 +199,12 @@ fun CommentInput(
                     .weight(1f)
                     .wrapContentHeight(),
                 shape = RoundedCornerShape(24.dp),
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                    unfocusedBorderColor = Color.Gray, // Default border color
+                    focusedLabelColor = Color.Black,    // Label color when focused
+                    unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                ),
                 textStyle = MaterialTheme.typography.bodyMedium,
                 singleLine = true
             )
@@ -207,7 +215,7 @@ fun CommentInput(
                 Icon(
                     imageVector = Icons.Default.Send,
                     contentDescription = "Send",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = Red
                 )
             }
         }

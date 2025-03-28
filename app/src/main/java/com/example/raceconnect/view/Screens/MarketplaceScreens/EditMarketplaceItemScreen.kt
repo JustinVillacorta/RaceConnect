@@ -295,7 +295,13 @@ fun EditMarketplaceItemScreen(
                         label = { Text("Title") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 8.dp)
+                            .padding(bottom = 8.dp),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                            unfocusedBorderColor = Color.Gray, // Default border color
+                            focusedLabelColor = Color.Black,    // Label color when focused
+                            unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                        ),
                     )
 
                     OutlinedTextField(
@@ -305,7 +311,13 @@ fun EditMarketplaceItemScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 8.dp)
+                            .padding(bottom = 8.dp),  colors = TextFieldDefaults.outlinedTextFieldColors(
+                            focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                            unfocusedBorderColor = Color.Gray, // Default border color
+                            focusedLabelColor = Color.Black,    // Label color when focused
+                            unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                        ),
+
                     )
 
                     var categoryExpanded by remember { mutableStateOf(false) }
@@ -328,7 +340,13 @@ fun EditMarketplaceItemScreen(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor()
+                                    .menuAnchor(),
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                                    unfocusedBorderColor = Color.Gray, // Default border color
+                                    focusedLabelColor = Color.Black,    // Label color when focused
+                                    unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                                ),
                             )
                             ExposedDropdownMenu(
                                 expanded = categoryExpanded,
@@ -355,6 +373,12 @@ fun EditMarketplaceItemScreen(
                             .fillMaxWidth()
                             .heightIn(min = 100.dp)
                             .padding(bottom = 4.dp),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                            unfocusedBorderColor = Color.Gray, // Default border color
+                            focusedLabelColor = Color.Black,    // Label color when focused
+                            unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                        ),
                         maxLines = 3
                     )
 
@@ -378,7 +402,13 @@ fun EditMarketplaceItemScreen(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor()
+                                    .menuAnchor(),
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                                    unfocusedBorderColor = Color.Gray, // Default border color
+                                    focusedLabelColor = Color.Black,    // Label color when focused
+                                    unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                                ),
                             )
                             ExposedDropdownMenu(
                                 expanded = listingStatusExpanded,

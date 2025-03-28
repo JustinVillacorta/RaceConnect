@@ -3,6 +3,7 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -249,6 +250,8 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = TextFieldDefaults.colors(
+                        focusedLabelColor = Color.Black,    // Label color when focused
+                        unfocusedLabelColor = Color.Black,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     )
@@ -280,6 +283,8 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                             shape = RoundedCornerShape(16.dp),
                             textStyle = MaterialTheme.typography.bodySmall,
                             colors = ExposedDropdownMenuDefaults.textFieldColors(
+                                focusedLabelColor = Color.Black,    // Label color when focused
+                                unfocusedLabelColor = Color.Black,
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent
                             )
@@ -322,6 +327,8 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                             shape = RoundedCornerShape(16.dp),
                             textStyle = MaterialTheme.typography.bodySmall,
                             colors = ExposedDropdownMenuDefaults.textFieldColors(
+                                focusedLabelColor = Color.Black,    // Label color when focused
+                                unfocusedLabelColor = Color.Black,
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent
                             )
@@ -357,6 +364,12 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
                         .background(Color.Transparent, shape = RoundedCornerShape(8.dp)),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                        unfocusedBorderColor = Color.Gray, // Default border color
+                        focusedLabelColor = Color.Black,    // Label color when focused
+                        unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                    ),
                     textStyle = MaterialTheme.typography.bodyLarge
                 )
 
@@ -407,11 +420,23 @@ fun CreatePostScreen(viewModel: NewsFeedViewModel, onClose: () -> Unit) {
                 OutlinedButton(
                     onClick = { launcher.launch("image/*") },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Red, // This sets the default content color, but we override it below
+                        disabledContentColor = Red.copy(alpha = 0.5f)
+                    ),
+
                 ) {
-                    Icon(Icons.Default.Image, contentDescription = "Pick Images")
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Pick Images",
+                        tint = Red
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Photos")
+                    Text(
+                        text = "Add Photos",
+                        color = Red
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

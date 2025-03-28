@@ -227,7 +227,9 @@ fun EditPostScreen(
                     shape = RoundedCornerShape(16.dp),
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedLabelColor = Color.Black,    // Label color when focused
+                        unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
                     )
                 )
 
@@ -258,7 +260,10 @@ fun EditPostScreen(
                             textStyle = MaterialTheme.typography.bodySmall,
                             colors = ExposedDropdownMenuDefaults.textFieldColors(
                                 focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
+                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedLabelColor = Color.Black,    // Label color when focused
+                                unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+
                             )
                         )
                         ExposedDropdownMenu(
@@ -300,7 +305,9 @@ fun EditPostScreen(
                             textStyle = MaterialTheme.typography.bodySmall,
                             colors = ExposedDropdownMenuDefaults.textFieldColors(
                                 focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
+                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedLabelColor = Color.Black,    // Label color when focused
+                                unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
                             )
                         )
                         ExposedDropdownMenu(
@@ -334,6 +341,12 @@ fun EditPostScreen(
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
                         .background(Color.Transparent, shape = RoundedCornerShape(8.dp)),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
+                        unfocusedBorderColor = Color.Gray, // Default border color
+                        focusedLabelColor = Color.Black,    // Label color when focused
+                        unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                    ),
                     textStyle = MaterialTheme.typography.bodyLarge
                 )
 
@@ -423,14 +436,27 @@ fun EditPostScreen(
                 }
 
                 // Add Photo Button
+                // Add Photo Button (unchanged)
                 OutlinedButton(
                     onClick = { launcher.launch("image/*") },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Image, contentDescription = "Pick Images")
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Red, // This sets the default content color, but we override it below
+                        disabledContentColor = Red.copy(alpha = 0.5f)
+                    ),
+
+                    ) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Pick Images",
+                        tint = Red
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Photos")
+                    Text(
+                        text = "Add Photos",
+                        color = Red
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

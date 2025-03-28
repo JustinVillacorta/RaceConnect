@@ -9,9 +9,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -109,13 +111,11 @@ fun MarketplaceItemDetailScreen(
 
     val isWideScreen = LocalConfiguration.current.screenWidthDp > 600
 
-    // State for reporting
     var showReportDialog by remember { mutableStateOf(false) }
     var selectedReason by remember { mutableStateOf("") }
     var otherText by remember { mutableStateOf("") }
     val context = LocalContext.current
 
-    // State for hidden item visibility
     var showHiddenItem by remember(itemId, item.value?.status) { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
     val isHidden = item.value?.status?.lowercase() == "hidden"
@@ -177,10 +177,10 @@ fun MarketplaceItemDetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(rememberScrollState()) // Added scrollable column
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Carousel with HorizontalPager (Copied from PostCard)
                     if (imagesForItem.isNotEmpty()) {
                         if (imagesForItem.size == 1) {
                             Box(
@@ -205,7 +205,7 @@ fun MarketplaceItemDetailScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(200.dp) // Adjusted height to match previous LazyRow
+                                    .height(300.dp)
                                     .padding(top = 8.dp)
                                     .then(
                                         if (isHidden && !showHiddenItem) Modifier.blur(10.dp) else Modifier
@@ -324,20 +324,16 @@ fun MarketplaceItemDetailScreen(
                             )
                     )
 
-                    Text(
+                    // Replaced description Text with ExpandableText
+                    ExpandableText(
                         text = item.value!!.description,
-                        style = TextStyle(
-                            fontSize = 16.sp,
-                            color = Black
-                        ),
+                        enabled = !isHidden || showHiddenItem,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 4.dp)
                             .then(
                                 if (isHidden && !showHiddenItem) Modifier.blur(10.dp) else Modifier
-                            ),
-                        maxLines = if (isWideScreen) 10 else 5,
-                        overflow = TextOverflow.Ellipsis
+                            )
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -489,7 +485,6 @@ fun MarketplaceItemDetailScreen(
                         )
                     }
 
-                    // Add "Hide Item" button when hidden item is shown
                     if (isHidden && showHiddenItem) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
@@ -500,9 +495,11 @@ fun MarketplaceItemDetailScreen(
                             Text("Hide Item", color = Color.Black)
                         }
                     }
+
+                    // Add extra spacer at the bottom to ensure scrollable content isn't cut off
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Overlay for hidden items
                 if (isHidden && !showHiddenItem) {
                     Box(
                         modifier = Modifier
@@ -531,7 +528,7 @@ fun MarketplaceItemDetailScreen(
         }
     }
 
-    // Report Dialog (unchanged)
+    // Report Dialog and Confirmation Dialog remain unchanged
     if (showReportDialog) {
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
@@ -617,7 +614,6 @@ fun MarketplaceItemDetailScreen(
         )
     }
 
-    // Confirmation dialog for revealing hidden item
     if (showConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmationDialog = false },
@@ -640,6 +636,47 @@ fun MarketplaceItemDetailScreen(
     }
 }
 
+// ExpandableText component (unchanged from your provided code)
+@Composable
+fun ExpandableText(
+    text: String,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var isTruncated by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        Text(
+            text = text,
+            maxLines = if (expanded) Int.MAX_VALUE else 3,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+            onTextLayout = { textLayoutResult ->
+                if (!expanded && textLayoutResult.hasVisualOverflow) {
+                    isTruncated = true
+                }
+            }
+        )
+        if (isTruncated) {
+            val toggleText = if (expanded) "See Less" else "See More"
+            Text(
+                text = toggleText,
+                color = MaterialTheme.colorScheme.outline,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .clickable(enabled = enabled) {
+                        if (enabled) {
+                            expanded = !expanded
+                        }
+                    }
+                    .padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+// MessageInputArea remains unchanged
 @Composable
 fun MessageInputArea(defaultMessage: String, onSendMessage: (String) -> Unit) {
     var message by remember { mutableStateOf(defaultMessage) }
