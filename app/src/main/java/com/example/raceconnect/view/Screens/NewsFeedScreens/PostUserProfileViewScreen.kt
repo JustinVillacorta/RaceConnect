@@ -183,7 +183,7 @@ fun PostUserProfileViewScreen(
                             onEditPost = { /* No-op for other user's profile */ },
                             onDeletePost = { /* No-op for other user's profile */ },
                             onFetchPostImages = { postId -> newsFeedViewModel.getPostImages(postId) },
-                            navController = navController, // Pass NavController
+                            navController = navController,
                             showDropdown = false // Disable dropdown for other user's profile
                         )
                     }
@@ -194,15 +194,16 @@ fun PostUserProfileViewScreen(
                             profileOriginalPosts = profileOriginalPosts,
                             profileUsername = profileData?.username,
                             profileUserId = userId,
+                            profilePicture = profileData?.profilePicture, // Pass profilePicture here
                             onFetchPostImages = { postId -> newsFeedViewModel.getPostImages(postId) },
                             onFetchOriginalPost = { postId -> newsFeedViewModel.fetchProfileOriginalPost(postId) },
-                            navController = navController // Pass NavController
+                            navController = navController
                         )
                     }
                     2 -> { // Photos Tab
                         PhotosSection(
                             postImages = postImages,
-                            navController = navController // Pass NavController
+                            navController = navController
                         )
                     }
                 }

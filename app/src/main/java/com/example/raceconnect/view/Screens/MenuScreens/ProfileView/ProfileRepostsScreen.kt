@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.model.ProfileRepostsDataClass
@@ -42,6 +43,7 @@ fun RepostsSection(
     profileOriginalPosts: Map<Int, ProfileRepostsDataClass>,
     profileUsername: String?,
     profileUserId: Int,
+    profilePicture: String?, // Added parameter
     onFetchPostImages: (Int) -> Unit,
     onFetchOriginalPost: (Int) -> Unit,
     navController: NavController
@@ -96,11 +98,13 @@ fun RepostsSection(
                                         .clip(CircleShape)
                                         .background(Color.Gray)
                                 ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.baseline_account_circle_24),
-                                        contentDescription = "User Profile",
+                                    AsyncImage(
+                                        model = profilePicture,
+                                        contentDescription = "Reposter Profile",
                                         contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
+                                        modifier = Modifier.fillMaxSize(),
+                                        error = painterResource(id = R.drawable.baseline_account_circle_24),
+                                        placeholder = painterResource(id = R.drawable.baseline_account_circle_24)
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -144,7 +148,6 @@ fun RepostsSection(
                             if (originalPost != null) {
                                 if (originalPost.status?.lowercase() == "archived") {
                                     Log.w("RepostsSection", "Archived original post ID: ${repost.postId} skipped")
-
                                 }
 
                                 var showHiddenPost by remember(originalPost.id, originalPost.status) { mutableStateOf(false) }
@@ -169,8 +172,8 @@ fun RepostsSection(
                                                         .clip(CircleShape)
                                                         .background(Color.Gray)
                                                 ) {
-                                                    Image(
-                                                        painter = painterResource(id = R.drawable.baseline_account_circle_24),
+                                                    AsyncImage(
+                                                        model = originalPost.profile_picture,
                                                         contentDescription = "Original Post User Profile",
                                                         contentScale = ContentScale.Crop,
                                                         modifier = Modifier
@@ -181,7 +184,9 @@ fun RepostsSection(
                                                                 } else {
                                                                     Modifier
                                                                 }
-                                                            )
+                                                            ),
+                                                        error = painterResource(id = R.drawable.baseline_account_circle_24),
+                                                        placeholder = painterResource(id = R.drawable.baseline_account_circle_24)
                                                     )
                                                 }
                                                 Spacer(modifier = Modifier.width(12.dp))
@@ -246,7 +251,6 @@ fun RepostsSection(
                                                                 )
                                                             }
                                                         }
-                                                        // Pager indicators (unchanged)
                                                         Box(
                                                             modifier = Modifier
                                                                 .align(Alignment.TopEnd)

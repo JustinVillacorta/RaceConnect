@@ -91,13 +91,13 @@ fun UserProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(bottom = 16.dp)
+                .padding(top = 16.dp)
         ) {
             IconButton(
                 onClick = onClose,
                 modifier = Modifier
                     .align(Alignment.Start)
-                    .padding(top = 16.dp, start = 8.dp)
+                    .padding(start = 8.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -185,6 +185,7 @@ fun UserProfileScreen(
                         profileOriginalPosts = profileOriginalPosts,
                         profileUserId = profileData?.id ?: 0,
                         profileUsername = profileData?.username,
+                        profilePicture = profileData?.profilePicture, // Pass profilePicture here
                         onFetchPostImages = { postId -> newsFeedViewModel.getPostImages(postId) },
                         onFetchOriginalPost = { postId ->
                             newsFeedViewModel.fetchProfileOriginalPost(postId)
