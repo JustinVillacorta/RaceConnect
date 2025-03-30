@@ -36,6 +36,7 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
 
     init {
         fetchFriends()
+        fetchAcceptedFriends() // Fetch accepted friends on initialization
     }
 
     fun clearSearchResults() {
@@ -62,17 +63,20 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                     response.body()?.let { users ->
                         // Convert search results to Friend objects and merge with existing friend statuses
                         val searchedUsers = users.map { user ->
-                            // Check if this user exists in our friends list and get their status
+                            val existingAcceptedFriend = _acceptedFriends.value.find { it.id == user.id.toString() }
                             val existingFriend = _friends.value.find { it.id == user.id.toString() }
+                            val status = when {
+                                existingAcceptedFriend != null -> "Accepted" // Prioritize accepted friends
+                                existingFriend != null -> existingFriend.status // Use pending/sent status if applicable
+                                else -> "NonFriends" // Default for users not in either list
+                            }
                             Friend(
                                 id = user.id.toString(),
                                 name = user.name,
                                 profileImageUrl = user.profileImageUrl,
                                 bio = user.bio,
-                                // Use existing friend status if available, otherwise "NonFriends"
-                                status = existingFriend?.status ?: "NonFriends",
-                                // Keep the existing receiverId if available
-                                receiverId = existingFriend?.receiverId
+                                status = status,
+                                receiverId = existingFriend?.receiverId // Only relevant for pending/sent
                             )
                         }
                         _searchResults.value = searchedUsers
@@ -175,7 +179,7 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                     return@launch
                 }
                 Log.d(TAG, "fetchAcceptedFriends: Logged-in userId: $userId")
-                val response = RetrofitInstance.api.getAcceptedFriends(userId = userId) // Updated endpoint
+                val response = RetrofitInstance.api.getAcceptedFriends(userId = userId)
                 Log.d(TAG, "fetchAcceptedFriends: API call executed, response code: ${response.code()}")
                 if (response.isSuccessful) {
                     response.body()?.let { rawFriends ->
@@ -194,9 +198,7 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                                 return@mapNotNull null
                             }
                             val profileImageUrl = friend["profile_picture"]?.toString()
-
-                            // Since the endpoint only returns "Accepted" friends, we can directly map
-                            Friend(id, name, status, profileImageUrl, null.toString())
+                            Friend(id, name, status, profileImageUrl, null)
                         }.distinctBy { it.id }.sortedBy { it.name }
 
                         _acceptedFriends.value = acceptedFriendsList
@@ -229,6 +231,7 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                 )
                 if (response.isSuccessful) {
                     fetchFriends()
+                    fetchAcceptedFriends() // Refresh accepted friends too
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "confirmFriendRequest: Error: ${e.message}", e)
@@ -273,8 +276,8 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                 val response = RetrofitInstance.api.removeFriend(userId, friendId)
                 if (response.isSuccessful) {
                     Log.i(TAG, "removeFriend: Successfully removed friendId: $friendId")
-                    fetchFriends()           // Refresh full list for "Add Friends" tab
-                    fetchAcceptedFriends()   // Refresh accepted friends list for "Friends" tab
+                    fetchFriends()
+                    fetchAcceptedFriends()
                 } else {
                     Log.e(TAG, "removeFriend: Failed with code ${response.code()} - ${response.message()}")
                 }

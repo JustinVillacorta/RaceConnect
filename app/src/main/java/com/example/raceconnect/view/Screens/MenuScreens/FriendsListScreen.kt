@@ -39,7 +39,7 @@ fun FriendsListScreen(
     navController: NavController,
     onClose: () -> Unit,
     userPreferences: UserPreferences,
-    onNavigateToProfile: (String) -> Unit // Added navigation callback
+    onNavigateToProfile: (String) -> Unit
 ) {
     val viewModel: FriendsViewModel = viewModel(factory = FriendsViewModelFactory(userPreferences))
     val acceptedFriends by viewModel.acceptedFriends.collectAsState()
@@ -55,7 +55,7 @@ fun FriendsListScreen(
         acceptedFriends = acceptedFriends,
         isLoading = isLoading,
         onRemove = viewModel::removeFriend,
-        onNavigateToProfile = onNavigateToProfile // Pass the navigation callback
+        onNavigateToProfile = onNavigateToProfile
     )
 }
 
@@ -66,7 +66,7 @@ fun FriendsListScreenContent(
     acceptedFriends: List<Friend>,
     isLoading: Boolean,
     onRemove: (String) -> Unit,
-    onNavigateToProfile: (String) -> Unit // Added navigation callback
+    onNavigateToProfile: (String) -> Unit
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -133,7 +133,7 @@ fun FriendsListScreenContent(
                             FriendItem(
                                 friend = friend,
                                 onRemove = onRemove,
-                                onProfileClick = onNavigateToProfile // Pass the navigation callback
+                                onProfileClick = onNavigateToProfile
                             )
                         }
                     }
@@ -171,20 +171,21 @@ private fun EmptyState(message: String) {
 fun FriendItem(
     friend: Friend,
     onRemove: ((String) -> Unit)? = null,
-    onProfileClick: (String) -> Unit // Added navigation callback
+    onProfileClick: (String) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp) // Match FriendsScreen padding
             .background(Color.White, RoundedCornerShape(8.dp))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
-            modifier = Modifier.clickable { onProfileClick(friend.id.toString()) }, // Make the row clickable
+            modifier = Modifier.clickable { onProfileClick(friend.id.toString()) },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
@@ -212,14 +213,18 @@ fun FriendItem(
         Button(
             onClick = { showDialog = true },
             shape = RoundedCornerShape(6.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0), contentColor = Color.Black),
-            modifier = Modifier.height(36.dp)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFE0E0E0),
+                contentColor = Color.Black
+            ),
+            modifier = Modifier
+                .width(120.dp) // Match FriendsScreen button width
+                .height(36.dp)
         ) {
             Text("Unfriend", fontSize = 14.sp)
         }
     }
 
-    // Alert Dialog for unfriend confirmation
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },

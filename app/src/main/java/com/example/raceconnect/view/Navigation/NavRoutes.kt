@@ -45,7 +45,7 @@ sealed class NavRoutes(val route: String) {
     object FavoriteItems : NavRoutes("favoriteItems")
     object NewsFeedPreferences : NavRoutes("newsFeedPreferences")
     object ListedItems : NavRoutes("listedItems")
-    object FriendListScreen : NavRoutes("FriendsListScreen")
+    object FriendListScreen : NavRoutes("friendListScreen") // Updated to camelCase for consistency
     object Conversations : NavRoutes("conversations")
     object CreateMarketplaceItem : NavRoutes("createMarketplaceItem")
 
@@ -60,7 +60,6 @@ sealed class NavRoutes(val route: String) {
         }
     }
 
-    // Add Marketplace Fullscreen Image Route
     object MarketplaceFullScreenImage {
         fun createRoute(marketplaceItemId: Int, imageUrls: List<String>, initialIndex: Int): String {
             require(marketplaceItemId >= 0) { "marketplaceItemId must be non-negative" }

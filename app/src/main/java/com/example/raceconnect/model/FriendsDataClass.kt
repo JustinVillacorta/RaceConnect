@@ -6,7 +6,7 @@ data class Friend(
     @SerializedName("username") val name: String = "",
     @SerializedName("profile_picture") val profileImageUrl: String? = null,
     @SerializedName("bio") val bio: String? = null,
-    @SerializedName("status") val status: String = "NonFriends",
+    @SerializedName("status") val status: String? = "NonFriends",
     @SerializedName("receiver_id") val receiverId: String? = null
 )
 

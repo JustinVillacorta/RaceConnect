@@ -49,6 +49,7 @@ fun FriendsScreen(
     userPreferences: UserPreferences,
     onClose: () -> Unit,
     onNavigateToProfile: (String) -> Unit,
+    onNavigateToFriendList: () -> Unit, // Added navigation callback
     viewModel: FriendsViewModel = viewModel(factory = FriendsViewModelFactory(userPreferences))
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -174,7 +175,8 @@ fun FriendsScreen(
                                                 isSearchActive = false
                                             }
                                         } else null,
-                                        onProfileClick = { onNavigateToProfile(user.id.toString()) }
+                                        onProfileClick = { onNavigateToProfile(user.id.toString()) },
+                                        onNavigateToFriendList = onNavigateToFriendList // Pass navigation callback
                                     )
                                 }
                             }
@@ -188,7 +190,7 @@ fun FriendsScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface) // Set the background color here
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(paddingValues)
             ) {
                 // Friend Requests Section
@@ -211,7 +213,8 @@ fun FriendsScreen(
                         friend = friend,
                         onConfirm = { viewModel.confirmFriendRequest(friend.id) },
                         onCancel = { viewModel.cancelFriendRequest(friend.id) },
-                        onProfileClick = { onNavigateToProfile(friend.id.toString()) }
+                        onProfileClick = { onNavigateToProfile(friend.id.toString()) },
+                        onNavigateToFriendList = onNavigateToFriendList // Pass navigation callback
                     )
                 }
 
@@ -249,7 +252,8 @@ fun FriendsScreen(
                         onRemove = if (friend.status == "PendingSent") {
                             { viewModel.cancelFriendRequest(friend.id) }
                         } else null,
-                        onProfileClick = { onNavigateToProfile(friend.id.toString()) }
+                        onProfileClick = { onNavigateToProfile(friend.id.toString()) },
+                        onNavigateToFriendList = onNavigateToFriendList // Pass navigation callback
                     )
                 }
             }
@@ -264,7 +268,8 @@ fun FriendItem(
     onCancel: (() -> Unit)? = null,
     onAdd: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
-    onProfileClick: (String) -> Unit
+    onProfileClick: (String) -> Unit,
+    onNavigateToFriendList: () -> Unit // Callback for navigation
 ) {
     Row(
         modifier = Modifier
@@ -302,12 +307,12 @@ fun FriendItem(
             )
         }
 
-        // Right side: Vertically stacked buttons for Friend Requests
+        // Right side: Button based on friend status
         when (friend.status) {
             "Pending" -> {
                 Column(
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(8.dp) // Space between buttons
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = { onConfirm?.invoke() },
@@ -349,7 +354,7 @@ fun FriendItem(
                         .width(120.dp)
                         .height(36.dp)
                 ) {
-                    Text("Pending", fontSize = 14.sp,)
+                    Text("Pending", fontSize = 14.sp)
                 }
             }
             "NonFriends" -> {
@@ -361,15 +366,25 @@ fun FriendItem(
                         contentColor = Color.White
                     ),
                     modifier = Modifier
-                        .width(120.dp) // Ensures minimum width
+                        .width(120.dp)
                         .height(36.dp)
                 ) {
-                    Text("Add Friend",
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Text("Add Friend", fontSize = 13.sp)
+                }
+            }
+            "Accepted" -> {
+                Button(
+                    onClick = { onNavigateToFriendList() },
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50), // Green for "Friends"
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(36.dp)
+                ) {
+                    Text("Friends", fontSize = 14.sp)
                 }
             }
         }

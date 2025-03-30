@@ -341,6 +341,9 @@ fun AppNavigation(userPreferences: UserPreferences) {
                                     if (userIdInt != null) {
                                         navController.navigate(NavRoutes.ProfileView.createRoute(userIdInt))
                                     }
+                                },
+                                onNavigateToFriendList = {
+                                    navController.navigate(NavRoutes.FriendListScreen.route) // Navigate to FriendListScreen
                                 }
                             )
                         }
