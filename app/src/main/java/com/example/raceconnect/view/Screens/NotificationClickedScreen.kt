@@ -47,9 +47,12 @@ import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
 import com.example.raceconnect.view.ui.theme.fontFamily
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.raceconnect.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +99,7 @@ fun PostDetailScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(topBarTitle,  fontFamily = fontFamily, color = Color.White, fontSize = 24.sp) },
+                title = { Text(topBarTitle, fontFamily = fontFamily, color = Color.White, fontSize = 24.sp) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -212,11 +215,14 @@ fun PostDetailScreen(
                                     .clip(CircleShape)
                                     .background(Color.Gray)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.AccountCircle,
+                                // Use AsyncImage instead of Icon
+                                AsyncImage(
+                                    model = comment.profilePicture, // Assuming profilePicture exists
                                     contentDescription = "Commenter Profile",
+                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize(),
-                                    tint = Color.Black
+                                    placeholder = painterResource(id = R.drawable.baseline_account_circle_24),
+                                    error = painterResource(id = R.drawable.baseline_account_circle_24)
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))

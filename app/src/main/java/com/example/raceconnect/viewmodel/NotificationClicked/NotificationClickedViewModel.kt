@@ -146,7 +146,18 @@ class NotificationClickedViewModel(
             try {
                 val response = apiService.getCommentsByPostId(token, postId)
                 if (response.isSuccessful) {
-                    _comments.value = response.body() ?: emptyList()
+                    val rawComments = response.body() ?: emptyList()
+                    // Fetch profile pictures for each comment
+                    val enrichedComments = rawComments.map { comment ->
+                        val userResponse = apiService.getUser(comment.userId)
+                        if (userResponse.isSuccessful) {
+                            val user = userResponse.body()
+                            comment.copy(profilePicture = user?.profilePicture)
+                        } else {
+                            comment.copy(profilePicture = null) // Fallback to null if user fetch fails
+                        }
+                    }
+                    _comments.value = enrichedComments
                     _error.value = null
                 } else {
                     _error.value = "Failed to fetch comments: ${response.code()} - ${response.errorBody()?.string()}"
