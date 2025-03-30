@@ -254,6 +254,7 @@ fun SignupScreen(
     var showTosDialog by remember { mutableStateOf(false) }
     var tosAccepted by remember { mutableStateOf(false) }
 
+
     // Observe ViewModel states
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.ErrorMessage.collectAsState()
@@ -305,29 +306,44 @@ fun SignupScreen(
                 )
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Username field
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("Username") },
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Color(0xFFC62828)
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = {
+                            // Only update if the new value is within the limit,
+                            // otherwise take only the first 8 characters.
+                            username = if (it.length <= 8) it else it.take(8)
+                        },
+                        label = { Text("Username") },
+                        singleLine = true,
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color(0xFFC62828)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = username.length == 8,  // Mark as error if the limit is reached
+                        supportingText = {
+                            if (username.length == 8) {
+                                Text(
+                                    text = "Maximum of 8 characters reached",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            // Change border color to red when limit is reached
+                            focusedBorderColor = if (username.length == 8) Color.Red else Color.Gray,
+                            unfocusedBorderColor = if (username.length == 8) Color.Red else Color.Gray,
+                            focusedLabelColor = Color.Black,
+                            unfocusedLabelColor = Color.Black
                         )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        focusedBorderColor = Color.Gray,    // Same as unfocused to disable border highlight
-                        unfocusedBorderColor = Color.Gray,
-                        focusedLabelColor = Color.Black,    // Same as unfocused to disable label highlight
-                        unfocusedLabelColor = Color.Black
                     )
+                }
 
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Email field with validation
                 OutlinedTextField(

@@ -7,6 +7,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -140,12 +142,15 @@ fun MyProfileScreen(
             calendar.set(year, month, dayOfMonth)
             val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             birthDate = TextFieldValue(sdf.format(calendar.time))
-            showDatePicker = false
+            showDatePicker = false  // Reset after selecting a date
         },
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
-    )
+    ).apply {
+        // Ensure the state resets if the dialog is dismissed without selection
+        setOnDismissListener { showDatePicker = false }
+    }
 
     // Show DatePicker when triggered
     LaunchedEffect(showDatePicker) {
@@ -224,7 +229,7 @@ fun MyProfileScreen(
                         contentDescription = "Change Profile Picture",
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .size(30.dp)
+                            .size(4.dp)
                             .clip(CircleShape)
                             .background(BrandRed.copy(alpha = 0.8f))
                             .padding(6.dp),
@@ -296,40 +301,76 @@ fun MyProfileScreen(
                         ) {
                             OutlinedTextField(
                                 value = username,
-                                onValueChange = { username = it.copy(text = it.text.trim()) },
+                                onValueChange = {
+                                    val trimmed = it.text.trim()
+                                    // Enforce an 8-character limit
+                                    username = if (trimmed.length <= 8) {
+                                        it.copy(text = trimmed)
+                                    } else {
+                                        it.copy(text = trimmed.take(8))
+                                    }
+                                },
                                 label = { Text("User Name", fontSize = 16.sp) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 12.dp),
+                                    .padding(bottom = 2.dp),
                                 leadingIcon = { Icon(Icons.Default.AccountCircle, "User Icon", tint = Red) },
-                                isError = username.text.isBlank(),
+                                isError = username.text.isBlank() || username.text.length == 8,
                                 supportingText = {
-                                    if (username.text.isBlank()) {
-                                        Text("Username cannot be empty", color = MaterialTheme.colorScheme.error)
+                                    Column {
+                                        if (username.text.isBlank()) {
+                                            Text(
+                                                "Username cannot be empty",
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                        if (username.text.length == 8) {
+                                            Text(
+                                                "Maximum of 8 characters reached",
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        }
                                     }
-                                }
+                                },
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor = if (username.text.length == 8) Color.Red else Color.Gray,
+                                    unfocusedBorderColor = if (username.text.length == 8) Color.Red else Color.Gray,
+                                    focusedLabelColor = Color.Black,
+                                    unfocusedLabelColor = Color.Black
+                                )
                             )
 
+
+                            // Use a Box to enlarge the clickable area if needed
                             OutlinedTextField(
                                 value = birthDate,
-                                onValueChange = { /* No direct editing allowed */ },
+                                onValueChange = { /* No editing allowed */ },
                                 label = { Text("Birth Date", fontSize = 16.sp) },
+                                readOnly = true,
+                                enabled = true,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 12.dp)
-                                    .clickable(enabled = isEditMode) {
-                                        showDatePicker = true
-                                    },
-                                leadingIcon = { Icon(Icons.Default.CalendarToday, "Calendar Icon", tint = Red) },
-                                readOnly = true,
-                                enabled = false, // Prevents keyboard from appearing
-                                isError = birthDate.text.isBlank(),
-                                supportingText = {
-                                    if (birthDate.text.isBlank()) {
-                                        Text("Birth date is required", color = MaterialTheme.colorScheme.error)
-                                    }
-                                }
+                                    .padding(bottom = 16.dp)
+                                    .clickable { showDatePicker = true },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarToday,
+                                        contentDescription = "Calendar Icon",
+                                        tint = Red
+                                    )
+                                },
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor =  Color.Gray,
+                                    unfocusedBorderColor = Color.Gray,
+                                    focusedLabelColor = Color.Black,
+                                    unfocusedLabelColor = Color.Black
+                                )
                             )
+
+
+
+
+
 
                             OutlinedTextField(
                                 value = contactNumber,
@@ -337,10 +378,15 @@ fun MyProfileScreen(
                                 label = { Text("Contact Number", fontSize = 16.sp) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 12.dp),
+                                    .padding(bottom = 2.dp),
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor =  Color.Gray,
+                                    unfocusedBorderColor = Color.Gray,
+                                    focusedLabelColor = Color.Black,
+                                    unfocusedLabelColor = Color.Black
+                                ),
                                 leadingIcon = { Icon(Icons.Default.Phone, "Phone Icon", tint = Red) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                                isError = contactNumber.text.length !in 10..15,
                                 supportingText = {
                                     if (contactNumber.text.length !in 10..15) {
                                         Text("Enter a valid phone number (10-15 digits)", color = MaterialTheme.colorScheme.error)
@@ -355,6 +401,12 @@ fun MyProfileScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(bottom = 12.dp),
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor =  Color.Gray,
+                                    unfocusedBorderColor = Color.Gray,
+                                    focusedLabelColor = Color.Black,
+                                    unfocusedLabelColor = Color.Black
+                                ),
                                 leadingIcon = { Icon(Icons.Default.LocationOn, "Location Icon", tint = Red) }
                             )
 
@@ -365,6 +417,12 @@ fun MyProfileScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(bottom = 12.dp),
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor =  Color.Gray,
+                                    unfocusedBorderColor = Color.Gray,
+                                    focusedLabelColor = Color.Black,
+                                    unfocusedLabelColor = Color.Black
+                                ),
                                 leadingIcon = { Icon(Icons.Default.Edit, "Edit Icon", tint = Red) },
                                 maxLines = 3
                             )
