@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -154,7 +155,15 @@ fun UserProfileScreen(
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
                     containerColor = Color.White,
-                    contentColor = Red
+                    contentColor = Red, // This sets the text color of the selected tab
+                    indicator = { tabPositions ->
+                        TabRowDefaults.Indicator(
+                            modifier = Modifier
+                                .tabIndicatorOffset(tabPositions[selectedTabIndex])
+                                .height(2.dp), // Thickness of the underline
+                            color = Red // Set the underline color to red
+                        )
+                    }
                 ) {
                     tabTitles.forEachIndexed { index, title ->
                         Tab(

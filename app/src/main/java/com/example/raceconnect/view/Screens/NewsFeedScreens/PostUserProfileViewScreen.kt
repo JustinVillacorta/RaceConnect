@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +42,7 @@ import com.example.raceconnect.view.Screens.MenuScreens.ProfileView.PhotosSectio
 import com.example.raceconnect.view.Screens.MenuScreens.ProfileView.PostsSection
 import com.example.raceconnect.view.Screens.MenuScreens.ProfileView.RepostsSection
 import com.example.raceconnect.view.Screens.NewsFeedScreens.formatTime
+import com.example.raceconnect.view.ui.theme.Red
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModel
 import com.example.raceconnect.viewmodel.NewsFeed.NewsFeedViewModelFactory
 import com.example.raceconnect.viewmodel.ProfileDetails.PostUserProfileViewModel
@@ -162,7 +164,15 @@ fun PostUserProfileViewScreen(
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
                     containerColor = Color.White,
-                    contentColor = Color.Red
+                    contentColor = Red, // This sets the text color of the selected tab
+                    indicator = { tabPositions ->
+                        TabRowDefaults.Indicator(
+                            modifier = Modifier
+                                .tabIndicatorOffset(tabPositions[selectedTabIndex])
+                                .height(2.dp), // Thickness of the underline
+                            color = Red // Set the underline color to red
+                        )
+                    }
                 ) {
                     tabTitles.forEachIndexed { index, title ->
                         Tab(
