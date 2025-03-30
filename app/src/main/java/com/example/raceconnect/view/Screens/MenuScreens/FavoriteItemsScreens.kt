@@ -45,7 +45,7 @@ fun FavoriteItemsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var expanded by remember { mutableStateOf(false) }
-    val filterOptions = listOf("All items", "Formula 1", "24 Hour of Lemans", "Formula Drift", "NASCAR", "GT Championship",)
+    val filterOptions = listOf("All items", "Formula 1", "24 Hours of Lemans", "World Rally Championship", "Formula Drift", "NASCAR", "GT Championship",)
     var selectedOption by remember { mutableStateOf(filterOptions[0]) }
 
     val filteredItems = if (selectedOption == "All items") {
