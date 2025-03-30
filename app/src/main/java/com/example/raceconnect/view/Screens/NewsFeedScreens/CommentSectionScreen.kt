@@ -3,6 +3,7 @@ package com.example.raceconnect.view.Screens.NewsFeedScreens
 import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -21,13 +22,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.raceconnect.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.datastore.UserPreferences
 import com.example.raceconnect.model.PostComment
 import com.example.raceconnect.view.ui.theme.Red
@@ -84,7 +88,7 @@ fun CommentSectionScreen(
                             userId = userId,
                             postId = postId,
                             comment = commentText,
-                            createdAt = Date(), // This is a Date object
+                            createdAt = Date(),
                             username = username
                         )
                         viewModel.addComment(newComment)
@@ -104,7 +108,7 @@ fun CommentSectionScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                    .padding(top = 16.dp),
                 textAlign = TextAlign.Center
             )
 
@@ -256,20 +260,20 @@ fun CommentItem(
             ),
         verticalAlignment = Alignment.Top
     ) {
-        Box(
+        // Profile Picture
+        Image(
+            painter = rememberAsyncImagePainter(
+                model = comment.profilePicture?.takeIf { it.isNotBlank() && it != "null" } ?: "",
+                placeholder = painterResource(id = R.drawable.baseline_account_circle_24),
+                error = painterResource(id = R.drawable.baseline_account_circle_24)
+            ),
+            contentDescription = "Profile Picture",
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(Color.Gray)
-                .clickable { onShowProfileView(comment.userId) },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = comment.username?.firstOrNull()?.toString() ?: "?",
-                color = Color.White,
-                fontSize = 16.sp
-            )
-        }
+                .clickable { onShowProfileView(comment.userId) }
+        )
 
         Column(
             modifier = Modifier

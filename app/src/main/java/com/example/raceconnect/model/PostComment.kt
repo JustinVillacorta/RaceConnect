@@ -13,5 +13,6 @@ data class PostComment(
     @SerializedName("created_at") val createdAt: Date? = null,
     val username: String? = null,
     val likes: Int = 0,
-    val icon: ImageVector? = null
+    val icon: ImageVector? = null,
+    @SerializedName("profile_picture") val profilePicture: String? = null // Added
 )
