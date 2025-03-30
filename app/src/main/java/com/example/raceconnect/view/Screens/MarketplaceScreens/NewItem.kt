@@ -217,7 +217,6 @@ fun CreateMarketplaceItemScreen(
                         singleLine = true
                     )
 
-                    // Price Field
                     OutlinedTextField(
                         value = price,
                         onValueChange = { price = it },
@@ -225,15 +224,22 @@ fun CreateMarketplaceItemScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 8.dp),
+                            .padding(vertical = 8.dp),
                         colors = TextFieldDefaults.outlinedTextFieldColors(
-                            focusedBorderColor = Color.Gray,  // Set to same as unfocused to remove highlight
-                            unfocusedBorderColor = Color.Gray, // Default border color
-                            focusedLabelColor = Color.Black,    // Label color when focused
-                            unfocusedLabelColor = Color.Black   // Same as focused to disable highlight
+                            focusedBorderColor = Color.Gray,
+                            unfocusedBorderColor = Color.Gray,
+                            focusedLabelColor = Color.Black,
+                            unfocusedLabelColor = Color.Black
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        singleLine = true
+                        singleLine = true,
+                        leadingIcon = {
+                            Text(
+                                text = "₱",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.Black
+                            )
+                        }
                     )
 
                     // Category Dropdown
