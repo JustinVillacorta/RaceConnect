@@ -197,8 +197,10 @@ class FriendsViewModel(private val userPreferences: UserPreferences) : ViewModel
                                 Log.e(TAG, "fetchAcceptedFriends: status is null for friend: $friend")
                                 return@mapNotNull null
                             }
-                            val profileImageUrl = friend["profile_picture"]?.toString()
-                            Friend(id, name, status, profileImageUrl, null)
+                            val profileImageUrl = friend["profile_picture"]?.toString() ?: ""
+                            Log.d(TAG, "fetchAcceptedFriends: Friend ID: $id, Name: $name, ProfileImageUrl: $profileImageUrl, Status: $status")
+                            // Corrected order: id, name, profileImageUrl, bio, status, receiverId
+                            Friend(id, name, profileImageUrl, null, status, null)
                         }.distinctBy { it.id }.sortedBy { it.name }
 
                         _acceptedFriends.value = acceptedFriendsList

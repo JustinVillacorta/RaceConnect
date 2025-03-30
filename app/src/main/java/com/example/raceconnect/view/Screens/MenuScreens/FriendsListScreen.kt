@@ -50,6 +50,13 @@ fun FriendsListScreen(
         viewModel.fetchAcceptedFriends()
     }
 
+    // Log the accepted friends data to debug profileImageUrl
+    LaunchedEffect(acceptedFriends) {
+        acceptedFriends.forEach { friend ->
+            Log.d("FriendsListScreen", "Friend: ${friend.name}, profileImageUrl: ${friend.profileImageUrl}")
+        }
+    }
+
     FriendsListScreenContent(
         onBackClick = onClose,
         acceptedFriends = acceptedFriends,
@@ -129,7 +136,7 @@ fun FriendsListScreenContent(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(acceptedFriends) { friend ->
-                            Log.d("FriendsListScreen", "Rendering friend: ${friend.name}")
+                            Log.d("FriendsListScreen", "Rendering friend: ${friend.name}, profileImageUrl: ${friend.profileImageUrl}")
                             FriendItem(
                                 friend = friend,
                                 onRemove = onRemove,
@@ -178,7 +185,7 @@ fun FriendItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp) // Match FriendsScreen padding
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .background(Color.White, RoundedCornerShape(8.dp))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -190,7 +197,7 @@ fun FriendItem(
         ) {
             Image(
                 painter = rememberAsyncImagePainter(
-                    model = friend.profileImageUrl ?: "",
+                    model = friend.profileImageUrl?.takeIf { it.isNotBlank() && it != "null" } ?: "",
                     placeholder = painterResource(id = R.drawable.baseline_account_circle_24),
                     error = painterResource(id = R.drawable.baseline_account_circle_24)
                 ),
@@ -218,7 +225,7 @@ fun FriendItem(
                 contentColor = Color.Black
             ),
             modifier = Modifier
-                .width(120.dp) // Match FriendsScreen button width
+                .width(120.dp)
                 .height(36.dp)
         ) {
             Text("Unfriend", fontSize = 14.sp)
