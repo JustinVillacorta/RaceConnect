@@ -603,9 +603,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             val initialIndex = backStackEntry.arguments?.getInt("initialIndex") ?: 0
                             val imageUrls = imageUrlsString.split(",").map { Uri.decode(it) }.filter { it.isNotEmpty() }
 
-                            Log.d("FullScreenImage", "Nav Args - postId: $postId, imageUrlsString: '$imageUrlsString', initialIndex: $initialIndex")
-                            Log.d("FullScreenImage", "Parsed imageUrls: $imageUrls")
-
                             if (imageUrls.isEmpty()) {
                                 Log.e("FullScreenImage", "No valid image URLs found, navigating back")
                                 navController.popBackStack()
@@ -613,10 +610,6 @@ fun AppNavigation(userPreferences: UserPreferences) {
                             }
 
                             val safeInitialIndex = initialIndex.coerceIn(0, imageUrls.size - 1)
-                            if (safeInitialIndex != initialIndex) {
-                                Log.w("FullScreenImage", "Adjusted initialIndex from $initialIndex to $safeInitialIndex due to bounds")
-                            }
-
                             val newsFeedViewModel: NewsFeedViewModel = viewModel(factory = NewsFeedViewModelFactory(userPreferences, LocalContext.current))
 
                             FullScreenImageViewer(

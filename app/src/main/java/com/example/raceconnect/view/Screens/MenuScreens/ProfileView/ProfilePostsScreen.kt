@@ -27,15 +27,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import androidx.paging.compose.LazyPagingItems
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.model.NewsFeedDataClassItem
+import com.example.raceconnect.view.Navigation.NavRoutes
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Utility function to format timestamp (unchanged)
 fun formatTime(timestamp: String?): String {
     if (timestamp.isNullOrEmpty()) return "Just now"
     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
@@ -67,7 +68,8 @@ fun PostsSection(
     onEditPost: (NewsFeedDataClassItem) -> Unit,
     onDeletePost: (NewsFeedDataClassItem) -> Unit,
     onFetchPostImages: (Int) -> Unit,
-    showDropdown: Boolean = true // New parameter to control dropdown visibility
+    navController: NavController,
+    showDropdown: Boolean = true
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -108,7 +110,7 @@ fun PostsSection(
                                                 .background(Color.Gray)
                                         ) {
                                             if (post.profile_picture != null) {
-                                                coil.compose.AsyncImage(
+                                                AsyncImage(
                                                     model = post.profile_picture,
                                                     contentDescription = "User Profile",
                                                     contentScale = ContentScale.Crop,
@@ -162,7 +164,7 @@ fun PostsSection(
                                                 }
                                             )
                                         }
-                                        if (showDropdown) { // Conditionally show the dropdown
+                                        if (showDropdown) {
                                             Box {
                                                 IconButton(onClick = { showDropdownState = true }) {
                                                     Icon(
@@ -249,6 +251,7 @@ fun PostsSection(
                                                             )
                                                         }
                                                     }
+                                                    // Pager indicators (unchanged)
                                                     Box(
                                                         modifier = Modifier
                                                             .align(Alignment.TopEnd)
@@ -301,6 +304,15 @@ fun PostsSection(
                                                         .fillMaxWidth()
                                                         .padding(top = 8.dp)
                                                         .clip(RoundedCornerShape(8.dp))
+                                                        .clickable {
+                                                            navController.navigate(
+                                                                NavRoutes.FullScreenImage.createRoute(
+                                                                    post.id,
+                                                                    postImages[post.id]!!,
+                                                                    0
+                                                                )
+                                                            )
+                                                        }
                                                 ) {
                                                     val painter = rememberAsyncImagePainter(model = postImages[post.id]!!.first())
                                                     Image(
@@ -328,6 +340,15 @@ fun PostsSection(
                                                             modifier = Modifier
                                                                 .fillMaxSize()
                                                                 .clip(RoundedCornerShape(8.dp))
+                                                                .clickable {
+                                                                    navController.navigate(
+                                                                        NavRoutes.FullScreenImage.createRoute(
+                                                                            post.id,
+                                                                            postImages[post.id]!!,
+                                                                            page
+                                                                        )
+                                                                    )
+                                                                }
                                                         ) {
                                                             val painter = rememberAsyncImagePainter(model = postImages[post.id]!![page])
                                                             Image(

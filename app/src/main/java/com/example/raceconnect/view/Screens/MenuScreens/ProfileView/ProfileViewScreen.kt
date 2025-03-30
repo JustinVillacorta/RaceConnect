@@ -49,7 +49,6 @@ import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.
 import com.example.raceconnect.viewmodel.ProfileDetails.ProfileDetailsViewModel.ProfileDetailsViewModelFactory
 import com.google.gson.Gson
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserProfileScreen(
@@ -92,8 +91,7 @@ fun UserProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(bottom = 16.dp) // Add bottom padding here
-
+                .padding(bottom = 16.dp)
         ) {
             IconButton(
                 onClick = onClose,
@@ -156,7 +154,7 @@ fun UserProfileScreen(
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
                     containerColor = Color.White,
-                    contentColor = Color.Red
+                    contentColor = Red
                 ) {
                     tabTitles.forEachIndexed { index, title ->
                         Tab(
@@ -178,7 +176,8 @@ fun UserProfileScreen(
                             navController.navigate(NavRoutes.EditPost.createRoute(postJson))
                         },
                         onDeletePost = { post -> postToDelete = post },
-                        onFetchPostImages = { postId -> newsFeedViewModel.getPostImages(postId) }
+                        onFetchPostImages = { postId -> newsFeedViewModel.getPostImages(postId) },
+                        navController = navController
                     )
                     1 -> RepostsSection(
                         userReposts = userReposts,
@@ -188,12 +187,14 @@ fun UserProfileScreen(
                         profileUsername = profileData?.username,
                         onFetchPostImages = { postId -> newsFeedViewModel.getPostImages(postId) },
                         onFetchOriginalPost = { postId ->
-                            newsFeedViewModel.fetchProfileOriginalPost(
-                                postId
-                            )
-                        }
+                            newsFeedViewModel.fetchProfileOriginalPost(postId)
+                        },
+                        navController = navController
                     )
-                    2 -> PhotosSection(postImages = postImages)
+                    2 -> PhotosSection(
+                        postImages = postImages,
+                        navController = navController
+                    )
                 }
             }
         }
@@ -221,4 +222,3 @@ fun UserProfileScreen(
         }
     }
 }
-

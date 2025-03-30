@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -27,14 +28,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.raceconnect.R
 import com.example.raceconnect.model.ProfileRepostsDataClass
 import com.example.raceconnect.model.Repost
-import java.text.SimpleDateFormat
-import java.util.*
-
-
+import com.example.raceconnect.view.Navigation.NavRoutes
 
 @Composable
 fun RepostsSection(
@@ -44,7 +43,8 @@ fun RepostsSection(
     profileUsername: String?,
     profileUserId: Int,
     onFetchPostImages: (Int) -> Unit,
-    onFetchOriginalPost: (Int) -> Unit
+    onFetchOriginalPost: (Int) -> Unit,
+    navController: NavController
 ) {
     val myReposts = userReposts.filter { it.userId == profileUserId }
 
@@ -81,12 +81,11 @@ fun RepostsSection(
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     modifier = Modifier
                         .fillMaxWidth()
-                            .wrapContentHeight()
+                        .wrapContentHeight()
                         .padding(vertical = 2.dp)
                 ) {
                     Box(modifier = Modifier.padding(8.dp)) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            // Repost Header (unchanged)
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
@@ -132,7 +131,6 @@ fun RepostsSection(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Repost Quote (unchanged)
                             if (!repost.quote.isNullOrEmpty()) {
                                 ExpandableText(
                                     text = repost.quote,
@@ -143,9 +141,7 @@ fun RepostsSection(
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
 
-                            // Original Post with Hide Functionality
                             if (originalPost != null) {
-                                // Skip archived posts
                                 if (originalPost.status?.lowercase() == "archived") {
                                     Log.w("RepostsSection", "Archived original post ID: ${repost.postId} skipped")
 
@@ -163,7 +159,6 @@ fun RepostsSection(
                                 ) {
                                     Box(modifier = Modifier.padding(12.dp)) {
                                         Column {
-                                            // Original Post Header
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.fillMaxWidth()
@@ -216,9 +211,7 @@ fun RepostsSection(
                                             }
                                             Spacer(modifier = Modifier.height(8.dp))
 
-                                            // Original Post Content and Images
                                             if (originalPost.status?.lowercase() == "hidden" && !showHiddenPost) {
-                                                // Hidden state
                                                 ExpandableText(
                                                     text = originalPost.content ?: "",
                                                     enabled = false,
@@ -253,6 +246,7 @@ fun RepostsSection(
                                                                 )
                                                             }
                                                         }
+                                                        // Pager indicators (unchanged)
                                                         Box(
                                                             modifier = Modifier
                                                                 .align(Alignment.TopEnd)
@@ -291,7 +285,6 @@ fun RepostsSection(
                                                     }
                                                 }
                                             } else {
-                                                // Visible state
                                                 if (!originalPost.content.isNullOrEmpty()) {
                                                     ExpandableText(
                                                         text = originalPost.content,
@@ -316,6 +309,15 @@ fun RepostsSection(
                                                                 modifier = Modifier
                                                                     .fillMaxSize()
                                                                     .clip(RoundedCornerShape(8.dp))
+                                                                    .clickable {
+                                                                        navController.navigate(
+                                                                            NavRoutes.FullScreenImage.createRoute(
+                                                                                repost.postId,
+                                                                                postImages[repost.postId]!!,
+                                                                                page
+                                                                            )
+                                                                        )
+                                                                    }
                                                             ) {
                                                                 val painter = rememberAsyncImagePainter(model = postImages[repost.postId]!![page])
                                                                 Image(
@@ -373,7 +375,6 @@ fun RepostsSection(
                                             }
                                         }
 
-                                        // Overlay for hidden state
                                         if (originalPost.status?.lowercase() == "hidden" && !showHiddenPost) {
                                             Box(
                                                 modifier = Modifier
@@ -404,7 +405,6 @@ fun RepostsSection(
                                     }
                                 }
 
-                                // Confirmation Dialog
                                 if (showConfirmationDialog) {
                                     AlertDialog(
                                         onDismissRequest = { showConfirmationDialog = false },

@@ -2,6 +2,7 @@ package com.example.raceconnect.view.Screens.MenuScreens.ProfileView
 
 import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -12,18 +13,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import com.example.raceconnect.view.Navigation.NavRoutes
 
 @Composable
 fun PhotosSection(
-    postImages: Map<Int, List<String>>
+    postImages: Map<Int, List<String>>,
+    navController: NavController
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         postImages.forEach { (postId, images) ->
-            images.forEach { imageUrl ->
+            images.forEachIndexed { index, imageUrl ->
                 Log.d("PhotosSection", "Loading photo for postId: $postId, URL: $imageUrl")
                 item {
                     val painter = rememberAsyncImagePainter(
@@ -40,7 +44,16 @@ fun PhotosSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(200.dp)
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                navController.navigate(
+                                    NavRoutes.FullScreenImage.createRoute(
+                                        postId,
+                                        images,
+                                        index
+                                    )
+                                )
+                            },
                         contentScale = ContentScale.Crop
                     )
                 }
