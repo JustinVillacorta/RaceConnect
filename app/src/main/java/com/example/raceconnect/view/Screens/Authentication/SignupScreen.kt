@@ -254,10 +254,12 @@ fun SignupScreen(
     var showTosDialog by remember { mutableStateOf(false) }
     var tosAccepted by remember { mutableStateOf(false) }
 
-
     // Observe ViewModel states
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.ErrorMessage.collectAsState()
+
+    // Scroll state for vertical scrolling
+    val scrollState = rememberScrollState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Red header
@@ -265,7 +267,7 @@ fun SignupScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp)
-                .background(color = Red )
+                .background(color = Red)
         ) {
             IconButton(
                 onClick = onBackNavigate,
@@ -296,6 +298,7 @@ fun SignupScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(scrollState) // Add vertical scrolling here
                     .padding(horizontal = 16.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -310,8 +313,6 @@ fun SignupScreen(
                     OutlinedTextField(
                         value = username,
                         onValueChange = {
-                            // Only update if the new value is within the limit,
-                            // otherwise take only the first 8 characters.
                             username = if (it.length <= 8) it else it.take(8)
                         },
                         label = { Text("Username") },
@@ -324,7 +325,7 @@ fun SignupScreen(
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        isError = username.length == 8,  // Mark as error if the limit is reached
+                        isError = username.length == 8,
                         supportingText = {
                             if (username.length == 8) {
                                 Text(
@@ -334,7 +335,6 @@ fun SignupScreen(
                             }
                         },
                         colors = TextFieldDefaults.outlinedTextFieldColors(
-                            // Change border color to red when limit is reached
                             focusedBorderColor = if (username.length == 8) Color.Red else Color.Gray,
                             unfocusedBorderColor = if (username.length == 8) Color.Red else Color.Gray,
                             focusedLabelColor = Color.Black,
@@ -360,9 +360,9 @@ fun SignupScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        focusedBorderColor = Color.Gray,    // Same as unfocused to disable border highlight
+                        focusedBorderColor = Color.Gray,
                         unfocusedBorderColor = Color.Gray,
-                        focusedLabelColor = Color.Black,    // Same as unfocused to disable label highlight
+                        focusedLabelColor = Color.Black,
                         unfocusedLabelColor = Color.Black
                     ),
                     isError = !isEmailValid,
@@ -405,9 +405,9 @@ fun SignupScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        focusedBorderColor = Color.Gray,    // Same as unfocused to disable border highlight
+                        focusedBorderColor = Color.Gray,
                         unfocusedBorderColor = Color.Gray,
-                        focusedLabelColor = Color.Black,    // Same as unfocused to disable label highlight
+                        focusedLabelColor = Color.Black,
                         unfocusedLabelColor = Color.Black
                     ),
                     singleLine = true
@@ -442,9 +442,9 @@ fun SignupScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        focusedBorderColor = Color.Gray,    // Same as unfocused to disable border highlight
+                        focusedBorderColor = Color.Gray,
                         unfocusedBorderColor = Color.Gray,
-                        focusedLabelColor = Color.Black,    // Same as unfocused to disable label highlight
+                        focusedLabelColor = Color.Black,
                         unfocusedLabelColor = Color.Black
                     ),
                     singleLine = true,
@@ -519,7 +519,6 @@ fun SignupScreen(
                                 onToast = { message ->
                                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                                     if (message == "Account Created Successfully!") {
-                                        // Clear fields and navigate back
                                         username = ""
                                         email = ""
                                         password = ""
@@ -533,7 +532,7 @@ fun SignupScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    enabled = !isLoading && // Disable button while loading
+                    enabled = !isLoading &&
                             username.isNotEmpty() &&
                             email.isNotEmpty() && isEmailValid &&
                             password.isNotEmpty() &&
@@ -543,9 +542,7 @@ fun SignupScreen(
                             hasUpperCase &&
                             hasNumber &&
                             hasMinLength,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Red) // Red when enabled
-
+                    colors = ButtonDefaults.buttonColors(containerColor = Red)
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
@@ -567,7 +564,7 @@ fun SignupScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(16.dp)) // Add some padding at the bottom
             }
         }
     }
@@ -587,7 +584,6 @@ fun SignupScreen(
                     onToast = { message ->
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         if (message == "Account Created Successfully!") {
-                            // Clear fields and navigate back
                             username = ""
                             email = ""
                             password = ""
@@ -600,4 +596,3 @@ fun SignupScreen(
         )
     }
 }
-

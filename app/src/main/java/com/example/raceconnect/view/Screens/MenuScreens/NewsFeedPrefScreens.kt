@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -56,10 +55,7 @@ fun NewsFeedPreferencesScreen(
         Brand("GT CUP", R.drawable.gt_championship),
     )
 
-    var showSearchBar by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    var isEditable by remember { mutableStateOf(false) } // New state for edit mode
-
+    var isEditable by remember { mutableStateOf(false) } // State for edit mode
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -152,78 +148,30 @@ fun NewsFeedPreferencesScreen(
                 }
             }
 
-            // Show add button and search only when in edit mode
+            // Show available brands to add when in edit mode
             if (isEditable) {
-                if (!showSearchBar) {
-                    Box(
-                        modifier = Modifier
-                            .size(50.dp)
-                            .clip(CircleShape)
-                            .background(brandRed)
-                            .clickable { showSearchBar = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add brand",
-                            tint = white,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-
-                if (showSearchBar) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
+                val brandsToAdd = availableBrands.filter { it.name !in selectedBrands }
+                if (brandsToAdd.isNotEmpty()) {
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
-                        placeholder = { Text("Search") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search icon",
-                                tint = Color.Gray
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(brandsToAdd) { brand ->
+                            BrandChip(
+                                brand = brand,
+                                onClick = { viewModel.toggleBrand(brand.name) }
                             )
-                        },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close search",
-                                tint = Color.Gray,
-                                modifier = Modifier.clickable {
-                                    searchQuery = ""
-                                    showSearchBar = false
-                                }
-                            )
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-
-                    val filteredBrands = availableBrands.filter {
-                        it.name.lowercase().contains(searchQuery.lowercase()) && it.name !in selectedBrands
-                    }
-                    if (filteredBrands.isNotEmpty()) {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(filteredBrands) { brand ->
-                                BrandChip(
-                                    brand = brand,
-                                    onClick = {
-                                        viewModel.toggleBrand(brand.name)
-                                        searchQuery = ""
-                                        showSearchBar = false
-                                    }
-                                )
-                            }
                         }
                     }
+                } else {
+                    Text(
+                        text = "All available brands are selected.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
                 }
             }
 
