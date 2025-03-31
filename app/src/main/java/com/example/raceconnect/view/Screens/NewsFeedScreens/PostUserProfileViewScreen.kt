@@ -154,9 +154,35 @@ fun PostUserProfileViewScreen(
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color.Gray
                     )
+                    if (!profileData?.number.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = profileData!!.number!!,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    if (!profileData?.address.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = profileData!!.address!!,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    if (!profileData?.bio.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = profileData!!.bio!!,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
 
                 var selectedTabIndex by remember { mutableStateOf(0) }
                 val tabTitles = listOf("Posts", "Reposts", "Photos")
@@ -164,13 +190,13 @@ fun PostUserProfileViewScreen(
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
                     containerColor = Color.White,
-                    contentColor = Red, // This sets the text color of the selected tab
+                    contentColor = Red,
                     indicator = { tabPositions ->
                         TabRowDefaults.Indicator(
                             modifier = Modifier
                                 .tabIndicatorOffset(tabPositions[selectedTabIndex])
-                                .height(2.dp), // Thickness of the underline
-                            color = Red // Set the underline color to red
+                                .height(2.dp),
+                            color = Red
                         )
                     }
                 ) {
@@ -194,7 +220,7 @@ fun PostUserProfileViewScreen(
                             onDeletePost = { /* No-op for other user's profile */ },
                             onFetchPostImages = { postId -> newsFeedViewModel.getPostImages(postId) },
                             navController = navController,
-                            showDropdown = false // Disable dropdown for other user's profile
+                            showDropdown = false
                         )
                     }
                     1 -> { // Reposts Tab
@@ -204,7 +230,7 @@ fun PostUserProfileViewScreen(
                             profileOriginalPosts = profileOriginalPosts,
                             profileUsername = profileData?.username,
                             profileUserId = userId,
-                            profilePicture = profileData?.profilePicture, // Pass profilePicture here
+                            profilePicture = profileData?.profilePicture,
                             onFetchPostImages = { postId -> newsFeedViewModel.getPostImages(postId) },
                             onFetchOriginalPost = { postId -> newsFeedViewModel.fetchProfileOriginalPost(postId) },
                             navController = navController

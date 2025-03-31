@@ -145,9 +145,35 @@ fun UserProfileScreen(
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color.Gray
                     )
+                    if (!profileData?.number.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = profileData!!.number!!,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    if (!profileData?.address.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = profileData!!.address!!,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    if (!profileData?.bio.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = profileData!!.bio!!,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
 
                 var selectedTabIndex by remember { mutableStateOf(0) }
                 val tabTitles = listOf("Posts", "Reposts", "Photos")
@@ -194,7 +220,7 @@ fun UserProfileScreen(
                         profileOriginalPosts = profileOriginalPosts,
                         profileUserId = profileData?.id ?: 0,
                         profileUsername = profileData?.username,
-                        profilePicture = profileData?.profilePicture, // Pass profilePicture here
+                        profilePicture = profileData?.profilePicture,
                         onFetchPostImages = { postId -> newsFeedViewModel.getPostImages(postId) },
                         onFetchOriginalPost = { postId ->
                             newsFeedViewModel.fetchProfileOriginalPost(postId)
