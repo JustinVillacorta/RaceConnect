@@ -199,7 +199,7 @@
             webSocket?.close(NORMAL_CLOSURE_STATUS, null)
             // ws server for chats
             val request = Request.Builder()
-                .url("ws://192.168.24.235:8080?user_id=${userId!!}")
+                .url("ws://192.168.100.60:8080?user_id=${userId!!}")
                 .build()
     
             webSocket = client.newWebSocket(

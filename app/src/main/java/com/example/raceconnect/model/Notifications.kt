@@ -30,19 +30,7 @@ data class Notification(
         get() = isAdminInt == 1 // True if sent by admin
 }
 
-data class NotificationRequest(
-    @SerializedName("user_id") val userId: Int,
-    @SerializedName("post_id") val postId: Int? = null,
-    @SerializedName("marketplace_item_id") val marketplaceItemId: Int? = null,
-    val type: String,
-    val content: String,
-    @SerializedName("trigger_user_id") val triggerUserId: Int
-)
 
-data class CreateNotificationResponse(
-    val message: String?,
-    val error: String?
-)
 
 data class SimpleResponse(
     val message: String?,

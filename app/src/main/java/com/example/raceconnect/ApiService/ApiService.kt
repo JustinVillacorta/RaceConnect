@@ -170,11 +170,7 @@ interface ApiService {
         @Part images: List<MultipartBody.Part>?
     ): Response<Map<String, Any>>
 
-    @PUT("marketplace-items/{id}")
-    suspend fun updateMarketplaceItem(
-        @Path("id") id: Int,
-        @Body request: UpdateMarketplaceItemRequest
-    ): Response<UpdateMarketplaceItemResponse>
+
 
     @Multipart
     @POST("marketplace-items/{id}/update")
@@ -190,29 +186,17 @@ interface ApiService {
         @Part images: List<MultipartBody.Part>?
     ): Response<UpdateMarketplaceItemResponse>
 
-    @Multipart
-    @POST("marketplace-items/{id}/images")
-    suspend fun uploadMarketplaceItemImages(
-        @Path("id") id: Int,
-        @Part images: List<MultipartBody.Part>
-    ): Response<Map<String, Any>>
+
 
     @DELETE("marketplace-items/{id}")
     suspend fun deleteMarketplaceItem(
         @Path("id") id: Int
     ): Response<Map<String, String>>
 
-    @GET("marketplace-item-likes")
-    suspend fun getAllLikes(): Response<MarketplaceItemLikesResponse>
-
-    @GET("marketplace-item-likes/{id}")
-    suspend fun getLikesByItemId(@Path("id") itemId: Int): Response<MarketplaceItemLikesResponse>
 
     @GET("marketplace-items/{id}/likes")
     suspend fun getMarketplaceItemLikes(@Path("id") itemId: Int): Response<MarketplaceItemLikesResponse>
 
-    @GET("marketplace-item-likes/user/{userId}")
-    suspend fun getUserLikedItems(@Path("userId") userId: Int): Response<MarketplaceItemLikesResponse>
 
     @POST("marketplace-item-likes")
     suspend fun toggleLike(@Body params: Map<String, Int>): Response<Map<String, Any>>
@@ -261,15 +245,8 @@ interface ApiService {
         @Query("user_id") userId: Int
     ): Response<List<Notification>>
 
-    @GET("notifications/{id}")
-    suspend fun getNotificationById(
-        @Path("id") id: Int
-    ): Response<Notification>
 
-    @POST("notifications")
-    suspend fun createNotification(
-        @Body notification: NotificationRequest
-    ): Response<CreateNotificationResponse>
+
 
     @PUT("notifications/{id}")
     suspend fun markAsRead(
@@ -335,10 +312,7 @@ interface ApiService {
         @Query("user_id") userId: Int
     ): Response<List<Repost>>
 
-    @DELETE("post-reposts/{id}")
-    suspend fun deleteRepost(
-        @Path("id") repostId: Int
-    ): Response<SimpleResponse>
+
 
     @POST("chat")
     suspend fun createMessage(@Body request: SendMessageRequest): Response<SendMessageResponse>

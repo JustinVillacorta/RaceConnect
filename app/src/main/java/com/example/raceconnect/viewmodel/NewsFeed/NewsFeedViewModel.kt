@@ -21,7 +21,7 @@ import com.example.raceconnect.model.NewsFeedDataClassItem
 import com.example.raceconnect.model.ProfileRepostsDataClass
 import com.example.raceconnect.model.ReportRequest
 import com.example.raceconnect.model.Repost
-import com.example.raceconnect.model.UpdatePostRequest
+
 import com.example.raceconnect.network.NewsFeedPagingSourceAllPosts
 import com.example.raceconnect.network.RetrofitInstance
 import com.example.raceconnect.network.UserPostsPagingSource

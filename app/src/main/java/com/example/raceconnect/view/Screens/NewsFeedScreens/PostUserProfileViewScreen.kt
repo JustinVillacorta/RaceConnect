@@ -112,7 +112,7 @@ fun PostUserProfileViewScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Box(
-                        modifier = Modifier
+                        modifier = Modifier 
                             .size(150.dp)
                             .clip(CircleShape)
                             .background(Color.Gray)

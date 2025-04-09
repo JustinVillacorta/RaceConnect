@@ -53,11 +53,7 @@ data class SendMessageResponse(
     val error: String? // Optional field for error message
 )
 
-data class WebSocketClient(
-    val user_id: String,
-    val connection_id: Int,
-    val created_at: String?
-)
+
 
 data class Conversation(
     @SerializedName("conversation_id") val conversationId: Int,

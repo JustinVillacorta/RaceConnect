@@ -25,9 +25,3 @@ data class UpdateFriendStatus(
     val status: String
 )
 
-data class RemoveFriendRequest(
-    @SerializedName("user_id")
-    val user_id: String,
-    @SerializedName("friend_id")
-    val friend_id: String
-)

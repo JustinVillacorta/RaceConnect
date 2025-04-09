@@ -132,20 +132,3 @@ data class PostImage(
     val image_url: String
 )
 
-data class UpdatePostResponse(
-    val message: String
-)
-
-data class UpdatePostRequest(
-    @SerializedName("content")
-    val content: String,
-
-    @SerializedName("title")
-    val title: String? = null,
-
-    @SerializedName("category")
-    val category: String? = null,
-
-    @SerializedName("privacy")
-    val privacy: String? = null
-)

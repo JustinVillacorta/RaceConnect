@@ -247,31 +247,7 @@ class NotificationClickedViewModel(
         }
     }
 
-    fun addComment(postId: Int, content: String) {
-        viewModelScope.launch {
-            val token = authToken ?: run {
-                _error.value = "Authentication token is missing"
-                return@launch
-            }
-            val currentUserId = _userId.value ?: run {
-                _error.value = "User ID is missing. Please log in again."
-                return@launch
-            }
-            try {
-                val comment = PostComment(postId = postId, comment = content, userId = currentUserId)
-                val response = apiService.addComment(token, comment)
-                if (response.isSuccessful) {
-                    fetchComments(postId)
-                    _error.value = null
-                } else {
-                    _error.value = "Failed to add comment: ${response.code()} - ${response.errorBody()?.string()}"
-                }
-            } catch (e: Exception) {
-                _error.value = "Error adding comment: ${e.message}"
-                Log.e("NotificationClickedViewModel", "Exception in addComment", e)
-            }
-        }
-    }
+
 
     fun clearPost() {
         _repost.value = null
@@ -287,13 +263,5 @@ class NotificationClickedViewModel(
         lastFetchedRepostId = null
     }
 
-    fun logout() {
-        viewModelScope.launch {
-            userPreferences.logout()
-            authToken = null
-            _userId.value = null
-            clearPost()
-            _error.value = "User logged out"
-        }
-    }
+
 }
