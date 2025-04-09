@@ -54,7 +54,5 @@ class ListedItemsViewModel(
         }
     }
 
-    fun clearError() {
-        _errorMessage.value = null
-    }
+
 }
